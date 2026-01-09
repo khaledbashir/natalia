@@ -171,7 +171,6 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         is_outdoor: input.environment === 'Outdoor',
                         shape: input.shape,
                         access: input.access,
-                        access: input.access,
                         complexity: input.complexity,
                         structure_condition: input.structureCondition || 'Existing',
                         unit_cost: input.unitCost || 0,
