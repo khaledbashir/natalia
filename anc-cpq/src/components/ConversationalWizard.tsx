@@ -482,6 +482,23 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                         )}>
                             <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
 
+                            {/* VENUE VERIFIED CARD */}
+                            {cpqState.address && msg.role === 'assistant' && i === messages.length - 1 && msg.nextStep !== 'address' && (
+                                <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-start gap-3 animate-in zoom-in-95 duration-500">
+                                    <div className="bg-green-500/20 p-2 rounded-lg">
+                                        <CheckCircle2 size={16} className="text-green-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Location Verified</span>
+                                            <div className="h-px flex-1 bg-green-500/20" />
+                                        </div>
+                                        <p className="text-xs text-slate-300 font-bold leading-tight">{cpqState.clientName || 'Venue'}</p>
+                                        <p className="text-[10px] text-slate-500 font-medium">{cpqState.address}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* VISUAL CONFIRMATION CARD (Value-Add) */}
                             {msg.nextStep === 'confirm' && (
                                 <div className="mt-4 bg-slate-900/50 rounded-xl p-4 border border-blue-500/30 font-mono text-xs text-blue-200">
