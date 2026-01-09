@@ -3,14 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict
+from dotenv import load_dotenv
 import os
 import json
+import datetime
 from calculator import CPQCalculator, CPQInput
 from excel_generator import ExcelGenerator
 from pdf_generator import PDFGenerator
 from database import init_db, get_db, Project, Message, SessionLocal
 from sqlalchemy.orm import Session
-import datetime
+
+load_dotenv() # Load from .env file
 
 app = FastAPI()
 

@@ -13,7 +13,7 @@ export const AI_MODELS: Record<string, AIModel> = {
         name: 'GLM-4.7 (ZhipuAI)',
         provider: 'zhipu',
         endpoint: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
-        apiKey: '8c313c111b47423aa91781479cf0af6e.LfWV1laJpyWEHH1z',
+        apiKey: process.env.ZHIPU_API_KEY || '8c313c111b47423aa91781479cf0af6e.LfWV1laJpyWEHH1z',
         supportsThinking: true
     },
     'mimo-v2-flash': {
@@ -21,14 +21,14 @@ export const AI_MODELS: Record<string, AIModel> = {
         name: 'MIMO-v2-Flash',
         provider: 'mimo',
         endpoint: 'https://api.xiaomimimo.com/v1/chat/completions',
-        apiKey: 'sk-sihvfmjhi5z3m72rh8qiw1niudfbrr6h1qto46su9sad5jto',
+        apiKey: process.env.MIMO_API_KEY || 'sk-sihvfmjhi5z3m72rh8qiw1niudfbrr6h1qto46su9sad5jto',
         supportsThinking: false
     }
 };
 
 export const NVIDIA_CONFIG = {
     endpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
-    apiKey: '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',
+    apiKey: process.env.NVIDIA_API_KEY || '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',
     modelsEndpoint: 'https://integrate.api.nvidia.com/v1/models'
 };
 
