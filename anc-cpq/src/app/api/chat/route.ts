@@ -464,6 +464,20 @@ export async function POST(request: NextRequest) {
     const parsed = extractJSON(rawContent);
 
     if (parsed) {
+      // HARD GUARDRAIL: Override suggestedOptions with authoritative source
+      if (parsed.nextStep) {
+        try {
+          const { WIZARD_QUESTIONS } = await import('../../../lib/wizard-questions');
+          const questionDef = WIZARD_QUESTIONS.find(q => q.id === parsed.nextStep);
+          if (questionDef && questionDef.options) {
+            parsed.suggestedOptions = questionDef.options;
+          } else if (parsed.nextStep === 'clientName' || parsed.nextStep === 'address') {
+            parsed.suggestedOptions = [];
+          }
+        } catch (e) {
+          console.error("Guardrail import error:", e);
+        }
+      }
       return NextResponse.json({ ...parsed, thinking });
     } else {
       const cleanMessage = rawContent.replace(/\{[\s\S]*\}/g, '').trim();
