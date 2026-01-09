@@ -25,13 +25,17 @@ class PDFGenerator:
         ))
 
     def generate_proposal(self, project_data: List[Dict], client_name: str, filename: str = "anc_client_proposal.pdf"):
-        # Widen margins: 0.5 inch (36pt) side margins for a fuller look
-        doc = SimpleDocTemplate(filename, pagesize=LETTER, topMargin=40, bottomMargin=40, leftMargin=36, rightMargin=36)
+        # FORCE WIDE LAYOUT: 0.4 inch (28pt) margins. 
+        # Letter width = 612pt. Printable width = 612 - 56 = 556pt.
+        doc = SimpleDocTemplate(filename, pagesize=LETTER, topMargin=30, bottomMargin=30, leftMargin=28, rightMargin=28)
         elements = []
         
-        # 1. Header with Logo Area (Text Placeholder for now)
+        # 1. Header with Logo Area
         elements.append(Paragraph("ANC SPORTS ENTERPRISES", self.styles['ANC_Title']))
         elements.append(Paragraph("SALES QUOTATION", self.styles['Heading2']))
+        
+        # VISUAL DEBUG: Full width line to prove margins
+        elements.append(Image("https://placehold.co/550x5/3b82f6/3b82f6.png", width=556, height=5)) 
         elements.append(Spacer(1, 20))
         
         # 2. Metadata Grid
@@ -41,8 +45,8 @@ class PDFGenerator:
             ["Date:", date_str],
             ["Valid Until:", (datetime.datetime.now() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")]
         ]
-        # Widen metadata table to match new page width
-        t_meta = Table(meta_data, colWidths=[120, 420], hAlign='LEFT')
+        # Widen metadata table to match new page width (556pt)
+        t_meta = Table(meta_data, colWidths=[120, 436], hAlign='LEFT')
         t_meta.setStyle(TableStyle([
             ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
             ('TEXTCOLOR', (0,0), (0,-1), colors.gray),
@@ -50,8 +54,7 @@ class PDFGenerator:
         elements.append(t_meta)
         elements.append(Spacer(1, 30))
         
-        # 3. Main Product Table (Component D requirement: Clean, no internal costs)
-        # Columns: Description, Dimensions, Pitch, Qty, Total Installed Price
+        # 3. Main Product Table
         headers = ["Item Description", "Dimensions", "Pitch", "Qty", "Installed Price"]
         table_data = [headers]
         
@@ -69,7 +72,7 @@ class PDFGenerator:
                 desc,
                 f"{inp.width_ft}' x {inp.height_ft}'\n({math['sq_ft']:.1f} sqft)",
                 f"{inp.pixel_pitch}mm",
-                "1", # Logic engine currently runs 1 at a time per row
+                "1",
                 f"${math['sell_price']:,.2f}"
             ]
             table_data.append(row)
@@ -78,11 +81,9 @@ class PDFGenerator:
         # Total Row
         table_data.append(["", "", "", "TOTAL:", f"${total_contract_value:,.2f}"])
         
-        # Styling
-        # Adjusted widths to fill 540pt (612 - 36 - 36)
-        # Old: [200, 100, 60, 40, 100] = 500
-        # New: [240, 100, 60, 40, 100] = 540
-        t_prod = Table(table_data, colWidths=[240, 100, 60, 40, 100])
+        # Styling: Total Width MUST be 556pt
+        # [266, 110, 60, 40, 80] = 556
+        t_prod = Table(table_data, colWidths=[266, 110, 60, 40, 80])
         t_prod.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")), # Dark Header
             ('TEXTCOLOR', (0,0), (-1,0), colors.white),
