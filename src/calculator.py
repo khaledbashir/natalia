@@ -30,6 +30,7 @@ class CPQInput:
     # Value-Add Fields
     unit_cost: Optional[float] = 0.0
     target_margin: Optional[float] = 0.0
+    structure_condition: Optional[str] = "Existing"
 
 class CPQCalculator:
     def __init__(self, catalog=None):

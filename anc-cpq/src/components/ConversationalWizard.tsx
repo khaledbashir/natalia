@@ -269,11 +269,26 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
         }
     };
 
-    const handleSend = async (text: string) => {
+    const handleSend = async (text: string, isAddressSelection = false) => {
         if (!text.trim()) return;
 
+        // If this is an address selection (from autocomplete), also update the client name if not set
+        let updatedText = text;
+        if (isAddressSelection && !cpqState.clientName && addressSuggestions.length > 0) {
+            // Extract venue name from selected address (e.g., "ALAS Cultural Wellness Center, 507 Purissa Street...")
+            const selected = addressSuggestions.find(item => item.display_name === text);
+            if (selected) {
+                const venueName = selected.display_name.split(',')[0].trim();
+                // Update state with both venue name and address
+                const newState = { ...cpqState, clientName: venueName, address: selected.address || selected.display_name };
+                setCpqState(newState);
+                onUpdate(newState);
+                updatedText = venueName; // Send venue name as user message
+            }
+        }
+
         setAddressSuggestions([]);
-        const userMsg: Message = { role: 'user', content: text };
+        const userMsg: Message = { role: 'user', content: updatedText };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsLoading(true);
@@ -636,7 +651,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                         <button
                                                             key={idx}
                                                             onClick={() => {
-                                                                handleSend(item.display_name);
+                                                                handleSend(item.display_name, true);
                                                                 setAddressSuggestions([]);
                                                             }}
                                                             className="w-full text-left p-3 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border-b border-slate-800 last:border-0 transition-colors"
@@ -716,7 +731,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                             value={input}
                             onChange={(e) => {
                                 setInput(e.target.value);
-                                if (currentNextStep === 'address') {
+                                if (currentNextStep === 'address' || currentNextStep === 'clientName') {
                                     debouncedSearch(e.target.value);
                                 }
                             }}
@@ -749,7 +764,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                             <button
                                                 key={idx}
                                                 onClick={() => {
-                                                    handleSend(item.display_name);
+                                                    handleSend(item.display_name, true);
                                                     setAddressSuggestions([]);
                                                 }}
                                                 className="w-full text-left p-3 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border-b border-slate-800 last:border-0 transition-colors"
