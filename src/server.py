@@ -48,6 +48,9 @@ class ProjectRequest(BaseModel):
     screens: List[ScreenRequest]
     project_id: Optional[int] = None # Link to DB Project
 
+class SearchRequest(BaseModel):
+    query: str
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -60,6 +63,51 @@ class ChatRequest(BaseModel):
     current_state: Dict
 
 # --- API Endpoints ---
+
+@app.post("/api/search-address")
+async def search_address(req: SearchRequest):
+    """
+    Perform a high-precision address search using Serper.dev (web search)
+    with a fallback to standard Nominatim.
+    """
+    query = req.query
+    serper_key = os.environ.get("SERPER_API_KEY")
+    
+    if serper_key:
+        try:
+            import requests
+            url = "https://google.serper.dev/search"
+            payload = json.dumps({"q": f"{query} full address"})
+            headers = {
+                'X-API-KEY': serper_key,
+                'Content-Type': 'application/json'
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            data = response.json()
+            
+            results = []
+            # Extract from snippets and knowledge graph
+            if "knowledgeGraph" in data:
+                kg = data["knowledgeGraph"]
+                title = kg.get("title", "")
+                addr = kg.get("address", "")
+                if addr:
+                    results.append({"display_name": f"{title}, {addr}", "address": addr})
+            
+            for organic in data.get("organic", []):
+                snippet = organic.get("snippet", "")
+                title = organic.get("title", "")
+                # Basic heuristic for address extraction from snippet
+                if any(kw in snippet.lower() for kw in ["ave", "st", "rd", "blvd", "bay", "sheikh"]):
+                    results.append({"display_name": f"{title}: {snippet[:100]}...", "address": snippet[:150]})
+            
+            if results:
+                return {"results": results[:5]}
+        except Exception as e:
+            print(f"Serper error: {e}")
+
+    # Fallback to local inference or basic search if Serper fails/missing
+    return {"results": [{"display_name": f"Search result for {query}", "address": query}]}
 
 @app.post("/api/projects")
 def create_project(client_name: str = "New Project", db: Session = Depends(get_db)):

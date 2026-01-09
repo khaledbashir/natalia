@@ -183,10 +183,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
             return;
         }
         setIsSearchingAddress(true);
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+        fetch(`/api/search-address`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+        })
             .then(res => res.json())
             .then(data => {
-                setAddressSuggestions(data);
+                // Ensure results is an array or fallback
+                setAddressSuggestions(data.results || []);
                 setIsSearchingAddress(false);
             })
             .catch(() => setIsSearchingAddress(false));

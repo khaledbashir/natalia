@@ -19,6 +19,13 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true
     },
     {
+        id: 'address',
+        category: 'metadata',
+        question: "What is the physical address of the venue?",
+        type: 'text',
+        required: true
+    },
+    {
         id: 'projectName',
         category: 'metadata',
         question: "What's the project name or location?",
