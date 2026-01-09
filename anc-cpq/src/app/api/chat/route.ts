@@ -244,6 +244,51 @@ User: "123 Main St, Baton Rouge"
 
 CRITICAL: If you ask a question WITHOUT suggestedOptions, the user will see NO BUTTONS and have a terrible experience. ALWAYS include suggestedOptions.`;
 
+function inferStepFromMessage(message: string): string | null {
+  if (!message) return null;
+  const lower = message.toLowerCase();
+
+  // 1. Check for Confirmation/Finalizing
+  // Strict check to avoid "address confirmed"
+  if ((lower.includes('confirm') && lower.includes('configuration')) || lower.includes('draws approx')) {
+    return 'confirm';
+  }
+
+  // 2. Check for Specific Questions (High Priority)
+  // Product Type
+  if (lower.includes('type of display') || lower.includes('what product') || lower.includes('scoreboard') || lower.includes('ribbon')) return 'productClass';
+
+  // Dimensions
+  if (lower.includes('width') || lower.includes('how wide')) return 'widthFt';
+  if (lower.includes('height') || lower.includes('how high') || lower.includes('how tall')) return 'heightFt';
+
+  // Pixel Pitch
+  if (lower.includes('pixel') || lower.includes('pitch')) return 'pixelPitch';
+
+  // Environment
+  if (lower.includes('indoor') || lower.includes('outdoor') || lower.includes('environment')) return 'environment';
+
+  // Mounting
+  if (lower.includes('mount') || lower.includes('rigged') || lower.includes('pole')) return 'mountingType';
+
+  // Shape
+  if (lower.includes('shape') || lower.includes('curve') || lower.includes('flat')) return 'shape';
+
+  // Access
+  if (lower.includes('access') || lower.includes('service')) return 'access';
+
+  // Structure
+  if (lower.includes('structural materials') || lower.includes('existing usable steel')) return 'structureCondition';
+
+  // Labor
+  if (lower.includes('union') || lower.includes('labor') || lower.includes('prevailing')) return 'laborType';
+
+  // Address (Lowest Priority - only if explicitly asking)
+  if (lower.includes('select the correct one') || lower.includes('enter the address') || (lower.includes('address') && lower.includes('?'))) return 'address';
+
+  return null;
+}
+
 function extractJSON(text: string) {
   try {
     // 1. Try to find the EXACT JSON block first (greedy match)
@@ -275,15 +320,17 @@ function extractJSON(text: string) {
       // Specific phrases should be checked before generic ones.
       
       // CONFIRMATION (Very specific)
-      if (lower.includes('confirm') || lower.includes('draws approx')) {
+      // Avoid matching "Address confirmed" or "Specs confirmed"
+      if ((lower.includes('confirm') && lower.includes('configuration')) || lower.includes('draws approx')) {
         inferredStep = 'confirm';
         inferredOptions = [
           { "value": "Confirmed", "label": "CONFIRM & GENERATE PDF" },
           { "value": "Edit", "label": "Edit Specifications" }
         ];
-      } 
+      }
       // ADDRESS (Specific)
-      else if (lower.includes('address') || lower.includes('street') || lower.includes('select the correct one')) {
+      // "Address Confirmed" should NOT trigger address mode (which hides buttons)
+      else if ((lower.includes('address') && !lower.includes('confirm')) || lower.includes('street') || lower.includes('select the correct one')) {
         inferredStep = 'address';
         inferredOptions = [];
       } 
@@ -494,8 +541,16 @@ export async function POST(request: NextRequest) {
       if (parsed.nextStep || parsed.message) {
         try {
           // A. Infer if AI is jumping the gun on address
-          const msgLower = (parsed.message || "").toLowerCase();
+          // Run the smarter inference logic to validate/correct the step
+          const inferredStep = inferStepFromMessage(parsed.message);
           
+          if (inferredStep && inferredStep !== parsed.nextStep) {
+              console.log(`Step Correction: AI said '${parsed.nextStep}' but message implies '${inferredStep}'. Overriding.`);
+              parsed.nextStep = inferredStep;
+          }
+
+          // Legacy Guardrails (Keep as fallback)
+          const msgLower = (parsed.message || "").toLowerCase();
           const matchesAddressKeywords = msgLower.includes('address') ||
             msgLower.includes('select the correct one') ||
             msgLower.includes('search') ||
@@ -508,7 +563,8 @@ export async function POST(request: NextRequest) {
 
           const isAskingForAddress = matchesAddressKeywords && !isConfirmation;
 
-          if (isAskingForAddress && parsed.nextStep !== 'address') {
+          // Only force address if we didn't already infer a better step (like productClass)
+          if (isAskingForAddress && parsed.nextStep !== 'address' && !inferredStep) {
             console.log("Guardrail: Forcing nextStep to address based on message context.");
             parsed.nextStep = 'address';
           }

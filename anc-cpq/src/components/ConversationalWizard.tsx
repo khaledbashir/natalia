@@ -274,6 +274,8 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
 
         // If this is an address selection (from autocomplete), extract just the address portion
         let updatedText = text;
+        let currentStateToSend = cpqState;
+
         if (isAddressSelection && addressSuggestions.length > 0) {
             const selected = addressSuggestions.find(item => item.display_name === text);
             if (selected) {
@@ -297,6 +299,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                     setCpqState(newState);
                     onUpdate(newState);
                     updatedText = addressPart;
+                    currentStateToSend = newState;
                 } else {
                     // Fallback: use last 3 parts as address
                     const parts = displayName.split(',');
@@ -308,6 +311,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                         setCpqState(newState);
                         onUpdate(newState);
                         updatedText = addressPart;
+                        currentStateToSend = newState;
                     } else {
                         // Just use the whole thing but clean up
                         const venueName = displayName.split(/[|-]/)[0].trim();
@@ -315,6 +319,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                         setCpqState(newState);
                         onUpdate(newState);
                         updatedText = displayName;
+                        currentStateToSend = newState;
                     }
                 }
             }
@@ -351,7 +356,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                 body: JSON.stringify({
                     message: updatedText,  // Use updatedText which contains clean address
                     history: [...messages, userMsg],
-                    currentState: cpqState,
+                    currentState: currentStateToSend,
                     selectedModel
                 })
             });
@@ -367,7 +372,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
             }
 
             if (data.updatedParams && Object.keys(data.updatedParams).length > 0) {
-                const newState = { ...cpqState, ...data.updatedParams };
+                const newState = { ...currentStateToSend, ...data.updatedParams };
                 // Special handling for screens to ensure it's always an array if present
                 if (data.updatedParams.screens && Array.isArray(data.updatedParams.screens)) {
                     newState.screens = data.updatedParams.screens;
