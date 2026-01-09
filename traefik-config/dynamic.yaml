@@ -25,4 +25,4 @@ http:
     natalia:
       loadBalancer:
         servers:
-          - url: "http://tasks.natalia_natalia:3000"
+          - url: "http://10.11.3.72:3001"

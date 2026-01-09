@@ -5,7 +5,7 @@
 echo "Starting FastAPI Backend..."
 cd src
 # Run uvicorn on localhost:8000 so Next.js rewrite can hit it
-../venv/bin/uvicorn server:app --host 127.0.0.1 --port 8000 &
+../venv/bin/uvicorn server:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 # 2. Start Next.js Frontend (Foreground process)
