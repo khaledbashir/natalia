@@ -48,6 +48,7 @@ export interface CPQInput {
     structureCondition?: 'Existing' | 'NewSteel';
     unitCost?: number;
     targetMargin?: number;
+    screens?: ScreenConfig[];
 }
 
 export interface CalculationResult {
