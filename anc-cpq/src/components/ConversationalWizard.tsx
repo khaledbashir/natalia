@@ -73,12 +73,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Model selection
-    const [selectedModel, setSelectedModel] = useState<string>(() => {
+    const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
+
+    // Hydrate model selection from localStorage on mount
+    useEffect(() => {
         if (typeof window !== 'undefined') {
-            return localStorage.getItem('selectedAIModel') || DEFAULT_MODEL;
+            const saved = localStorage.getItem('selectedAIModel');
+            if (saved) setSelectedModel(saved);
         }
-        return DEFAULT_MODEL;
-    });
+    }, []);
 
     // Save model selection to localStorage
     useEffect(() => {
