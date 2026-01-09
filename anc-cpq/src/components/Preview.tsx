@@ -228,8 +228,7 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         <ShieldCheck className="text-blue-600" size={20} />
                     </div>
                     <div>
-                        <span className="block text-slate-900 text-sm font-bold tracking-tight">Expert Sales Proposal</span>
-                        <span className="block text-slate-500 text-[10px] uppercase font-bold tracking-widest leading-none mt-0.5">Automated LOI Engine</span>
+                        <span className="block text-slate-900 text-sm font-bold tracking-tight">Project Proposal</span>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -266,7 +265,7 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                                 <p className="text-[10px] text-slate-900 font-black uppercase tracking-widest"><span className="text-slate-400 font-bold mr-2">DATE:</span> {today}</p>
                                 <p className="text-[10px] text-slate-900 font-black uppercase tracking-widest"><span className="text-slate-400 font-bold mr-2">REF:</span> ANC-{referenceNum}</p>
                                 <p className="text-[10px] text-slate-900 font-black uppercase tracking-widest mt-2 px-2 py-1 bg-slate-100 rounded inline-block" style={{ color: BRAND_BLUE }}>
-                                    {isMultiScreen ? "LETTER OF INTENT" : "SALES QUOTATION"}
+                                    {isMultiScreen ? "PROJECT PROPOSAL" : "SALES QUOTATION"}
                                 </p>
                             </div>
                         </div>

@@ -444,15 +444,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     const widgetDef = WIZARD_QUESTIONS.find(q => q.id === currentNextStep);
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 overflow-hidden relative border-r border-slate-800">
+        <div className="flex flex-col h-full bg-[#0a0a0f] overflow-hidden relative border-r border-slate-800">
             {/* PROGRESS HEADER */}
-            <div className="bg-slate-900 border-b border-white/5 p-4 z-20">
+            <div className="bg-[#0a0a0f] border-b border-white/5 p-4 z-20">
                 <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2">
-                        <div className="px-2 py-0.5 bg-blue-600 rounded text-[10px] font-black text-white tracking-widest leading-none">
+                        <div className="px-2 py-0.5 bg-[#003D82] rounded text-[10px] font-black text-white tracking-widest leading-none">
                             {progress}%
                         </div>
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Confidence Readiness</span>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Complete</span>
                     </div>
                     <div className="flex gap-2">
                         <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
@@ -468,7 +468,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                 {/* Progress Bar */}
                 <div className="h-1 bg-slate-800 rounded-full overflow-hidden mb-4">
                     <div
-                        className="h-full bg-blue-500 transition-all duration-700 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                        className="h-full bg-[#003D82] transition-all duration-700 ease-out"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -544,8 +544,8 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                         <div className={clsx(
                             "max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed shadow-sm",
                             msg.role === 'user'
-                                ? "bg-[#003D82] text-white border border-blue-800"
-                                : "bg-slate-800/80 text-slate-200 border border-slate-700/50"
+                                ? "bg-[#003D82] text-white border border-blue-900/50"
+                                : "bg-[#1a1a24] text-slate-200 border border-slate-700/50"
                         )}>
                             <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
 
@@ -606,9 +606,9 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                 <button
                                                     key={opt.value}
                                                     onClick={() => handleSend(String(opt.value))}
-                                                    className="px-4 py-1.5 bg-slate-700/50 hover:bg-blue-600/20 text-blue-400 border border-slate-600 hover:border-blue-500/50 rounded-full text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5 group"
+                                                    className="px-4 py-1.5 bg-[#0f1420] hover:bg-[#003D82] text-slate-300 hover:text-white border border-slate-700 hover:border-[#003D82] rounded-full text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5 group"
                                                 >
-                                                    {opt.label} <ChevronRight size={10} className="text-blue-500/50 group-hover:text-blue-400" />
+                                                    {opt.label} <ChevronRight size={10} className="text-slate-600 group-hover:text-white" />
                                                 </button>
                                             ))}
                                         </div>
@@ -678,7 +678,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                         setAddressSuggestions([]);
                                                         input.value = '';
                                                     }}
-                                                    className="px-5 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black hover:bg-blue-500 transition-colors uppercase tracking-widest shadow-lg shadow-blue-500/20"
+                                                    className="px-5 py-2 bg-[#003D82] hover:bg-[#002a5c] text-white rounded-lg text-[10px] font-black hover:bg-blue-500 transition-colors uppercase tracking-widest shadow-lg"
                                                 >
                                                     Next
                                                 </button>
@@ -688,7 +688,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                             {(isSearchingAddress || (addressSuggestions.length > 0 && cpqState.clientName)) && (
                                                 <div className="mt-2 animate-in fade-in slide-in-from-top-2">
                                                     {isSearchingAddress && (
-                                                        <div className="bg-gradient-to-r from-blue-900/30 to-slate-900/50 border border-blue-500/30 rounded-xl p-4 flex items-center gap-4">
+                                                        <div className="bg-[#0f1420] border border-blue-500/30 rounded-xl p-4 flex items-center gap-4">
                                                             <div className="relative">
                                                                 <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
                                                                 <div className="absolute inset-0 w-8 h-8 border-2 border-transparent border-t-blue-300/50 rounded-full animate-spin [animation-duration:1.5s]"></div>
@@ -787,12 +787,12 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-slate-900 border-t border-white/5 space-y-3">
+            <div className="p-4 bg-[#0a0a0f] border-t border-white/5 space-y-3">
                 <div className="flex gap-2">
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-all active:scale-95 disabled:opacity-50"
+                        className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-all active:scale-95 disabled:opacity-50"
                         title="Upload client brief"
                     >
                         <Upload size={18} />
@@ -814,12 +814,12 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                             onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
                             placeholder={isUploading ? "Extracting project data..." : "Reply to the ANC Engineer..."}
                             disabled={isLoading || isUploading}
-                            className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl px-5 py-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none disabled:opacity-50 placeholder:text-slate-600 font-medium"
+                            className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl px-5 py-3 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none disabled:opacity-50 placeholder:text-slate-600 font-medium shadow-inner"
                         />
                         <button
                             onClick={() => handleSend(input)}
                             disabled={isLoading || isUploading || !input.trim()}
-                            className="absolute right-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-blue-500/20"
+                            className="absolute right-2 p-2 bg-[#003D82] hover:bg-[#002a5c] text-white rounded-lg transition-all active:scale-95 disabled:opacity-50"
                         >
                             <Send size={16} />
                         </button>
@@ -827,7 +827,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                     </div>
                 </div>
                 <div className="flex justify-center">
-                    <p className="text-[9px] text-slate-600 font-black uppercase tracking-[0.2em]">ANC Engine v4.7 | Premium Estimator</p>
+                    <p className="text-[9px] text-slate-600 font-black uppercase tracking-[0.2em]">ANC Proposal Engine v4.8</p>
                 </div>
             </div>
         </div>
