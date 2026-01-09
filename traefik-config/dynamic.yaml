@@ -1,0 +1,28 @@
+http:
+  routers:
+    easypanel:
+      entryPoints:
+        - web
+        - websecure
+      rule: "Host(`easypanel.localhost`) || Host(`localhost`)"
+      service: easypanel
+      tls: {}
+    
+    natalia:
+      entryPoints:
+        - web
+        - websecure
+      rule: "Host(`natalia.localhost`)"
+      service: natalia
+      tls: {}
+
+  services:
+    easypanel:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.2.4:3000"
+
+    natalia:
+      loadBalancer:
+        servers:
+          - url: "http://10.11.0.176:3000"
