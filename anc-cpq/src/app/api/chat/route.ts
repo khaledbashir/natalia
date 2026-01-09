@@ -251,24 +251,39 @@ function extractJSON(text: string) {
       let inferredOptions = null;
 
       // Smart Inference Logic for "dumb" models
-      if (lower.includes('address') || lower.includes('street') || lower.includes('location') || lower.includes('select the correct one')) {
+      // NOTE: Order matters greatly here to avoid false positives. 
+      // Specific phrases should be checked before generic ones.
+      
+      // CONFIRMATION (Very specific)
+      if (lower.includes('confirm') || lower.includes('draws approx')) {
+        inferredStep = 'confirm';
+        inferredOptions = [
+          { "value": "Confirmed", "label": "CONFIRM & GENERATE PDF" },
+          { "value": "Edit", "label": "Edit Specifications" }
+        ];
+      } 
+      // ADDRESS (Specific)
+      else if (lower.includes('address') || lower.includes('street') || lower.includes('select the correct one')) {
         inferredStep = 'address';
         inferredOptions = [];
-      } else if (lower.includes('environment') || lower.includes('indoor') || lower.includes('outdoor')) {
-        inferredStep = 'environment';
+      } 
+      // STRUCTURE & LABOR (Specific)
+      else if (lower.includes('structure') || lower.includes('steel')) {
+        inferredStep = 'structureCondition';
         inferredOptions = [
-          { "value": "Indoor", "label": "Indoor" },
-          { "value": "Outdoor", "label": "Outdoor" }
+          { "value": "Existing", "label": "Existing Structure (Usable)" },
+          { "value": "NewSteel", "label": "New Steel Required" }
         ];
-      } else if (lower.includes('pitch')) {
-        inferredStep = 'pixelPitch';
+      } else if (lower.includes('labor') || lower.includes('union')) {
+        inferredStep = 'laborType';
         inferredOptions = [
-          { "value": "4", "label": "4mm (Ultra Fine)" },
-          { "value": "6", "label": "6mm (Fine)" },
-          { "value": "10", "label": "10mm (Standard)" },
-          { "value": "16", "label": "16mm (Ribbon/Perimeter)" }
+          { "value": "NonUnion", "label": "Non-Union (Standard)" },
+          { "value": "Union", "label": "Union Labor Required" },
+          { "value": "Prevailing", "label": "Prevailing Wage" }
         ];
-      } else if (lower.includes('width')) {
+      } 
+      // SPECS (Width/Height/Pitch)
+      else if (lower.includes('width')) {
         inferredStep = 'widthFt';
         inferredOptions = [
           { "value": "20", "label": "20 ft" },
@@ -286,47 +301,47 @@ function extractJSON(text: string) {
           { "value": "30", "label": "30 ft" },
           { "value": "40", "label": "40 ft" }
         ];
+      } else if (lower.includes('pitch')) {
+        inferredStep = 'pixelPitch';
+        inferredOptions = [
+          { "value": "4", "label": "4mm (Ultra Fine)" },
+          { "value": "6", "label": "6mm (Fine)" },
+          { "value": "10", "label": "10mm (Standard)" },
+          { "value": "16", "label": "16mm (Ribbon/Perimeter)" }
+        ];
+      } 
+      // ENVIRONMENT & SHAPE
+      else if (lower.includes('environment') || lower.includes('indoor') || lower.includes('outdoor')) {
+        inferredStep = 'environment';
+        inferredOptions = [
+          { "value": "Indoor", "label": "Indoor" },
+          { "value": "Outdoor", "label": "Outdoor" }
+        ];
       } else if (lower.includes('shape') || lower.includes('curve')) {
         inferredStep = 'shape';
         inferredOptions = [
           { "value": "Flat", "label": "Flat Panel" },
           { "value": "Curved", "label": "Curved Display" }
         ];
-      } else if (lower.includes('mount') || lower.includes('rigging')) {
-        inferredStep = 'mountingType';
+      }
+      // ACCESS & MOUNTING (Specific terms)
+      else if (lower.includes('access') || lower.includes('service')) {
+        inferredStep = 'access';
+        inferredOptions = [
+          { "value": "Front", "label": "Front Access" },
+          { "value": "Rear", "label": "Rear Access" }
+        ];
+      } else if (lower.includes('mounting') || lower.includes('rigged') || lower.includes('flown') || lower.includes('pole mount')) {
+        inferredStep = 'mountingType'; // 'mount' is too generic, used 'mounting'
         inferredOptions = [
           { "value": "Wall", "label": "Wall Mount" },
           { "value": "Ground", "label": "Ground Stack" },
           { "value": "Rigging", "label": "Rigged/Flown" },
           { "value": "Pole", "label": "Pole Mount" }
         ];
-      } else if (lower.includes('access') || lower.includes('service')) {
-        inferredStep = 'access';
-        inferredOptions = [
-          { "value": "Front", "label": "Front Access" },
-          { "value": "Rear", "label": "Rear Access" }
-        ];
-      } else if (lower.includes('structure') || lower.includes('steel')) {
-        inferredStep = 'structureCondition';
-        inferredOptions = [
-          { "value": "Existing", "label": "Existing Structure (Usable)" },
-          { "value": "NewSteel", "label": "New Steel Required" }
-        ];
-      } else if (lower.includes('labor') || lower.includes('union')) {
-        inferredStep = 'laborType';
-        inferredOptions = [
-          { "value": "NonUnion", "label": "Non-Union (Standard)" },
-          { "value": "Union", "label": "Union Labor Required" },
-          { "value": "Prevailing", "label": "Prevailing Wage" }
-        ];
-      } else if (lower.includes('power') || lower.includes('distance')) {
-        inferredStep = 'powerDistance';
-        inferredOptions = [
-          { "value": "Close", "label": "Under 50 ft" },
-          { "value": "Medium", "label": "50 - 150 ft" },
-          { "value": "Far", "label": "Over 150 ft (New Run)" }
-        ];
-      } else if (lower.includes('permit')) {
+      }
+      // COSTING (Permits, Bond, Control, Price)
+      else if (lower.includes('permit')) {
         inferredStep = 'permits';
         inferredOptions = [
           { "value": "Client", "label": "Client Handles Permits" },
@@ -344,13 +359,7 @@ function extractJSON(text: string) {
           { "value": "No", "label": "No" },
           { "value": "Yes", "label": "Yes (Add ~1.5%)" }
         ];
-      } else if (lower.includes('confirm') || lower.includes('draws approx')) {
-        inferredStep = 'confirm';
-        inferredOptions = [
-          { "value": "Confirmed", "label": "CONFIRM & GENERATE PDF" },
-          { "value": "Edit", "label": "Edit Specifications" }
-        ];
-      } else if (lower.includes('cost') || lower.includes('price')) {
+      } else if (lower.includes('cost') || lower.includes('price') || lower.includes('unit cost')) {
         inferredStep = 'unitCost';
         inferredOptions = [
           { "value": "1200", "label": "$1,200 (Standard)" },
@@ -364,8 +373,9 @@ function extractJSON(text: string) {
           { "value": "20", "label": "20% (Target)" },
           { "value": "25", "label": "25% (High)" }
         ];
-      } else if (lower.includes('product') || lower.includes('type') || lower.includes('ribbon') || lower.includes('scoreboard')) {
-        // Fallback for Product Class (Last Priority to avoid False Positives)
+      } 
+      // PRODUCT CLASS (Last Resort - Generic Terms)
+      else if (lower.includes('product') || lower.includes('type') || lower.includes('ribbon') || lower.includes('scoreboard')) {
         inferredStep = 'productClass';
         inferredOptions = [
           { "value": "Scoreboard", "label": "Scoreboard" },
@@ -465,10 +475,18 @@ export async function POST(request: NextRequest) {
         try {
           // A. Infer if AI is jumping the gun on address
           const msgLower = (parsed.message || "").toLowerCase();
-          const isAskingForAddress = msgLower.includes('address') ||
+          
+          const matchesAddressKeywords = msgLower.includes('address') ||
             msgLower.includes('select the correct one') ||
             msgLower.includes('search') ||
             msgLower.includes('street');
+            
+          const isConfirmation = msgLower.includes('found') || 
+                                 msgLower.includes('confirmed') || 
+                                 msgLower.includes('verified') ||
+                                 msgLower.includes('got it');
+
+          const isAskingForAddress = matchesAddressKeywords && !isConfirmation;
 
           if (isAskingForAddress && parsed.nextStep !== 'address') {
             console.log("Guardrail: Forcing nextStep to address based on message context.");
