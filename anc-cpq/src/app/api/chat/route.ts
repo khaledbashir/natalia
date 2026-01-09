@@ -246,17 +246,21 @@ CRITICAL: If you ask a question WITHOUT suggestedOptions, the user will see NO B
 
 function inferStepFromMessage(message: string): string | null {
   if (!message) return null;
-  const lower = message.toLowerCase();
+  
+  // CRITICAL: Only analyze the QUESTION part, not the acknowledgment
+  // Split on "." or "?" to isolate the actual question
+  const parts = message.split(/[.!]\s*/);
+  const questionPart = parts.find(p => p.includes('?')) || parts[parts.length - 1] || message;
+  const lower = questionPart.toLowerCase();
 
   // 1. Check for Confirmation/Finalizing
-  // Strict check to avoid "address confirmed"
   if ((lower.includes('confirm') && lower.includes('configuration')) || lower.includes('draws approx')) {
     return 'confirm';
   }
 
   // 2. Check for Specific Questions (High Priority)
   // Product Type
-  if (lower.includes('type of display') || lower.includes('what product') || lower.includes('scoreboard') || lower.includes('ribbon')) return 'productClass';
+  if (lower.includes('type of display') || lower.includes('what product') || lower.includes('type of product')) return 'productClass';
 
   // Dimensions
   if (lower.includes('width') || lower.includes('how wide')) return 'widthFt';
@@ -265,23 +269,35 @@ function inferStepFromMessage(message: string): string | null {
   // Pixel Pitch
   if (lower.includes('pixel') || lower.includes('pitch')) return 'pixelPitch';
 
-  // Environment
-  if (lower.includes('indoor') || lower.includes('outdoor') || lower.includes('environment')) return 'environment';
+  // Shape (Check BEFORE environment to prevent "outdoor" in acknowledgment overriding "shape" question)
+  if (lower.includes('shape') || lower.includes('configuration')) return 'shape';
+
+  // Environment (Only if the question is explicitly about indoor/outdoor)
+  if (lower.includes('installed') || lower.includes('indoor or outdoor') || lower.includes('environment')) return 'environment';
 
   // Mounting
-  if (lower.includes('mount') || lower.includes('rigged') || lower.includes('pole')) return 'mountingType';
-
-  // Shape
-  if (lower.includes('shape') || lower.includes('curve') || lower.includes('flat')) return 'shape';
+  if (lower.includes('mount') || lower.includes('rigged') || lower.includes('flown')) return 'mountingType';
 
   // Access
-  if (lower.includes('access') || lower.includes('service')) return 'access';
+  if (lower.includes('access') || lower.includes('service') || lower.includes('technician')) return 'access';
 
   // Structure
-  if (lower.includes('structural materials') || lower.includes('existing usable steel')) return 'structureCondition';
+  if (lower.includes('steel') || lower.includes('structural')) return 'structureCondition';
 
   // Labor
   if (lower.includes('union') || lower.includes('labor') || lower.includes('prevailing')) return 'laborType';
+
+  // Power Distance
+  if (lower.includes('power') || lower.includes('termination') || lower.includes('distance')) return 'powerDistance';
+
+  // Permits
+  if (lower.includes('permit')) return 'permits';
+
+  // Control System
+  if (lower.includes('control') || lower.includes('processor')) return 'controlSystem';
+
+  // Bond
+  if (lower.includes('bond')) return 'bondRequired';
 
   // Address (Lowest Priority - only if explicitly asking)
   if (lower.includes('select the correct one') || lower.includes('enter the address') || (lower.includes('address') && lower.includes('?'))) return 'address';
