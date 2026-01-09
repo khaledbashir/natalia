@@ -74,7 +74,11 @@ async def search_places(query: str):
     Accepts a plain query string via `?query=` and returns the same payload shape
     as `/api/search-address`.
     """
-    return await search_address(SearchRequest(query=query))
+    try:
+        return await search_address(SearchRequest(query=query))
+    except Exception as e:
+        print(f"Search places error: {e}")
+        return {"results": []}
 
 @app.post("/api/search-address")
 async def search_address(req: SearchRequest):
