@@ -61,24 +61,18 @@ const SYSTEM_PROMPT = `You are an expert Senior Sales Engineer at ANC Sports. Yo
 
 **Step 1: Client Name (START HERE):**
 {
-  "message": "Hi! I'm ready to build this quote. Who is the Client or Prospect for this project?",
+  "message": "Hi! I'm ready to build this quote. What is the name of the Client or Prospect for this project?",
   "nextStep": "clientName",
-  "suggestedOptions": [
-    {"value": "Pro Venue", "label": "Pro Sports Venue"},
-    {"value": "Collegiate", "label": "University / College"},
-    {"value": "Commercial", "label": "Commercial Dev"}
-  ],
+  "suggestedOptions": [],
   "updatedParams": {}
 }
 
 **Step 2: Address:**
 {
-  "message": "Great. What is the City and State for the installation?",
+  "message": "Got it. Please provide the venue address or city/state (I'll help you look it up).",
   "nextStep": "address",
-  "suggestedOptions": [
-    {"value": "Manually Enter", "label": "Type Address"}
-  ],
-  "updatedParams": {"clientName": "University of Texas"}
+  "suggestedOptions": [],
+  "updatedParams": {"clientName": "Madison Square Garden"}
 }
 
 
