@@ -29,7 +29,11 @@ app.add_middleware(
 # --- Database Initialization ---
 @app.on_event("startup")
 def on_startup():
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        print(f"WARNING: Database initialization failed: {e}")
+        print("The app will run but project persistence will be disabled.")
 
 # --- Pydantic Models ---
 class ScreenRequest(BaseModel):
