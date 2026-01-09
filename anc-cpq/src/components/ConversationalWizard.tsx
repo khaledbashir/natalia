@@ -272,18 +272,51 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     const handleSend = async (text: string, isAddressSelection = false) => {
         if (!text.trim()) return;
 
-        // If this is an address selection (from autocomplete), also update the client name if not set
+        // If this is an address selection (from autocomplete), extract just the address portion
         let updatedText = text;
-        if (isAddressSelection && !cpqState.clientName && addressSuggestions.length > 0) {
-            // Extract venue name from selected address (e.g., "ALAS Cultural Wellness Center, 507 Purissa Street...")
+        if (isAddressSelection && addressSuggestions.length > 0) {
             const selected = addressSuggestions.find(item => item.display_name === text);
             if (selected) {
-                const venueName = selected.display_name.split(',')[0].trim();
-                // Update state with both venue name and address
-                const newState = { ...cpqState, clientName: venueName, address: selected.address || selected.display_name };
-                setCpqState(newState);
-                onUpdate(newState);
-                updatedText = venueName; // Send venue name as user message
+                // Parse the display_name to extract just the address portion
+                // Format is typically: "Venue Name - Description... | Additional: Address, City, State Zip"
+                // Or: "Title: Description... City, State Zip"
+                const displayName = selected.display_name;
+                
+                // Try to extract address after common patterns
+                let cleanAddress = displayName;
+                
+                // Look for patterns like "768 5th Ave, New York, NY 10019" at the end
+                const zipMatch = displayName.match(/[A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}/);
+                if (zipMatch) {
+                    // Use the portion containing the address (usually after the last pipe or colon, or containing the zip)
+                    const addressPart = zipMatch[0].trim();
+                    // Also extract venue name from the beginning
+                    const venueName = displayName.split(/[|:]/)[0].trim().split(/[:,-]/)[0].trim();
+                    
+                    const newState = { ...cpqState, clientName: venueName, address: addressPart };
+                    setCpqState(newState);
+                    onUpdate(newState);
+                    updatedText = addressPart;
+                } else {
+                    // Fallback: use last 3 parts as address
+                    const parts = displayName.split(',');
+                    if (parts.length >= 3) {
+                        const venueName = parts[0].trim().split(/[|-]/)[0].trim();
+                        const addressPart = parts.slice(-3).join(',').trim();
+                        
+                        const newState = { ...cpqState, clientName: venueName, address: addressPart };
+                        setCpqState(newState);
+                        onUpdate(newState);
+                        updatedText = addressPart;
+                    } else {
+                        // Just use the whole thing but clean up
+                        const venueName = displayName.split(/[|-]/)[0].trim();
+                        const newState = { ...cpqState, clientName: venueName, address: displayName };
+                        setCpqState(newState);
+                        onUpdate(newState);
+                        updatedText = displayName;
+                    }
+                }
             }
         }
 
