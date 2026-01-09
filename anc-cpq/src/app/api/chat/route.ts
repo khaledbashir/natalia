@@ -246,19 +246,10 @@ function extractJSON(text: string) {
       let inferredOptions = null;
 
       // Smart Inference Logic for "dumb" models
-      if (lower.includes('the plaza') || lower.includes('sharm')) {
-        return {
-          message: "Acknowledged. I've located The Plaza in Sharm El Sheikh.",
-          updatedParams: { clientName: "The Plaza", address: "Sharm El Sheikh, Egypt" },
-          nextStep: "productClass",
-          suggestedOptions: [
-            { "value": "Scoreboard", "label": "Scoreboard" },
-            { "value": "Ribbon", "label": "Ribbon Board" }
-          ]
-        };
-      }
-
-      if (lower.includes('environment') || lower.includes('indoor') || lower.includes('outdoor')) {
+      if (lower.includes('address') || lower.includes('street') || lower.includes('location') || lower.includes('select the correct one')) {
+        inferredStep = 'address';
+        inferredOptions = [];
+      } else if (lower.includes('environment') || lower.includes('indoor') || lower.includes('outdoor')) {
         inferredStep = 'environment';
         inferredOptions = [
           { "value": "Indoor", "label": "Indoor" },
@@ -465,8 +456,20 @@ export async function POST(request: NextRequest) {
 
     if (parsed) {
       // HARD GUARDRAIL: Override suggestedOptions with authoritative source
-      if (parsed.nextStep) {
+      if (parsed.nextStep || parsed.message) {
         try {
+          // A. Infer if AI is jumping the gun on address
+          const msgLower = (parsed.message || "").toLowerCase();
+          const isAskingForAddress = msgLower.includes('address') ||
+            msgLower.includes('select the correct one') ||
+            msgLower.includes('search') ||
+            msgLower.includes('street');
+
+          if (isAskingForAddress && parsed.nextStep !== 'address') {
+            console.log("Guardrail: Forcing nextStep to address based on message context.");
+            parsed.nextStep = 'address';
+          }
+
           const { WIZARD_QUESTIONS } = await import('../../../lib/wizard-questions');
           const questionDef = WIZARD_QUESTIONS.find(q => q.id === parsed.nextStep);
           if (questionDef && questionDef.options) {
