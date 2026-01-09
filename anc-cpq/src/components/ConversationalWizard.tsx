@@ -178,7 +178,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     }, [messages, isUploading, isLoading]);
 
     const debouncedSearch = useCallback((query: string) => {
-        if (query.length < 3) {
+        if (query.length < 2) {
             setAddressSuggestions([]);
             return;
         }
@@ -318,6 +318,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                     suggestedOptions: data.suggestedOptions
                 };
                 setMessages(prev => [...prev, assistantMsg]);
+
+                // AUTO-SEARCH: If the AI transitions to address, trigger the search immediately
+                // using the user's input or the extracted client name.
+                if (data.nextStep === 'address') {
+                    const searchQuery = data.updatedParams?.clientName || data.updatedParams?.address || text;
+                    if (searchQuery) {
+                        debouncedSearch(searchQuery);
+                    }
+                }
 
                 // Save Assistant Message to DB
                 if (projectId) {
@@ -610,6 +619,12 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                     Next
                                                 </button>
                                             </div>
+                                            {isSearchingAddress && (
+                                                <div className="p-3 text-[10px] text-blue-400 font-bold bg-slate-900 border border-slate-600 rounded-xl mb-1 flex items-center gap-2">
+                                                    <Loader2 size={12} className="animate-spin" />
+                                                    Searching for verified address...
+                                                </div>
+                                            )}
                                             {addressSuggestions.length > 0 && (
                                                 <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-top-2">
                                                     {addressSuggestions.map((item, idx) => (

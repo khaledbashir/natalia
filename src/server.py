@@ -68,11 +68,15 @@ class ChatRequest(BaseModel):
 async def search_address(req: SearchRequest):
     """
     Perform a high-precision address search using Serper.dev (web search)
-    with a fallback to standard Nominatim.
+    with a robust fallback to Nominatim.
     """
     query = req.query
+    if len(query) < 3:
+        return {"results": []}
+
     serper_key = os.environ.get("SERPER_API_KEY")
-    
+    results = []
+
     if serper_key:
         try:
             import requests
@@ -85,7 +89,6 @@ async def search_address(req: SearchRequest):
             response = requests.request("POST", url, headers=headers, data=payload)
             data = response.json()
             
-            results = []
             # Extract from snippets and knowledge graph
             if "knowledgeGraph" in data:
                 kg = data["knowledgeGraph"]
@@ -97,17 +100,31 @@ async def search_address(req: SearchRequest):
             for organic in data.get("organic", []):
                 snippet = organic.get("snippet", "")
                 title = organic.get("title", "")
-                # Basic heuristic for address extraction from snippet
-                if any(kw in snippet.lower() for kw in ["ave", "st", "rd", "blvd", "bay", "sheikh"]):
-                    results.append({"display_name": f"{title}: {snippet[:100]}...", "address": snippet[:150]})
-            
-            if results:
-                return {"results": results[:5]}
+                # Clean up snippet
+                clean_addr = snippet.split("...")[0].strip()
+                if any(kw in clean_addr.lower() for kw in ["ave", "st", "rd", "blvd", "bay", "sheikh", "road", "street"]):
+                    results.append({"display_name": f"{title}: {clean_addr[:100]}", "address": clean_addr[:150]})
         except Exception as e:
             print(f"Serper error: {e}")
 
-    # Fallback to local inference or basic search if Serper fails/missing
-    return {"results": [{"display_name": f"Search result for {query}", "address": query}]}
+    # Robust Fallback to Nominatim if Serper yielded little or no results
+    if len(results) < 3:
+        try:
+            import requests
+            headers = {'User-Agent': 'ANC-CPQ/1.0'}
+            nom_url = f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query)}&limit=5"
+            response = requests.get(nom_url, headers=headers)
+            if response.ok:
+                nom_data = response.json()
+                for item in nom_data:
+                    results.append({
+                        "display_name": item.get("display_name"),
+                        "address": item.get("display_name")
+                    })
+        except Exception as e:
+            print(f"Nominatim error: {e}")
+
+    return {"results": results[:5]}
 
 @app.post("/api/projects")
 def create_project(client_name: str = "New Project", db: Session = Depends(get_db)):
