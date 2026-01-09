@@ -12,7 +12,7 @@ http:
       entryPoints:
         - web
         - websecure
-      rule: "Host(`natalia.localhost`)"
+      rule: "Host(`natalia-natalia.x0uyzh.easypanel.host`) || Host(`natalia.localhost`)"
       service: natalia
       tls: {}
 
@@ -25,4 +25,4 @@ http:
     natalia:
       loadBalancer:
         servers:
-          - url: "http://10.11.0.176:3000"
+          - url: "http://10.11.3.50:3000"
