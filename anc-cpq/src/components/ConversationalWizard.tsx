@@ -71,6 +71,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Model selection
     const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
@@ -178,23 +179,29 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     }, [messages, isUploading, isLoading]);
 
     const debouncedSearch = useCallback((query: string) => {
-        if (query.length < 2) {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        if (query.length < 3) {
             setAddressSuggestions([]);
             return;
         }
-        setIsSearchingAddress(true);
-        fetch(`/api/search-address`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query })
-        })
-            .then(res => res.json())
-            .then(data => {
-                // Ensure results is an array or fallback
-                setAddressSuggestions(data.results || []);
-                setIsSearchingAddress(false);
+
+        searchTimeoutRef.current = setTimeout(() => {
+            setIsSearchingAddress(true);
+            fetch(`/api/search-address`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
             })
-            .catch(() => setIsSearchingAddress(false));
+                .then(res => res.json())
+                .then(data => {
+                    setAddressSuggestions(data.results || []);
+                    setIsSearchingAddress(false);
+                })
+                .catch(() => setIsSearchingAddress(false));
+        }, 300);
     }, []);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,6 +275,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     const handleSend = async (text: string) => {
         if (!text.trim()) return;
 
+        setAddressSuggestions([]);
         const userMsg: Message = { role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
@@ -708,7 +716,12 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                             ref={inputRef}
                             type="text"
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            onChange={(e) => {
+                                setInput(e.target.value);
+                                if (currentNextStep === 'address' || currentNextStep === 'clientName') {
+                                    debouncedSearch(e.target.value);
+                                }
+                            }}
                             onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
                             placeholder={isUploading ? "Extracting project data..." : "Reply to the ANC Engineer..."}
                             disabled={isLoading || isUploading}
