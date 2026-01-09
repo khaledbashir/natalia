@@ -12,8 +12,9 @@ BACKEND_PID=$!
 echo "Starting Next.js Frontend..."
 cd ../anc-cpq
 # Next.js requests are proxied to localhost:8000 via next.config.mjs
+# Unset PORT first (Easypanel sets it to 80), then set to 3000
+unset PORT
 export PORT=3000 HOSTNAME=0.0.0.0
-export NODE_ENV=production
 npm start
 
 # Trap cleanup
