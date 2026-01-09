@@ -1,0 +1,17 @@
+{
+    "multipliers": {
+        "structural": {
+            "flat": 1.05,
+            "curved": 1.20
+        },
+        "labor": {
+            "front_access": 0.10,
+            "rear_access": 0.15
+        },
+        "shipping_rate": 0.05,
+        "bond_rate": 0.01
+    },
+    "defaults": {
+        "margin": 0.30
+    }
+}

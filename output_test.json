@@ -1,0 +1,48 @@
+[
+  {
+    "specs": {
+      "product_name": "Reserve Level Ribbon  - 3' H x 1215' W - 10mm",
+      "width_ft": 1215.22,
+      "height_ft": 2.95,
+      "qty": 1,
+      "total_sqft": 3584.8990000000003
+    },
+    "costs": {
+      "led_hardware": 501.8858600000001,
+      "shipping": 500.0,
+      "structural": 276367.42500000005,
+      "labor": 26000.0,
+      "elec_data": 3000,
+      "pm": 30236.742500000008,
+      "total_cost": 336606.05336
+    },
+    "pricing": {
+      "target_margin_pct": 10.0,
+      "margin_dollars": 37400.672595555545,
+      "final_sell_price": 374006.72595555556
+    }
+  },
+  {
+    "specs": {
+      "product_name": "Product #111",
+      "width_ft": 37.72,
+      "height_ft": 6.56,
+      "qty": 2,
+      "total_sqft": 494.8864
+    },
+    "costs": {
+      "led_hardware": 499.835264,
+      "shipping": 1000.0,
+      "structural": 5348.864,
+      "labor": 9200,
+      "elec_data": 2500,
+      "pm": 1454.8864,
+      "total_cost": 20003.585664
+    },
+    "pricing": {
+      "target_margin_pct": 10.0,
+      "margin_dollars": 2222.6206293333344,
+      "final_sell_price": 22226.206293333333
+    }
+  }
+]

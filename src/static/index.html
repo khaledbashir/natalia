@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANC CPQ Engine</title>
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/ui/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">ANC PARAMETRIC ENGINE</div>
+        </header>
+
+        <div class="form-grid">
+            <!-- Interrogator Panel -->
+            <div class="card" style="grid-column: span 2;">
+                <h2>Configure Display</h2>
+
+                <!-- Var 1: Metadata -->
+                <div class="form-group">
+                    <label>Client Name</label>
+                    <input type="text" id="clientName" placeholder="Project Name">
+                </div>
+
+                <div class="form-grid">
+                    <!-- Var 2: Product Class -->
+                    <div class="form-group">
+                        <label>Product Class</label>
+                        <select id="prodClass">
+                            <option value="Ribbon">Ribbon Board</option>
+                            <option value="Scoreboard">Main Scoreboard</option>
+                            <option value="CenterHung">Center Hung</option>
+                        </select>
+                    </div>
+                    <!-- Var 4: Pitch -->
+                    <div class="form-group">
+                        <label>Pixel Pitch (mm)</label>
+                        <select id="pitch">
+                            <option value="10">10mm</option>
+                            <option value="6">6mm</option>
+                            <option value="4">4mm</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top: 1rem;">
+                    <!-- Var 3: Dimensions -->
+                    <div class="form-group">
+                        <label>Width (ft)</label>
+                        <input type="number" id="width" value="20">
+                    </div>
+                    <div class="form-group">
+                        <label>Height (ft)</label>
+                        <input type="number" id="height" value="5">
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <label style="color: var(--accent);">Environmental & Structural Logic</label>
+                    <div class="form-grid">
+                        <!-- Var 5: Environment -->
+                        <div class="form-group">
+                            <label>Environment</label>
+                            <select id="env">
+                                <option value="Indoor">Indoor</option>
+                                <option value="Outdoor">Outdoor</option>
+                            </select>
+                        </div>
+                        <!-- Var 6: Shape -->
+                        <div class="form-group">
+                            <label>Shape</label>
+                            <select id="shape">
+                                <option value="Flat">Flat</option>
+                                <option value="Curved">Curved (+20% Struct)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="margin-top: 1rem;">
+                        <!-- Var 7: Access -->
+                        <div class="form-group">
+                            <label>Service Access</label>
+                            <select id="access">
+                                <option value="Front">Front Access (+10% Labor)</option>
+                                <option value="Rear">Rear Access (+15% Labor)</option>
+                            </select>
+                        </div>
+                        <!-- Var 8: Complexity -->
+                        <div class="form-group">
+                            <label>Install Complexity</label>
+                            <select id="complexity">
+                                <option value="Standard">Standard</option>
+                                <option value="High">High (Requires Lift/Crane)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="generate()" style="margin-top: 2rem;">RUN LOGIC ENGINE</button>
+            </div>
+
+            <div class="card">
+                <h2>Outputs</h2>
+                <div id="statusArea">Ready to Calculate.</div>
+                <br>
+                <a href="/api/download/excel" class="btn btn-secondary" style="width: 100%; text-align:center;">Download
+                    Auditor Excel</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function generate() {
+            const payload = {
+                client_name: document.getElementById('clientName').value,
+                screens: [{
+                    product_class: document.getElementById('prodClass').value,
+                    pixel_pitch: parseFloat(document.getElementById('pitch').value),
+                    width_ft: parseFloat(document.getElementById('width').value),
+                    height_ft: parseFloat(document.getElementById('height').value),
+                    is_outdoor: document.getElementById('env').value === 'Outdoor',
+                    shape: document.getElementById('shape').value,
+                    access: document.getElementById('access').value,
+                    complexity: document.getElementById('complexity').value
+                }]
+            };
+
+            const btn = document.querySelector('button');
+            btn.innerText = "Calculated...";
+
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Calculation Success! Download the Excel to verify formulas.");
+                    btn.innerText = "RUN LOGIC ENGINE";
+                } else {
+                    alert("Error");
+                }
+            } catch (e) { console.error(e); }
+        }
+    </script>
+</body>
+
+</html>

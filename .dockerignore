@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.venv
+__pycache__
+*.pyc
+*.md
+!system_manifest.md
+anc-cpq/node_modules
+src/__pycache__
