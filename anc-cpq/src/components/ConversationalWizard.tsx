@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, Upload, Plus, History, FileText, X, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Send, Loader2, Bot, User, Upload, Plus, History, FileText, X, CheckCircle2, ChevronRight, MapPin } from 'lucide-react';
 import { WIZARD_QUESTIONS } from '../lib/wizard-questions';
 import { CPQInput } from '../lib/types';
 import { ModelSelector } from './ModelSelector';
@@ -644,18 +644,23 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                             <div className="flex gap-2">
                                                 <input
                                                     type="text"
-                                                    placeholder={widgetDef.id === 'clientName' ? "Professional venue name..." : "Enter details..."}
+                                                    placeholder={widgetDef.id === 'clientName' ? "Enter venue or client name..." : "Enter details..."}
                                                     autoFocus
-                                                    onChange={(e) => {
-                                                        if (widgetDef.id === 'clientName' || widgetDef.id === 'address') {
-                                                            debouncedSearch(e.target.value);
-                                                        }
-                                                    }}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') {
-                                                            handleSend((e.target as HTMLInputElement).value);
+                                                            const inputEl = e.currentTarget as HTMLInputElement;
+                                                            const val = inputEl.value;
+                                                            if (widgetDef.id === 'clientName' && val.trim()) {
+                                                                // Auto-search for address when client name is entered
+                                                                handleSend(val);
+                                                                inputEl.value = '';
+                                                                // Trigger address search
+                                                                debouncedSearch(val);
+                                                            } else {
+                                                                handleSend(val);
+                                                                inputEl.value = '';
+                                                            }
                                                             setAddressSuggestions([]);
-                                                            (e.target as HTMLInputElement).value = '';
                                                         }
                                                     }}
                                                     className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-700 font-bold"
@@ -663,7 +668,13 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                 <button
                                                     onClick={(e) => {
                                                         const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                                        handleSend(input.value);
+                                                        if (widgetDef.id === 'clientName' && input.value.trim()) {
+                                                            // Auto-search for address when client name is entered
+                                                            handleSend(input.value);
+                                                            debouncedSearch(input.value);
+                                                        } else {
+                                                            handleSend(input.value);
+                                                        }
                                                         setAddressSuggestions([]);
                                                         input.value = '';
                                                     }}
@@ -672,26 +683,63 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                     Next
                                                 </button>
                                             </div>
-                                            {isSearchingAddress && (
-                                                <div className="p-3 text-[10px] text-blue-400 font-bold bg-slate-900 border border-slate-600 rounded-xl mb-1 flex items-center gap-2">
-                                                    <Loader2 size={12} className="animate-spin" />
-                                                    Searching for verified address...
-                                                </div>
-                                            )}
-                                            {addressSuggestions.length > 0 && (
-                                                <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-top-2">
-                                                    {addressSuggestions.map((item, idx) => (
-                                                        <button
-                                                            key={idx}
-                                                            onClick={() => {
-                                                                handleSend(item.display_name, true);
-                                                                setAddressSuggestions([]);
-                                                            }}
-                                                            className="w-full text-left p-3 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border-b border-slate-800 last:border-0 transition-colors"
-                                                        >
-                                                            {item.display_name}
-                                                        </button>
-                                                    ))}
+                                            
+                                            {/* AUTO-SEARCH RESULTS CARD */}
+                                            {(isSearchingAddress || (addressSuggestions.length > 0 && cpqState.clientName)) && (
+                                                <div className="mt-2 animate-in fade-in slide-in-from-top-2">
+                                                    {isSearchingAddress && (
+                                                        <div className="bg-gradient-to-r from-blue-900/30 to-slate-900/50 border border-blue-500/30 rounded-xl p-4 flex items-center gap-4">
+                                                            <div className="relative">
+                                                                <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
+                                                                <div className="absolute inset-0 w-8 h-8 border-2 border-transparent border-t-blue-300/50 rounded-full animate-spin [animation-duration:1.5s]"></div>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">Searching Address...</p>
+                                                                <p className="text-[10px] text-slate-500">Looking up {cpqState.clientName || 'venue'} in our database</p>
+                                                            </div>
+                                                            <div className="ml-auto flex gap-1">
+                                                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0s]"></div>
+                                                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]"></div>
+                                                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {addressSuggestions.length > 0 && !isSearchingAddress && (
+                                                        <div className="space-y-2">
+                                                            <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
+                                                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                                                {addressSuggestions.length} verified addresses found
+                                                            </p>
+                                                            <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl">
+                                                                {addressSuggestions.map((item, idx) => (
+                                                                    <button
+                                                                        key={idx}
+                                                                        onClick={() => {
+                                                                            handleSend(item.display_name, true);
+                                                                            setAddressSuggestions([]);
+                                                                        }}
+                                                                        className="w-full text-left p-4 hover:bg-slate-800 transition-all border-b border-slate-800 last:border-0 group"
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+                                                                                <MapPin className="w-4 h-4 text-blue-400" />
+                                                                            </div>
+                                                                            <div className="flex-1">
+                                                                                <p className="text-xs text-white font-bold group-hover:text-blue-300 transition-colors">
+                                                                                    {item.display_name.split(',')[0].trim()}
+                                                                                </p>
+                                                                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                                                                    {item.display_name.split(',').slice(1).join(',').trim()}
+                                                                                </p>
+                                                                            </div>
+                                                                            <ChevronRight size={14} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -762,12 +810,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                             ref={inputRef}
                             type="text"
                             value={input}
-                            onChange={(e) => {
-                                setInput(e.target.value);
-                                if (currentNextStep === 'address' || currentNextStep === 'clientName') {
-                                    debouncedSearch(e.target.value);
-                                }
-                            }}
+                            onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
                             placeholder={isUploading ? "Extracting project data..." : "Reply to the ANC Engineer..."}
                             disabled={isLoading || isUploading}
@@ -781,34 +824,6 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                             <Send size={16} />
                         </button>
                         </div>
-
-                        {/* Address Autocomplete Dropdown (Bottom Input) */}
-                        {currentNextStep === 'address' && (isSearchingAddress || addressSuggestions.length > 0) && (
-                            <div className="absolute left-0 right-0 top-full mt-2 z-50">
-                                {isSearchingAddress && (
-                                    <div className="p-3 text-[10px] text-blue-400 font-bold bg-slate-900 border border-slate-600 rounded-xl mb-2 flex items-center gap-2">
-                                        <Loader2 size={12} className="animate-spin" />
-                                        Searching for verified address...
-                                    </div>
-                                )}
-                                {addressSuggestions.length > 0 && (
-                                    <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-top-2">
-                                        {addressSuggestions.map((item, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => {
-                                                    handleSend(item.display_name, true);
-                                                    setAddressSuggestions([]);
-                                                }}
-                                                className="w-full text-left p-3 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border-b border-slate-800 last:border-0 transition-colors"
-                                            >
-                                                {item.display_name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 </div>
                 <div className="flex justify-center">
