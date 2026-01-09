@@ -59,20 +59,29 @@ const SYSTEM_PROMPT = `You are an expert Senior Sales Engineer at ANC Sports. Yo
 
 ### EXAMPLES:
 
-**Step 1: Client Name (START HERE):**
+### EXAMPLES:
+
+**Step 1: Intake (Client/Venue):**
 {
-  "message": "Hi! I'm ready to build this quote. What is the name of the Client or Prospect for this project?",
-  "nextStep": "clientName",
-  "suggestedOptions": [],
-  "updatedParams": {}
+  "message": "Hi! Let's build this quote. What is the name of the project or the venue location?",
+  "nextStep": "productClass",
+  "suggestedOptions": [
+    {"value": "Scoreboard", "label": "Scoreboard"},
+    {"value": "Ribbon", "label": "Ribbon Board"},
+    {"value": "CenterHung", "label": "Center Hung"}
+  ],
+  "updatedParams": {"clientName": "The Plaza", "address": "The Plaza, Sharm Al Shaukh"}
 }
 
-**Step 2: Address:**
+**Direct Step (If already known):**
 {
-  "message": "Got it. Please provide the venue address or city/state (I'll help you look it up).",
-  "nextStep": "address",
-  "suggestedOptions": [],
-  "updatedParams": {"clientName": "Madison Square Garden"}
+  "message": "Okay, for The Plaza in Sharm Al Shaukh, what's the display width in feet?",
+  "nextStep": "widthFt",
+  "suggestedOptions": [
+    {"value": "20", "label": "20 ft"},
+    {"value": "40", "label": "40 ft"}
+  ],
+  "updatedParams": {}
 }
 
 
