@@ -563,7 +563,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                     placeholder={widgetDef.id === 'clientName' ? "Professional venue name..." : "Enter details..."}
                                                     autoFocus
                                                     onChange={(e) => {
-                                                        if (widgetDef.id === 'clientName') {
+                                                        if (widgetDef.id === 'clientName' || widgetDef.id === 'address') {
                                                             debouncedSearch(e.target.value);
                                                         }
                                                     }}
