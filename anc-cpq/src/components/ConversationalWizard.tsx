@@ -109,35 +109,62 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
     };
 
     const [expandedThinking, setExpandedThinking] = useState<number | null>(null);
+    const [projectId, setProjectId] = useState<number | null>(null);
 
-    // Load session from localStorage on mount
+    // Load session from Server (DB) or Create New
     useEffect(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            try {
-                const session = JSON.parse(saved);
-                if (session.messages?.length > 1) {
-                    setMessages(session.messages);
-                    setCpqState(session.state || {});
-                    onUpdate(session.state || {});
+        const initSession = async () => {
+            const savedId = localStorage.getItem('anc_project_id');
+            if (savedId) {
+                try {
+                    // Resume existing session
+                    const res = await fetch(`/api/projects/${savedId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setProjectId(data.id);
+                        if (data.messages && data.messages.length > 0) {
+                            setMessages(data.messages);
+                        }
+                        if (data.state) {
+                            setCpqState(data.state);
+                            onUpdate(data.state);
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Failed to resume session:", e);
                 }
-            } catch (e) { console.error('Failed to load session', e); }
-        }
+            }
 
-        const history = localStorage.getItem(HISTORY_KEY);
-        if (history) {
+            // Create New Session if resume failed or no ID
             try {
-                setSavedProposals(JSON.parse(history));
-            } catch (e) { console.error('Failed to load history', e); }
-        }
+                const res = await fetch('/api/projects', { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    setProjectId(data.id);
+                    localStorage.setItem('anc_project_id', data.id.toString());
+                }
+            } catch (e) {
+                console.error("Failed to create project:", e);
+            }
+        };
+
+        initSession();
     }, []);
 
-    // Save session to localStorage on changes
+    // Save state to Server (DB) on changes
     useEffect(() => {
-        if (messages.length > 1) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, state: cpqState }));
+        if (projectId && Object.keys(cpqState).length > 0) {
+            const timeoutId = setTimeout(() => {
+                fetch(`/api/projects/${projectId}/state`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cpqState)
+                }).catch(e => console.error("Failed to auto-save state", e));
+            }, 1000); // Debounce save
+            return () => clearTimeout(timeoutId);
         }
-    }, [messages, cpqState]);
+    }, [cpqState, projectId]);
 
     // Auto-scroll
     useEffect(() => {
@@ -241,6 +268,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
         setInput('');
         setIsLoading(true);
 
+        // Save User Message to DB
+        if (projectId) {
+            fetch(`/api/projects/${projectId}/message`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userMsg)
+            }).catch(e => console.error("Failed to log user message", e));
+        }
+
         try {
             const res = await fetch('/api/chat', {
                 method: 'POST',
@@ -269,14 +305,23 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
             }
 
             if (data.message) {
-                setMessages(prev => [...prev, {
-                    role: 'assistant',
+                const assistantMsg = {
+                    role: 'assistant' as const,
                     content: data.message,
                     nextStep: data.nextStep,
                     thinking: data.thinking,
-                    // Store suggested options if provided
                     suggestedOptions: data.suggestedOptions
-                }]);
+                };
+                setMessages(prev => [...prev, assistantMsg]);
+
+                // Save Assistant Message to DB
+                if (projectId) {
+                    fetch(`/api/projects/${projectId}/message`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(assistantMsg)
+                    }).catch(e => console.error("Failed to log assistant message", e));
+                }
             }
 
         } catch (error) {

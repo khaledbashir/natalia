@@ -4,3 +4,5 @@ pydantic
 python-multipart
 openpyxl
 reportlab
+sqlalchemy
+psycopg2-binary

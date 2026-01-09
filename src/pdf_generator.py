@@ -25,7 +25,8 @@ class PDFGenerator:
         ))
 
     def generate_proposal(self, project_data: List[Dict], client_name: str, filename: str = "anc_client_proposal.pdf"):
-        doc = SimpleDocTemplate(filename, pagesize=LETTER, topMargin=50, bottomMargin=50)
+        # Widen margins: 0.5 inch (36pt) side margins for a fuller look
+        doc = SimpleDocTemplate(filename, pagesize=LETTER, topMargin=40, bottomMargin=40, leftMargin=36, rightMargin=36)
         elements = []
         
         # 1. Header with Logo Area (Text Placeholder for now)
@@ -40,7 +41,8 @@ class PDFGenerator:
             ["Date:", date_str],
             ["Valid Until:", (datetime.datetime.now() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")]
         ]
-        t_meta = Table(meta_data, colWidths=[100, 300], hAlign='LEFT')
+        # Widen metadata table to match new page width
+        t_meta = Table(meta_data, colWidths=[120, 420], hAlign='LEFT')
         t_meta.setStyle(TableStyle([
             ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
             ('TEXTCOLOR', (0,0), (0,-1), colors.gray),
@@ -77,7 +79,10 @@ class PDFGenerator:
         table_data.append(["", "", "", "TOTAL:", f"${total_contract_value:,.2f}"])
         
         # Styling
-        t_prod = Table(table_data, colWidths=[200, 100, 60, 40, 100])
+        # Adjusted widths to fill 540pt (612 - 36 - 36)
+        # Old: [200, 100, 60, 40, 100] = 500
+        # New: [240, 100, 60, 40, 100] = 540
+        t_prod = Table(table_data, colWidths=[240, 100, 60, 40, 100])
         t_prod.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")), # Dark Header
             ('TEXTCOLOR', (0,0), (-1,0), colors.white),

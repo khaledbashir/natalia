@@ -1,70 +1,142 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from typing import List
-import uvicorn
+from typing import List, Optional, Dict
 import os
+import json
 from calculator import CPQCalculator, CPQInput
 from excel_generator import ExcelGenerator
-# Note: PDF Generator update deferred to next step, assumes we have a placeholder or update later
-# For now, we will comment out PDF generation to focus on Excel/Logic validation
+from pdf_generator import PDFGenerator
+from database import init_db, get_db, Project, Message, SessionLocal
+from sqlalchemy.orm import Session
+import datetime
 
 app = FastAPI()
 
-# CORS for Next.js (Port 3000)
-from fastapi.middleware.cors import CORSMiddleware
+# Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:6789"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static files
-static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="static")
+# --- Database Initialization ---
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
+# --- Pydantic Models ---
 class ScreenRequest(BaseModel):
-    # The 8 Variables mapping
-    # 1. Metadata (handled in ProjectRequest)
-    # 2. Product Class
-    product_class: str 
-    # 4. Pixel Pitch
-    pixel_pitch: float
-    # 3. Dimensions
+    client_name: str = ""
     width_ft: float
     height_ft: float
-    # 5. Environment
+    pixel_pitch: float
     is_outdoor: bool
-    # 6. Shape
+    product_class: str
     shape: str
-    # 7. Access
     access: str
-    # 8. Complexity
     complexity: str
-    # 9. Value-Add Fields
     unit_cost: float = 0.0
     target_margin: float = 0.0
-    structure_condition: str = 'Existing'
+    structure_condition: str = "Existing"
 
 class ProjectRequest(BaseModel):
     client_name: str
     screens: List[ScreenRequest]
+    project_id: Optional[int] = None # Link to DB Project
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+    thinking: Optional[str] = None
+
+class ChatRequest(BaseModel):
+    project_id: Optional[int] = None
+    message: str
+    history: List[ChatMessage] # For context window
+    current_state: Dict
+
+# --- API Endpoints ---
+
+@app.post("/api/projects")
+def create_project(client_name: str = "New Project", db: Session = Depends(get_db)):
+    """Create a new empty project session"""
+    new_project = Project(client_name=client_name, state={})
+    db.add(new_project)
+    db.commit()
+    db.refresh(new_project)
+    return {"id": new_project.id, "client_name": new_project.client_name}
+
+@app.get("/api/projects/{project_id}")
+def get_project(project_id: int, db: Session = Depends(get_db)):
+    """Retrieve full project state and history"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Sort messages by timestamp
+    messages = [{"role": m.role, "content": m.content, "thinking": m.thinking, "timestamp": m.timestamp.isoformat()} for m in sorted(project.messages, key=lambda x: x.timestamp)]
+    
+    return {
+        "id": project.id,
+        "client_name": project.client_name,
+        "state": project.state,
+        "messages": messages,
+        "created_at": project.created_at.isoformat()
+    }
+
+@app.put("/api/projects/{project_id}/state")
+def update_project_state(project_id: int, state: Dict, db: Session = Depends(get_db)):
+    """Auto-save project state from wizard"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project.state = state
+    # Update helpful metadata if available
+    if "clientName" in state:
+        project.client_name = state["clientName"]
+        
+    db.commit()
+    return {"status": "saved"}
+
+@app.post("/api/projects/{project_id}/message")
+def save_message(project_id: int, msg: ChatMessage, db: Session = Depends(get_db)):
+    """Log a chat message to history"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    new_msg = Message(
+        project_id=project.id,
+        role=msg.role,
+        content=msg.content,
+        thinking=msg.thinking
+    )
+    db.add(new_msg)
+    db.commit()
+    return {"status": "logged"}
 
 @app.post("/api/generate")
-async def generate_proposal(project: ProjectRequest):
+async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
     try:
-        # 1. Init Engine
-        # We need a dummy catalog for now as per refactor plan
-        calc = CPQCalculator(catalog=None)
-        
-        calculated_results = []
-        
-        for s in project.screens:
+        calc = CPQCalculator()
+        project_data = []
+
+        # Save Configuration State if project_id is provided
+        if req.project_id:
+            project = db.query(Project).filter(Project.id == req.project_id).first()
+            if project:
+                # Update project name if client name changed
+                project.client_name = req.client_name
+                db.commit()
+
+        for s in req.screens:
             inp = CPQInput(
-                client_name=project.client_name,
+                client_name=req.client_name,
                 product_class=s.product_class,
                 pixel_pitch=s.pixel_pitch,
                 width_ft=s.width_ft,
@@ -79,37 +151,36 @@ async def generate_proposal(project: ProjectRequest):
             )
             
             result = calc.calculate_quote(inp)
-            calculated_results.append(result)
-            
-        # 2. Generate Auditor File (Excel)
+            project_data.append(result)
+
+        # Generate Files
         excel_gen = ExcelGenerator()
-        # Attempt to update the user's specific template if it exists
-        excel_gen.update_expert_estimator(calculated_results, template_path="ABCDE-SPECS-NK-12.12-1.xlsx", output_path="anc_internal_estimation.xlsx")
+        excel_gen.update_expert_estimator(project_data, output_path="anc_internal_estimation.xlsx")
         
-        # 3. Generate Publisher File (PDF)
-        from pdf_generator import PDFGenerator
         pdf_gen = PDFGenerator()
-        # Note: We need to pass the client name which is in project.client_name
-        pdf_gen.generate_proposal(calculated_results, project.client_name, "anc_client_proposal.pdf")
-        
+        pdf_gen.generate_proposal(project_data, req.client_name, filename="anc_client_proposal.pdf")
+
         return {
             "status": "success",
             "message": "Files Generated",
-            "download_pdf": "/api/download/pdf",
-            "download_excel": "/api/download/excel"
+            "files": ["anc_internal_estimation.xlsx", "anc_client_proposal.pdf"],
+            "data": project_data
         }
-            
+
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/download/excel")
 async def download_excel():
-    return FileResponse("anc_internal_estimation.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="Estimation_Audit.xlsx")
+    file_path = "anc_internal_estimation.xlsx"
+    if os.path.exists(file_path):
+        return FileResponse(file_path, filename="ANC_Expert_Estimation.xlsx", media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return HTTPException(status_code=404, detail="File not found")
 
-@app.get("/")
-async def root():
-    return FileResponse(os.path.join(static_dir, "index.html"))
-
-if __name__ == "__main__":
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+@app.get("/api/download/pdf")
+async def download_pdf():
+    file_path = "anc_client_proposal.pdf"
+    if os.path.exists(file_path):
+        return FileResponse(file_path, filename="ANC_Proposal.pdf", media_type='application/pdf')
+    return HTTPException(status_code=404, detail="File not found")
