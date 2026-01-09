@@ -253,25 +253,25 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         <div className="flex flex-col gap-8">
                             <ANCLogo className="h-[48px] w-auto" color={BRAND_BLUE} />
                             <div>
-                                <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase leading-none">
                                     {input.clientName || 'PROSPECT NAME'}
                                 </h1>
-                                <p className="text-sm text-slate-400 font-bold mt-1 tracking-tight">{input.address || input.projectName || 'Project Location Details'}</p>
+                                <p className="text-xs text-slate-400 font-medium mt-1 tracking-tight">{input.address || input.projectName || 'Project Location Details'}</p>
                             </div>
                         </div>
                         <div className="text-right flex flex-col items-end">
-                            <h2 className="text-xs font-black tracking-[0.4em] mb-4 text-slate-300 uppercase">Document Information</h2>
+                            <h2 className="text-[10px] font-black tracking-[0.3em] mb-4 text-slate-400 uppercase">Document Information</h2>
                             <div className="grid grid-cols-1 gap-1">
-                                <p className="text-[10px] text-slate-900 font-black uppercase tracking-widest"><span className="text-slate-400 font-bold mr-2">DATE:</span> {today}</p>
-                                <p className="text-[10px] text-slate-900 font-black uppercase tracking-widest"><span className="text-slate-400 font-bold mr-2">REF:</span> ANC-{referenceNum}</p>
-                                <p className="text-[10px] text-slate-900 font-black uppercase tracking-widest mt-2 px-2 py-1 bg-slate-100 rounded inline-block" style={{ color: BRAND_BLUE }}>
+                                <p className="text-[10px] text-slate-700 font-bold uppercase tracking-wider"><span className="text-slate-400 font-bold mr-2">DATE:</span> {today}</p>
+                                <p className="text-[10px] text-slate-700 font-bold uppercase tracking-wider"><span className="text-slate-400 font-bold mr-2">REF:</span> ANC-{referenceNum}</p>
+                                <p className="text-[10px] font-bold mt-2 px-2 py-1 bg-slate-100 rounded inline-block" style={{ color: BRAND_BLUE }}>
                                     {isMultiScreen ? "PROJECT PROPOSAL" : "SALES QUOTATION"}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="h-[4px] w-24 mb-10" style={{ background: BRAND_BLUE }} />
+                    <div className="h-[2px] w-16 mb-8" style={{ background: BRAND_BLUE }} />
 
                     <div className="prose prose-slate max-w-none mb-12">
                         <p className="text-xs text-slate-600 leading-relaxed text-justify font-medium">
