@@ -568,8 +568,8 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                         )}>
                             <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
 
-                            {/* VENUE VERIFIED CARD - Show only once when address is first confirmed */}
-                            {msg.role === 'assistant' && i === messages.length - 1 && msg.nextStep !== 'address' && cpqState.address && !msg.content.includes('Location Verified') && (
+                            {/* VENUE VERIFIED CARD - Show only once when transitioning FROM address step */}
+                            {msg.role === 'assistant' && msg.nextStep === 'productClass' && cpqState.address && (
                                 <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-start gap-3 animate-in zoom-in-95 duration-500">
                                     <div className="bg-green-500/20 p-2 rounded-lg">
                                         <CheckCircle2 size={16} className="text-green-400" />

@@ -125,6 +125,86 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Rear access requires more complex installation'
     },
+    // Structure Condition (NEW - was missing)
+    {
+        id: 'structureCondition',
+        category: 'structure',
+        question: "Will we be mounting to existing usable steel, or is new primary steel required?",
+        type: 'select',
+        options: [
+            { value: 'Existing', label: 'Existing Structure (Usable)', impact: 'Standard' },
+            { value: 'NewSteel', label: 'New Steel Required', impact: '+$15,000-50,000' }
+        ],
+        required: true,
+        formulaImpact: 'New steel significantly increases structural costs'
+    },
+    // Labor Type (NEW - was missing)
+    {
+        id: 'laborType',
+        category: 'labor',
+        question: "What are the labor requirements for this venue?",
+        type: 'select',
+        options: [
+            { value: 'NonUnion', label: 'Non-Union (Standard)', impact: 'Base rate' },
+            { value: 'Union', label: 'Union Labor Required', impact: '+30% labor' },
+            { value: 'Prevailing', label: 'Prevailing Wage', impact: '+50% labor' }
+        ],
+        required: true,
+        formulaImpact: 'Union/Prevailing wage significantly increases labor costs'
+    },
+    // Power Distance (NEW - was missing)
+    {
+        id: 'powerDistance',
+        category: 'project',
+        question: "Approximate distance to the nearest power/data termination point?",
+        type: 'select',
+        options: [
+            { value: 'Close', label: 'Under 50 ft', impact: 'Standard' },
+            { value: 'Medium', label: '50 - 150 ft', impact: '+$2,000-5,000' },
+            { value: 'Far', label: 'Over 150 ft (New Run)', impact: '+$8,000-15,000' }
+        ],
+        required: true,
+        formulaImpact: 'Longer runs require more cable and labor'
+    },
+    // Permits (NEW - was missing)
+    {
+        id: 'permits',
+        category: 'project',
+        question: "Who will handle the city/structural permits?",
+        type: 'select',
+        options: [
+            { value: 'Client', label: 'Client Handles Permits', impact: 'Excluded' },
+            { value: 'ANC', label: 'ANC Handles Permits', impact: '+$2,500-10,000' }
+        ],
+        required: true,
+        formulaImpact: 'Permit handling adds administrative costs'
+    },
+    // Control System (NEW - was missing)
+    {
+        id: 'controlSystem',
+        category: 'project',
+        question: "Do you need a new control system (processors/sending boxes) included?",
+        type: 'select',
+        options: [
+            { value: 'Include', label: 'Yes, Include Controls', impact: '+$5,000-25,000' },
+            { value: 'None', label: 'No, Use Existing', impact: 'Excluded' }
+        ],
+        required: true,
+        formulaImpact: 'Control systems add significant hardware costs'
+    },
+    // Performance Bond (NEW - was missing)
+    {
+        id: 'bondRequired',
+        category: 'project',
+        question: "Is a Payment or Performance Bond required for this project?",
+        type: 'select',
+        options: [
+            { value: 'No', label: 'No', impact: 'Standard' },
+            { value: 'Yes', label: 'Yes (Add ~1.5%)', impact: '+1.5% of total' }
+        ],
+        required: true,
+        formulaImpact: 'Bonds add percentage-based cost'
+    },
     // Labor
     {
         id: 'installEquipment',
