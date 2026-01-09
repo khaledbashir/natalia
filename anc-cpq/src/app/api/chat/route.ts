@@ -281,8 +281,13 @@ function inferStepFromMessage(message: string): string | null {
   // Access
   if (lower.includes('access') || lower.includes('service') || lower.includes('technician')) return 'access';
 
-  // Structure
-  if (lower.includes('steel') || lower.includes('structural')) return 'structureCondition';
+  // Permits (CHECK BEFORE structural - "structural permits" should match permits not structure)
+  if (lower.includes('permit')) return 'permits';
+
+  // Structure (More specific - only when asking about steel/existing, NOT general "structural")
+  if (lower.includes('existing') && lower.includes('steel')) return 'structureCondition';
+  if (lower.includes('new') && lower.includes('steel')) return 'structureCondition';
+  if (lower.includes('mounting to')) return 'structureCondition';
 
   // Labor
   if (lower.includes('union') || lower.includes('labor') || lower.includes('prevailing')) return 'laborType';
