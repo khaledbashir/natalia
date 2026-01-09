@@ -183,18 +183,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
             clearTimeout(searchTimeoutRef.current);
         }
 
-        if (query.length < 3) {
+        const trimmedQuery = query.trim();
+        if (trimmedQuery.length <= 3) {
             setAddressSuggestions([]);
             return;
         }
 
         searchTimeoutRef.current = setTimeout(() => {
             setIsSearchingAddress(true);
-            fetch(`/api/search-address`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query })
-            })
+            fetch(`/api/search-places?query=${encodeURIComponent(trimmedQuery)}`)
                 .then(res => res.json())
                 .then(data => {
                     setAddressSuggestions(data.results || []);
@@ -711,14 +708,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                         accept=".txt,.md,.pdf"
                         onChange={handleFileUpload}
                     />
-                    <div className="flex-1 relative flex items-center">
+                    <div className="flex-1 relative">
+                        <div className="relative flex items-center">
                         <input
                             ref={inputRef}
                             type="text"
                             value={input}
                             onChange={(e) => {
                                 setInput(e.target.value);
-                                if (currentNextStep === 'address' || currentNextStep === 'clientName') {
+                                if (currentNextStep === 'address') {
                                     debouncedSearch(e.target.value);
                                 }
                             }}
@@ -734,6 +732,35 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                         >
                             <Send size={16} />
                         </button>
+                        </div>
+
+                        {/* Address Autocomplete Dropdown (Bottom Input) */}
+                        {currentNextStep === 'address' && (isSearchingAddress || addressSuggestions.length > 0) && (
+                            <div className="absolute left-0 right-0 top-full mt-2 z-50">
+                                {isSearchingAddress && (
+                                    <div className="p-3 text-[10px] text-blue-400 font-bold bg-slate-900 border border-slate-600 rounded-xl mb-2 flex items-center gap-2">
+                                        <Loader2 size={12} className="animate-spin" />
+                                        Searching for verified address...
+                                    </div>
+                                )}
+                                {addressSuggestions.length > 0 && (
+                                    <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-top-2">
+                                        {addressSuggestions.map((item, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => {
+                                                    handleSend(item.display_name);
+                                                    setAddressSuggestions([]);
+                                                }}
+                                                className="w-full text-left p-3 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border-b border-slate-800 last:border-0 transition-colors"
+                                            >
+                                                {item.display_name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="flex justify-center">

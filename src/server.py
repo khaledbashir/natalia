@@ -67,6 +67,15 @@ class ChatRequest(BaseModel):
 
 # --- API Endpoints ---
 
+@app.get("/api/search-places")
+async def search_places(query: str):
+    """Compatibility endpoint for the frontend autocomplete.
+
+    Accepts a plain query string via `?query=` and returns the same payload shape
+    as `/api/search-address`.
+    """
+    return await search_address(SearchRequest(query=query))
+
 @app.post("/api/search-address")
 async def search_address(req: SearchRequest):
     """
