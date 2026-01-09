@@ -326,6 +326,15 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
         setInput('');
         setIsLoading(true);
 
+        // Client-side extraction for number fields to prevent loops
+        let extractedValue: any = null;
+        if (widgetDef && widgetDef.type === 'number') {
+            const numValue = parseFloat(updatedText);
+            if (!isNaN(numValue)) {
+                extractedValue = { [widgetDef.id]: numValue };
+            }
+        }
+
         // Save User Message to DB
         if (projectId) {
             fetch(`/api/projects/${projectId}/message`, {
@@ -351,6 +360,11 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
 
             const data = await res.json();
             setIsLoading(false);
+
+            // Apply client-side extracted value first, then AI's updates
+            if (extractedValue) {
+                data.updatedParams = { ...extractedValue, ...data.updatedParams };
+            }
 
             if (data.updatedParams && Object.keys(data.updatedParams).length > 0) {
                 const newState = { ...cpqState, ...data.updatedParams };
@@ -633,7 +647,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                                     handleSend(input.value);
                                                     input.value = '';
                                                 }}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black hover:bg-blue-500 transition-colors uppercase tracking-widest shadow-lg shadow-blue-500/20"
+                                                className="px-4 py-2 bg-[#003D82] hover:bg-[#002a5c] text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors"
                                             >
                                                 Confirm
                                             </button>

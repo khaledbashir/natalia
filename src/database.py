@@ -10,6 +10,9 @@ from typing import Optional
 # Default to sqlite for local dev if DATABASE_URL is not set (e.g. during build)
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./local_dev.db")
 
+# Debug: Log which database we're connecting to
+print(f"Database URL: {DATABASE_URL[:50]}..." if len(DATABASE_URL) > 50 else f"Database URL: {DATABASE_URL}")
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
