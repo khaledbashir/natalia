@@ -46,7 +46,7 @@ function PrintContent() {
                         display: none !important;
                     }
                     
-                    /* Force background colors and remove padding/margins */
+                    /* Force background colors and remove padding/margins for print */
                     @media print {
                         body, html {
                             background: white !important;
@@ -55,6 +55,10 @@ function PrintContent() {
                         }
                         .print-container {
                             width: 100% !important;
+                        }
+                        /* Remove excessive print padding - use 0.25in margins */
+                        .print\:p-20 {
+                            padding: 0.25in !important;
                         }
                     }
 
@@ -81,7 +85,7 @@ function PrintContent() {
         return (
             <div className="p-10 border-2 border-red-500 bg-red-50 rounded-xl m-10">
                 <h1 className="text-xl font-bold text-red-700 mb-2">Proposal Generation Error</h1>
-                <p className="text-sm text-red-600 mb-4">The proposal data could not be processed for printing.</p>
+                <p className="text-sm red-600 mb-4">The proposal data could not be processed for printing.</p>
                 <pre className="text-xs bg-black/5 p-4 rounded overflow-auto max-h-40">
                     {e instanceof Error ? e.message : String(e)}
                 </pre>

@@ -34,25 +34,26 @@ export async function POST(req: NextRequest) {
         // Add some styles to ensure it prints nicely if needed
         await page.addStyleTag({
             content: `
-                @page { size: A4; margin: 0; }
+                @page { size: Letter; margin: 0.5in; }
                 body { margin: 0 !important; -webkit-print-color-adjust: exact !important; }
             `
         });
 
-        // Generate PDF
+        // Generate PDF - use Letter format with proper margins
         const pdfBuffer = await page.pdf({
-            format: 'A4',
+            format: 'Letter',
             printBackground: true,
-            margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
+            margin: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' },
         });
 
         await browser.close();
 
-        // Return PDF
+        // Return PDF - use clientName from body or fallback
+        const clientName = body.clientName || body.client_name || 'Proposal';
         return new NextResponse(pdfBuffer, {
             headers: {
                 'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="ANC_Proposal_${body.clientName || 'Proposal'}.pdf"`,
+                'Content-Disposition': `attachment; filename="ANC_Proposal_${clientName.replace(/\s+/g, '_')}.pdf"`,
             },
         });
 
