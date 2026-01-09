@@ -547,9 +547,9 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                             {/* EXPERT WIDGETS */}
                             {msg.role === 'assistant' && i === messages.length - 1 && (msg.suggestedOptions || widgetDef) && (
                                 <div className="mt-4 pt-4 border-t border-slate-700/30">
-                                    {(msg.suggestedOptions || (widgetDef && widgetDef.type === 'select' && widgetDef.options)) && (
+                                    {((msg.suggestedOptions && msg.suggestedOptions.length > 0) || (widgetDef && widgetDef.type === 'select' && widgetDef.options)) && (
                                         <div className="flex flex-wrap gap-2">
-                                            {(msg.suggestedOptions || widgetDef?.options || []).map(opt => (
+                                            {((msg.suggestedOptions && msg.suggestedOptions.length > 0) ? msg.suggestedOptions : (widgetDef?.options || [])).map(opt => (
                                                 <button
                                                     key={opt.value}
                                                     onClick={() => handleSend(String(opt.value))}
@@ -560,7 +560,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                             ))}
                                         </div>
                                     )}
-                                    {widgetDef && widgetDef.type === 'number' && !msg.suggestedOptions && (
+                                    {widgetDef && widgetDef.type === 'number' && (!msg.suggestedOptions || msg.suggestedOptions.length === 0) && (
                                         <div className="flex gap-2">
                                             <input
                                                 type="number"
@@ -586,7 +586,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                                             </button>
                                         </div>
                                     )}
-                                    {widgetDef && widgetDef.type === 'text' && !msg.suggestedOptions && (
+                                    {widgetDef && widgetDef.type === 'text' && (!msg.suggestedOptions || msg.suggestedOptions.length === 0) && (
                                         <div className="flex flex-col gap-2 w-full">
                                             <div className="flex gap-2">
                                                 <input
