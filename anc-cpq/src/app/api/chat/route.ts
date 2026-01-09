@@ -50,7 +50,7 @@ You help build both single displays and multi-screen LOIs.
 2. EVERY question MUST include "nextStep" and "suggestedOptions" array
 3. Even for number inputs (width, height), provide common options as buttons
 4. DO NOT list options in the message text - ONLY in suggestedOptions array
-5. **BEFORE** generating the final LOI, you MUST trigger the `confirm` step.
+5. **BEFORE** generating the final LOI, you MUST trigger the 'confirm' step.
 
 ### MANDATORY FORMAT FOR EVERY RESPONSE:
 {
