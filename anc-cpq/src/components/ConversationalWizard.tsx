@@ -349,7 +349,7 @@ export function ConversationalWizard({ onComplete, onUpdate }: ConversationalWiz
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: text,
+                    message: updatedText,  // Use updatedText which contains clean address
                     history: [...messages, userMsg],
                     currentState: cpqState,
                     selectedModel
