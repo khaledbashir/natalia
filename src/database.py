@@ -5,10 +5,22 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from typing import Optional
+from dotenv import load_dotenv
+
+# Try to load env vars if not already loaded
+load_dotenv()
+if not os.environ.get("DATABASE_URL"):
+    # Try looking in parent directory as well (for start.sh context)
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env'))
 
 # 1. Setup Database Connection
 # Default to sqlite for local dev if DATABASE_URL is not set (e.g. during build)
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./local_dev.db")
+
+# Safety: If DATABASE_URL starts with postgres://, replace with postgresql://
+# (psycopg2/SQLAlchemy 1.4+ requirement)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Debug: Log which database we're connecting to
 print(f"Database URL: {DATABASE_URL[:50]}..." if len(DATABASE_URL) > 50 else f"Database URL: {DATABASE_URL}")

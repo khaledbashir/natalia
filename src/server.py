@@ -1,10 +1,19 @@
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file BEFORE any local imports
+# Search in current dir and parent dir
+load_dotenv() 
+if not os.environ.get("DATABASE_URL"):
+    parent_env = os.path.join(os.path.dirname(os.getcwd()), '.env')
+    if os.path.exists(parent_env):
+        load_dotenv(parent_env)
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-from dotenv import load_dotenv
-import os
 import json
 import datetime
 from calculator import CPQCalculator, CPQInput
@@ -13,9 +22,25 @@ from pdf_generator import PDFGenerator
 from database import init_db, get_db, Project, Message, SessionLocal
 from sqlalchemy.orm import Session
 
-load_dotenv() # Load from .env file
-
 app = FastAPI()
+
+@app.get("/api/db-status")
+def get_db_status(db: Session = Depends(get_db)):
+    """Diagnostic endpoint to check database connectivity"""
+    try:
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+        return {
+            "status": "connected",
+            "database": str(db.get_bind().url).split('@')[-1], # Show hostname only
+            "engine": str(db.get_bind().driver)
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "url_detected": os.getenv("DATABASE_URL")[:15] + "..." if os.getenv("DATABASE_URL") else "None"
+        }
 
 # Enable CORS for Next.js frontend
 app.add_middleware(
