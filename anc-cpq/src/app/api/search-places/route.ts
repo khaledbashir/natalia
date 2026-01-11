@@ -29,19 +29,18 @@ export async function GET(request: NextRequest) {
         }
 
         // Build search query specifically for venue/stadium locations
-        const searchQuery = `${query} stadium arena venue address location`;
+        const searchQuery = `${query} address location`;
 
-        // Call Serper API
-        const serperResponse = await fetch("https://google.serper.dev/search", {
+        // Call Serper Places API for better address results
+        const serperResponse = await fetch("https://google.serper.dev/places", {
             method: "POST",
             headers: {
                 "X-API-KEY": serperApiKey,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                q: searchQuery,
+                q: query,
                 num: 10, // Number of results
-                type: "search", // Regular web search
             }),
         });
 
@@ -56,11 +55,28 @@ export async function GET(request: NextRequest) {
 
         const serperData = await serperResponse.json();
 
-        // Extract and format results
+        // Extract and format results from Places API
         const results: SearchResult[] = [];
 
-        // Process organic results
-        if (serperData.organic) {
+        // Process places results
+        if (serperData.places) {
+            for (const place of serperData.places.slice(0, 8)) {
+                const title = place.title || "Unknown Venue";
+                const address = place.address || place.location || "Address not available";
+                const snippet = place.description || place.snippet || `${title} located at ${address}`;
+
+                results.push({
+                    title: title,
+                    link: place.website || place.link || "#",
+                    snippet: snippet,
+                    address: address,
+                    display_name: `${title}, ${address}`,
+                });
+            }
+        }
+
+        // Fallback to organic results if no places
+        if (results.length === 0 && serperData.organic) {
             for (const item of serperData.organic.slice(0, 8)) {
                 // Extract address from snippet or title
                 let address = "";
@@ -146,7 +162,6 @@ export async function GET(request: NextRequest) {
                 address:
                     kg.address ||
                     kg.location ||
-                    kg.description?.split(/[\d]/)[0]?.trim() ||
                     "Verified venue",
                 display_name:
                     kg.address || kg.location
