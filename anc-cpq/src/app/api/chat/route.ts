@@ -1,15 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  classifyUserMessage,
+  validateAddress,
+  formatAddressForConfirmation,
+  validateNumericInput,
+  parseNumericInput,
+  normalizePermitAnswer,
+  MessageType
+} from "../../../lib/input-validator";
+import {
+  processUserMessage,
+  getCurrentStep,
+  getNextIncompleteStep,
+  isSessionComplete,
+  getSessionProgress,
+  STEPS
+} from "../../../lib/state-machine";
+import {
+  calculatePrice,
+  shouldRecalculatePrice,
+  invalidatePriceCache
+} from "../../../lib/pricing-service";
 
 const SYSTEM_PROMPT = `You are an expert Senior Sales Engineer at ANC Sports. Your goal is to configure a precise LED display system and gather all variables required for the "Estimator Logic" to calculate the final price.
 
 ### CONFIGURATION STRATEGY:
 - **Fluid Extraction:** Your goal is to get to the Pricing as fast as possible. If a user provides multiple details (e.g., "Scoreboard for LSU in Baton Rouge"), extract ALL of them (clientName: LSU, address: Baton Rouge, productClass: Scoreboard) and move to the next MISSING detail.
-- **Address Recognition:** When the user selects or types ANYTHING that looks like an address (contains street name, city, country, or recognizable location), IMMEDIATELY accept it as the address. Look for patterns like:
+- **Address Recognition:** When the user provides an address, validate it properly. Look for patterns like:
   - "123 Main St, City, State Zip"
   - "4 Pennsylvania Plaza, New York, NY"
   - "1 Dodgers Way, Los Angeles, CA 90012"
   - Any text that includes street names, city names, or recognizable locations
+- **SERP Snippet Handling:** If the user provides a search result snippet (e.g., "The Plaza Hotel: Luxury Hotel Near Central Park | 5 Star Hotel in NYC"), extract the venue name and ask for the complete street address. DO NOT confirm the address until you have a valid street, city, and country.
 - **Silence is Golden:** If you already have a value in the State, NEVER ask for it again.
+- **Price Recalculation:** When any pricing-relevant field changes (pixel pitch, dimensions, product class, etc.), ALWAYS recalculate the price and show the updated total.
 
 ### FIELD IDs:
 **1. Identity:** clientName, address, projectName
@@ -596,6 +620,73 @@ export async function POST(request: NextRequest) {
             };
         }
 
+        // Classify user message type
+        const messageType = classifyUserMessage(message);
+        
+        // Handle SERP snippets for address
+        if (messageType === MessageType.SERP_SNIPPET) {
+            const validated = validateAddress(message);
+            
+            if (validated.isValid) {
+                // Extract venue name and ask for confirmation
+                return NextResponse.json({
+                    message: formatAddressForConfirmation(validated),
+                    nextStep: "address",
+                    suggestedOptions: [],
+                    updatedParams: {
+                        clientName: validated.venueName || currentState.clientName
+                    },
+                    thinking: "Detected SERP snippet. Extracted venue name and asking for address confirmation."
+                });
+            } else {
+                // Ask for complete address
+                return NextResponse.json({
+                    message: `I found "${validated.venueName || 'venue'}". Please provide the complete street address (e.g., 768 Fifth Avenue, New York, NY 10019).`,
+                    nextStep: "address",
+                    suggestedOptions: [],
+                    updatedParams: {
+                        clientName: validated.venueName || currentState.clientName
+                    },
+                    thinking: "Detected SERP snippet but address is incomplete. Asking for complete address."
+                });
+            }
+        }
+
+        // Validate numeric inputs
+        const currentStep = STEPS.find((s: any) => s.id === currentState.nextStep);
+        if (currentStep && ['pixelPitch', 'widthFt', 'heightFt', 'unitCost', 'targetMargin'].includes(currentStep.id)) {
+            const numericValidation = parseNumericInput(currentStep.id, message);
+            
+            if (!numericValidation.valid) {
+                return NextResponse.json({
+                    message: numericValidation.error || "Please enter a valid number.",
+                    nextStep: currentStep.id,
+                    suggestedOptions: currentStep.allowedValues || [],
+                    updatedParams: {},
+                    thinking: `Numeric validation failed for ${currentStep.id}: ${numericValidation.error}`
+                });
+            }
+        }
+
+        // Validate permit answers
+        if (currentStep && currentStep.id === 'permits') {
+            const normalizedPermit = normalizePermitAnswer(message);
+            
+            if (!normalizedPermit) {
+                return NextResponse.json({
+                    message: "Please choose from: Client, ANC, or Existing",
+                    nextStep: "permits",
+                    suggestedOptions: [
+                        { value: "Client", label: "Client Handles Permits" },
+                        { value: "ANC", label: "ANC Handles Permits" },
+                        { value: "Existing", label: "Existing Permits" }
+                    ],
+                    updatedParams: {},
+                    thinking: "Permit answer validation failed. Asking for valid option."
+                });
+            }
+        }
+
         const contextMessages = [
             { role: "system", content: SYSTEM_PROMPT },
             ...history.map((h: any) => ({
@@ -608,7 +699,7 @@ export async function POST(request: NextRequest) {
             })),
             {
                 role: "user",
-                content: `Input: "${message}"\nState: ${JSON.stringify(currentState)}`,
+                content: `Input: "${message}"\nState: ${JSON.stringify(currentState)}\nMessageType: ${messageType}`,
             },
         ];
 
@@ -649,6 +740,19 @@ export async function POST(request: NextRequest) {
         const parsed = extractJSON(rawContent);
 
         if (parsed) {
+            // Check if pricing should be recalculated
+            if (parsed.updatedParams) {
+                const changedFields = Object.keys(parsed.updatedParams);
+                const needsRecalculation = changedFields.some(field =>
+                    shouldRecalculatePrice(field as any)
+                );
+                
+                if (needsRecalculation) {
+                    invalidatePriceCache();
+                    console.log("Price recalculation triggered by field changes:", changedFields);
+                }
+            }
+
             // HARD GUARDRAIL: Override suggestedOptions with authoritative source
             if (parsed.nextStep || parsed.message) {
                 try {
