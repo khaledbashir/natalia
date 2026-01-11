@@ -1,9 +1,10 @@
 'use client';
 import React from 'react';
 import { CPQInput, CalculationResult, ScreenConfig } from '../lib/types';
-import { Download, Layers, ShieldCheck, Clock, Zap } from 'lucide-react';
+import { Download, Layers, ShieldCheck, Clock, Zap, FileText, Table2 } from 'lucide-react';
 import { ANCLogo } from './ANCLogo';
 import { calculateScreen } from '../lib/calculator';
+import { ExcelPreview } from './ExcelPreview';
 
 interface PreviewProps {
     input: CPQInput;
@@ -122,6 +123,7 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
     const [today, setToday] = React.useState('');
     const [referenceNum, setReferenceNum] = React.useState('');
     const [showPricing, setShowPricing] = React.useState(true);
+    const [activeTab, setActiveTab] = React.useState<'pdf' | 'excel'>('pdf');
 
     React.useEffect(() => {
         setToday(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
@@ -222,7 +224,7 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
             `}</style>
 
             {/* Toolbar */}
-            <div className="w-full max-w-4xl flex justify-between items-center mb-6 print:hidden">
+            <div className="w-full max-w-4xl flex justify-between items-center mb-6 print:hidden flex-col sm:flex-row gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center border border-slate-200">
                         <ShieldCheck className="text-blue-600" size={20} />
@@ -231,12 +233,37 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         <span className="block text-slate-900 text-sm font-bold tracking-tight">Project Proposal</span>
                     </div>
                 </div>
+                
+                {/* Tab Toggle */}
+                <div className="flex gap-2 bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+                    <button 
+                        onClick={() => setActiveTab('pdf')}
+                        className={`px-4 py-2 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 ${
+                            activeTab === 'pdf' 
+                                ? 'bg-[#003D82] text-white shadow-lg shadow-blue-900/20' 
+                                : 'bg-transparent text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                        <FileText size={14} /> PDF
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('excel')}
+                        className={`px-4 py-2 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 ${
+                            activeTab === 'excel' 
+                                ? 'bg-[#003D82] text-white shadow-lg shadow-blue-900/20' 
+                                : 'bg-transparent text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                        <Table2 size={14} /> EXCEL
+                    </button>
+                </div>
+
                 <div className="flex gap-2">
                     <button onClick={() => setShowPricing(!showPricing)} className="bg-white hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl font-bold shadow-sm border border-slate-200 text-[11px] transition-all">
                         {showPricing ? 'HIDE INVESTMENT' : 'SHOW INVESTMENT'}
                     </button>
                     <button onClick={() => handleDownload('excel')} className="bg-white hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl font-bold shadow-sm border border-slate-200 text-[11px] transition-all flex items-center gap-2">
-                        <Layers size={14} /> EXCEL AUDIT
+                        <Layers size={14} /> EXPORT EXCEL
                     </button>
                     <button onClick={() => handleDownload('pdf')} className="bg-[#003D82] hover:bg-blue-900 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-900/20 text-[11px] transition-all flex items-center gap-2">
                         <Download size={14} /> DOWNLOAD PDF
@@ -244,8 +271,14 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                 </div>
             </div>
 
-            {/* DOCUMENT WRAPPER */}
-            <div className="w-full max-w-4xl bg-white shadow-2xl relative brand-font print:shadow-none print:w-full print:max-w-none print:m-0">
+            {/* CONTENT DISPLAY BASED ON ACTIVE TAB */}
+            {activeTab === 'excel' ? (
+                <div className="w-full max-w-4xl">
+                    <ExcelPreview input={input} result={result} />
+                </div>
+            ) : (
+                <div className="w-full max-w-4xl bg-white shadow-2xl relative brand-font print:shadow-none print:w-full print:max-w-none print:m-0">
+                    {/* PDF Preview */}
 
                 {/* PAGE 1: HEADER & OVERVIEW */}
                 <div className="min-h-[1056px] relative p-16 print:p-20 flex flex-col">
@@ -417,6 +450,7 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                     </div>
                 </div>
             </div>
+            )}
         </div>
     );
 }

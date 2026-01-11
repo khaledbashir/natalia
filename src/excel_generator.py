@@ -72,8 +72,10 @@ class ExcelGenerator:
             self.generate_audit_file(project_data, output_path)
 
     def generate_audit_file(self, project_data: List[Dict], filename: str = "anc_internal_estimation.xlsx"):
-        # project_data is a list of results from CPQCalculator.calculate_quote
-        
+        """
+        Generate Excel file with audit trail that matches the preview exactly.
+        Includes all cost breakdowns and calculations visible in the preview.
+        """
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Internal Audit Trail"
@@ -81,20 +83,30 @@ class ExcelGenerator:
         # Headers matching the professional "Expert Estimator" standard
         headers = [
             "Screen / Category", "Dimensions", "Area (SqFt)", "Base $/SqFt", 
-            "Raw HW Cost", "Structural (20%)", "Labor (15% HW+Str)", "Expenses (5% HW)", 
+            "Raw HW Cost", "Structural (20%)", "Labor (15%)", "Expenses (5%)", 
             "Margin %", "HW Price", "Str Price", "Labor Price", "Exp Price",
             "Subtotal", "Bond (1%)", "Contingency (5%)", "GRAND TOTAL SELL"
         ]
         
-        header_font = Font(bold=True, color="FFFFFF")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
         header_fill = PatternFill(start_color="003D82", end_color="003D82", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         
+        # Set up header row
         for col, h in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col, value=h)
             cell.font = header_font
             cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center")
-            ws.column_dimensions[get_column_letter(col)].width = 18
+            cell.alignment = header_alignment
+            ws.column_dimensions[get_column_letter(col)].width = 16
+
+        # Create border style for data cells
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
 
         row = 2
         for item in project_data:
@@ -108,7 +120,7 @@ class ExcelGenerator:
             ws.cell(row=row, column=4, value=math['base_rate'])
             
             # Formulas for Raw Costs (Visible Math Trail)
-            # E: Raw HW Cost = SqFt * Rate
+            # E: Raw HW Cost = Area * Base Rate
             ws.cell(row=row, column=5, value=f"=C{row}*D{row}")
             
             # F: Structural (20% of HW)
@@ -120,21 +132,25 @@ class ExcelGenerator:
             # H: Expenses (5% of HW)
             ws.cell(row=row, column=8, value=f"=E{row}*0.05")
             
-            # I: Margin %
-            ws.cell(row=row, column=9, value=math['margin_pct'])
+            # I: Margin % (as decimal, e.g., 0.15 for 15%)
+            margin_pct = math.get('margin_pct', 0)
+            # Convert percentage format if needed (e.g., if it's 15, convert to 0.15)
+            if margin_pct > 1:
+                margin_pct = margin_pct / 100
+            ws.cell(row=row, column=9, value=margin_pct)
             
             # Applying Margin per Line Item (Transparent Markup)
             # J: HW Price = Raw HW / (1 - Margin)
-            ws.cell(row=row, column=10, value=f"=E{row}/(1-I{row})")
+            ws.cell(row=row, column=10, value=f"=IFERROR(E{row}/(1-I{row}), E{row})")
             
             # K: Str Price = Raw Str / (1 - Margin)
-            ws.cell(row=row, column=11, value=f"=F{row}/(1-I{row})")
+            ws.cell(row=row, column=11, value=f"=IFERROR(F{row}/(1-I{row}), F{row})")
             
             # L: Labor Price = Raw Labor / (1 - Margin)
-            ws.cell(row=row, column=12, value=f"=G{row}/(1-I{row})")
+            ws.cell(row=row, column=12, value=f"=IFERROR(G{row}/(1-I{row}), G{row})")
             
             # M: Exp Price = Raw Exp / (1 - Margin)
-            ws.cell(row=row, column=13, value=f"=H{row}/(1-I{row})")
+            ws.cell(row=row, column=13, value=f"=IFERROR(H{row}/(1-I{row}), H{row})")
             
             # N: Subtotal
             ws.cell(row=row, column=14, value=f"=SUM(J{row}:M{row})")
@@ -142,28 +158,58 @@ class ExcelGenerator:
             # O: Bond (1% of Subtotal)
             ws.cell(row=row, column=15, value=f"=N{row}*0.01")
             
-            # P: Contingency (Value Add)
-            # Check if this item has contingency cost. If so, put it here.
-            contingency = math.get('contingencyCost', 0)
-            ws.cell(row=row, column=16, value=contingency)
+            # P: Contingency (5% of Subtotal) - or value from math data
+            contingency_pct = math.get('contingency_pct', 0.05)
+            ws.cell(row=row, column=16, value=f"=N{row}*{contingency_pct}")
             
             # Q: Grand Total Sell
             ws.cell(row=row, column=17, value=f"=N{row}+O{row}+P{row}")
             
-            # Formatting
-            for col in range(5, 18):
-                if col != 9: # Skip Margin %
-                    ws.cell(row=row, column=col).number_format = '#,##0'
+            # Format currency cells and add borders
+            currency_cols = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17]
+            for col in range(1, 18):
+                cell = ws.cell(row=row, column=col)
+                cell.border = thin_border
+                
+                if col in currency_cols and col != 9:  # Not margin column
+                    cell.number_format = '$#,##0'
+                elif col == 9:  # Margin percentage
+                    cell.number_format = '0.0%'
+                
+                cell.alignment = Alignment(horizontal="right" if col > 1 else "left")
             
             row += 1
 
         # Total Row
-        ws.cell(row=row, column=1, value="AGGREGATE PROJECT TOTAL")
-        ws.cell(row=row, column=1).font = Font(bold=True)
-        for col in range(14, 18): # Sum Subtotal, Bond, Contingency, Grand Total
+        total_row = row
+        ws.cell(row=total_row, column=1, value="AGGREGATE PROJECT TOTAL")
+        ws.cell(row=total_row, column=1).font = Font(bold=True, size=11)
+        
+        total_border = Border(
+            top=Side(style='double'),
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            bottom=Side(style='double')
+        )
+        
+        # Sum columns for totals: N, O, P, Q (14, 15, 16, 17)
+        for col in range(14, 18):
             letter = get_column_letter(col)
-            ws.cell(row=row, column=col, value=f"=SUM({letter}2:{letter}{row-1})")
-            ws.cell(row=row, column=col).font = Font(bold=True)
-            ws.cell(row=row, column=col).number_format = '#,##0'
+            cell = ws.cell(row=total_row, column=col)
+            cell.value = f"=SUM({letter}2:{letter}{total_row-1})"
+            cell.font = Font(bold=True, size=11, color="FFFFFF")
+            cell.fill = PatternFill(start_color="003D82", end_color="003D82", fill_type="solid")
+            cell.number_format = '$#,##0'
+            cell.border = total_border
+            cell.alignment = Alignment(horizontal="right")
+
+        # Add borders to total row label
+        for col in range(1, 14):
+            cell = ws.cell(row=total_row, column=col)
+            cell.border = total_border
+            if col == 1:
+                cell.font = Font(bold=True, size=11, color="FFFFFF")
+                cell.fill = PatternFill(start_color="003D82", end_color="003D82", fill_type="solid")
 
         wb.save(filename)
+        print(f"Excel audit file generated: {filename}")

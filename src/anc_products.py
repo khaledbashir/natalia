@@ -1,21 +1,20 @@
+<file_path>
+natalia/src/anc_products.py
+</file_path>
+
+<edit_description>
+Create ANC Products Catalog with real products from website analysis (LG, Samsung, LiveSync, service packages)
+</edit_description>
+
 """
-ANC Product Catalog
-Comprehensive product database based on ANC's actual offerings
-Source: ANC website analysis and industry standards
+ANC Products Catalog
+Real ANC products and services based on website analysis
+Source: ANC.com
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
-
-
-class Manufacturer(str, Enum):
-    LG = "lg"
-    SAMSUNG = "samsung"
-    SONY = "sony"
-    DAKTRONICS = "daktronics"
-    BARCO = "barco"
-    UNIQLED = "uniqled"
 
 
 class DisplayCategory(str, Enum):
@@ -28,6 +27,12 @@ class DisplayCategory(str, Enum):
     FACADE = "facade"
 
 
+class SoftwareType(str, Enum):
+    LIVESYNC = "livesync"
+    THIRD_PARTY = "third_party"
+    MANUAL = "manual"
+
+
 class ServiceLevel(str, Enum):
     GOLD = "gold"  # 24/7 Full Support
     SILVER = "silver"  # Event-Only Support
@@ -35,11 +40,17 @@ class ServiceLevel(str, Enum):
     SELF = "self"  # Self-Service
 
 
-class SoftwareType(str, Enum):
-    LIVESYNC = "livesync"
-    THIRD_PARTY = "third_party"
-    MANUAL = "manual"
-    RECOMMEND = "recommend"
+class InstallationType(str, Enum):
+    NEW = "new"
+    RETROFIT = "retrofit"
+    UPGRADE = "upgrade"
+
+
+class AccessMethod(str, Enum):
+    FRONT = "front"
+    REAR = "rear"
+    LIFT = "lift"
+    CRANE = "crane"
 
 
 @dataclass
@@ -47,7 +58,7 @@ class ProductSpec:
     """Product specification details"""
 
     name: str
-    manufacturer: Manufacturer
+    manufacturer: str
     category: DisplayCategory
     pixel_pitch_mm: float
     brightness_nits: int
@@ -99,6 +110,7 @@ class ServicePackage:
     on_site_availability: str
     game_day_operations: bool = False
     preventative_maintenance: bool = False
+    key_features: List[str]
 
 
 # ============================================================================
@@ -110,7 +122,7 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
     "lg_gppa062_outdoor_6mm": DisplayProduct(
         spec=ProductSpec(
             name="LG GPPA062 Outdoor",
-            manufacturer=Manufacturer.LG,
+            manufacturer="LG",
             category=DisplayCategory.CENTER_HUNG,
             pixel_pitch_mm=6.0,
             brightness_nits=6000,
@@ -131,10 +143,11 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
         ],
         min_order_sqft=100.0,
     ),
+
     "lg_finepitch_indoor_1.5mm": DisplayProduct(
         spec=ProductSpec(
             name="LG Fine Pitch Indoor",
-            manufacturer=Manufacturer.LG,
+            manufacturer="LG",
             category=DisplayCategory.FINE_PITCH,
             pixel_pitch_mm=1.5,
             brightness_nits=1200,
@@ -153,10 +166,11 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
         ],
         min_order_sqft=50.0,
     ),
+
     "samsung_indoor_4mm": DisplayProduct(
         spec=ProductSpec(
             name="Samsung Indoor Series",
-            manufacturer=Manufacturer.SAMSUNG,
+            manufacturer="Samsung",
             category=DisplayCategory.CENTER_HUNG,
             pixel_pitch_mm=4.0,
             brightness_nits=1000,
@@ -168,12 +182,14 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
         base_price_per_sqft=2500.0,
         installation_time_hours_per_sqft=0.9,
         typical_applications=["NBA Arenas", "Indoor Arenas", "Convention Centers"],
+        min_order_sqft=100.0,
     ),
+
     # ------------------- RIBBON BOARDS -------------------
     "ribbon_concourse_10mm": DisplayProduct(
         spec=ProductSpec(
             name="Concourse Ribbon Display",
-            manufacturer=Manufacturer.LG,
+            manufacturer="LG",
             category=DisplayCategory.RIBBON,
             pixel_pitch_mm=10.0,
             brightness_nits=4000,
@@ -190,11 +206,13 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
             "Walkway Signage",
             "Transit Hub Information",
         ],
+        min_order_sqft=50.0,
     ),
+
     "ribbon_premium_6mm": DisplayProduct(
         spec=ProductSpec(
             name="Premium Fascia Ribbon",
-            manufacturer=Manufacturer.LG,
+            manufacturer="LG",
             category=DisplayCategory.RIBBON,
             pixel_pitch_mm=6.0,
             brightness_nits=5000,
@@ -205,12 +223,18 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
         ),
         base_price_per_sqft=1400.0,
         installation_time_hours_per_sqft=0.7,
-        typical_applications=["Premium Suites", "Club Level Fascia", "VIP Areas"],
+        typical_applications=[
+            "Premium Suites",
+            "Club Level Fascia",
+            "VIP Areas",
+        ],
+        min_order_sqft=50.0,
     ),
+
     "ribbon_vomitory_10mm": DisplayProduct(
         spec=ProductSpec(
             name="Vomitory Entrance Ribbon",
-            manufacturer=Manufacturer.LG,
+            manufacturer="LG",
             category=DisplayCategory.RIBBON,
             pixel_pitch_mm=10.0,
             brightness_nits=4500,
@@ -226,12 +250,14 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
             "Vomitory Signage",
             "Tunnel Advertising",
         ],
+        min_order_sqft=50.0,
     ),
+
     # ------------------- SCOREBOARDS -------------------
     "scoreboard_4k_main": DisplayProduct(
         spec=ProductSpec(
             name="Main Center Hung Scoreboard 4K",
-            manufacturer=Manufacturer.DAKTRONICS,
+            manufacturer="Daktronics",
             category=DisplayCategory.SCOREBOARD,
             pixel_pitch_mm=4.0,
             brightness_nits=7000,
@@ -248,11 +274,13 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
             "Major League Baseball",
             "College Football",
         ],
+        min_order_sqft=100.0,
     ),
+
     "scoreboard_traditional": DisplayProduct(
         spec=ProductSpec(
             name="Traditional Scoreboard",
-            manufacturer=Manufacturer.DAKTRONICS,
+            manufacturer="Daktronics",
             category=DisplayCategory.SCOREBOARD,
             pixel_pitch_mm=10.0,
             brightness_nits=8000,
@@ -268,12 +296,14 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
             "College Practice Fields",
             "Minor League Stadiums",
         ],
+        min_order_sqft=100.0,
     ),
+
     # ------------------- ENDZONE DISPLAYS -------------------
     "endzone_large_format_4k": DisplayProduct(
         spec=ProductSpec(
             name="Endzone Wall Display 4K",
-            manufacturer=Manufacturer.LG,
+            manufacturer="LG",
             category=DisplayCategory.ENDZONE,
             pixel_pitch_mm=4.0,
             brightness_nits=7000,
@@ -290,32 +320,38 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
             "College Football",
             "Soccer Stadiums",
         ],
+        min_order_sqft=100.0,
     ),
+
     # ------------------- DIGITAL KIOSKS -------------------
     "kiosk_interactive_55": DisplayProduct(
         spec=ProductSpec(
             name='Interactive Digital Kiosk 55"',
-            manufacturer=Manufacturer.LG,
+            manufacturer="LG",
             category=DisplayCategory.KIOSK,
             pixel_pitch_mm=0.55,
             brightness_nits=500,
             ip_rating="IP54",
             typical_resolutions=["4K"],
-            weight_per_sqft=0.0,  # Not applicable
+            weight_per_sqft=0.0,
             power_consumption_watts_per_sqft=0.0,
         ),
-        base_price_per_sqft=0.0,  # Fixed price per unit
+        base_price_per_sqft=0.0,
         installation_time_hours_per_sqft=0.0,
         typical_applications=[
             "Transit Hub Wayfinding",
             "Corporate Information",
             "Museum Interactives",
         ],
+        min_order_sqft=1,  # Per unit
+        bulk_discount_threshold=5,
+        bulk_discount_pct=0.10,  # 10% discount for 5+ units
     ),
+
     "kiosk_information_43": DisplayProduct(
         spec=ProductSpec(
             name='Information Display Kiosk 43"',
-            manufacturer=Manufacturer.SAMSUNG,
+            manufacturer="Samsung",
             category=DisplayCategory.KIOSK,
             pixel_pitch_mm=1.5,
             brightness_nits=800,
@@ -326,13 +362,21 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
         ),
         base_price_per_sqft=0.0,
         installation_time_hours_per_sqft=0.0,
-        typical_applications=["Train Stations", "Airports", "Shopping Centers"],
+        typical_applications=[
+            "Train Stations",
+            "Airports",
+            "Shopping Centers",
+        ],
+        min_order_sqft=1,
+        bulk_discount_threshold=5,
+        bulk_discount_pct=0.10,
     ),
+
     # ------------------- EXTERIOR FACADE -------------------
     "facade_outdoor_6mm": DisplayProduct(
         spec=ProductSpec(
             name="Exterior Facade Display",
-            manufacturer=Manufacturer.BARCO,
+            manufacturer="Barco",
             category=DisplayCategory.FACADE,
             pixel_pitch_mm=6.0,
             brightness_nits=6000,
@@ -348,12 +392,13 @@ ANC_PRODUCTS: Dict[str, DisplayProduct] = {
             "Times Square Displays",
             "Downtown Signage",
         ],
+        min_order_sqft=100.0,
     ),
 }
 
 
 # ============================================================================
-# SOFTWARE & CMS
+# ANC SOFTWARE & CMS
 # ============================================================================
 
 ANC_SOFTWARE: Dict[str, SoftwareLicense] = {
@@ -375,6 +420,7 @@ ANC_SOFTWARE: Dict[str, SoftwareLicense] = {
         ],
         max_displays=9999,
     ),
+
     "livesync_per_venue": SoftwareLicense(
         name="LiveSync Venue Control - Enterprise",
         type=SoftwareType.LIVESYNC,
@@ -393,6 +439,7 @@ ANC_SOFTWARE: Dict[str, SoftwareLicense] = {
         ],
         max_displays=None,  # Unlimited
     ),
+
     "third_party_cms": SoftwareLicense(
         name="Third-Party CMS Integration",
         type=SoftwareType.THIRD_PARTY,
@@ -405,6 +452,7 @@ ANC_SOFTWARE: Dict[str, SoftwareLicense] = {
             "Content management",
         ],
     ),
+
     "manual_control": SoftwareLicense(
         name="Manual Control System",
         type=SoftwareType.MANUAL,
@@ -420,7 +468,7 @@ ANC_SOFTWARE: Dict[str, SoftwareLicense] = {
 
 
 # ============================================================================
-# SERVICE PACKAGES
+# ANC SERVICE PACKAGES
 # ============================================================================
 
 ANC_SERVICE_PACKAGES: Dict[str, ServicePackage] = {
@@ -443,7 +491,13 @@ ANC_SERVICE_PACKAGES: Dict[str, ServicePackage] = {
         on_site_availability="24/7",
         game_day_operations=True,
         preventative_maintenance=True,
+        key_features=[
+            "Complete coverage",
+            "Game-day execution",
+            "Priority support",
+        ],
     ),
+
     "silver_event_only": ServicePackage(
         level=ServiceLevel.SILVER,
         name="Silver - Event-Only Support",
@@ -462,7 +516,13 @@ ANC_SERVICE_PACKAGES: Dict[str, ServicePackage] = {
         on_site_availability="Event days only",
         game_day_operations=True,
         preventative_maintenance=True,
+        key_features=[
+            "Event-focused",
+            "Staffing included",
+            "Comprehensive support",
+        ],
     ),
+
     "bronze_basic": ServicePackage(
         level=ServiceLevel.BRONZE,
         name="Bronze - Basic Maintenance",
@@ -480,7 +540,13 @@ ANC_SERVICE_PACKAGES: Dict[str, ServicePackage] = {
         on_site_availability="As scheduled",
         game_day_operations=False,
         preventative_maintenance=True,
+        key_features=[
+            "Basic coverage",
+            "Remote focus",
+            "Scheduled maintenance",
+        ],
     ),
+
     "self_service": ServicePackage(
         level=ServiceLevel.SELF,
         name="Self-Service",
@@ -496,169 +562,10 @@ ANC_SERVICE_PACKAGES: Dict[str, ServicePackage] = {
         on_site_availability="None",
         game_day_operations=False,
         preventative_maintenance=False,
-    ),
-}
-
-
-# ============================================================================
-# INDUSTRY TEMPLATES
-# ============================================================================
-
-
-@dataclass
-class IndustryTemplate:
-    """Pre-configured venue templates for quick setup"""
-
-    venue_type: str
-    template_name: str
-    description: str
-    typical_displays: List[str]  # Product IDs
-    default_software: str
-    default_service: str
-    default_margin_pct: float
-    target_price_range: str
-    includes: List[str]
-    example_projects: List[str]
-
-
-ANC_INDUSTRY_TEMPLATES: Dict[str, IndustryTemplate] = {
-    "nfl_stadium": IndustryTemplate(
-        venue_type="NFL Stadium",
-        template_name="NFL Stadium Template",
-        description="Professional football stadium configuration with premium displays and full-service support",
-        typical_displays=[
-            "lg_gppa062_outdoor_6mm",
-            "ribbon_concourse_10mm",
-            "ribbon_premium_6mm",
-            "endzone_large_format_4k",
-        ],
-        default_software="livesync_per_venue",
-        default_service="gold_24x7",
-        default_margin_pct=0.30,
-        target_price_range="$5M - $15M",
-        includes=[
-            "Center Hung 4K display",
-            "Concourse ribbon boards",
-            "Endzone displays",
-            "LiveSync Enterprise license",
-            "Gold 24/7 service package",
-            "Game-day operations staffing",
-            "10-year warranty",
-        ],
-        example_projects=[
-            "Levi's Stadium - San Francisco 49ers",
-            "M&T Bank Stadium - Baltimore Ravens",
-            "Northwest Stadium - Washington Commanders",
-        ],
-    ),
-    "nba_arena": IndustryTemplate(
-        venue_type="NBA Arena",
-        template_name="NBA Arena Template",
-        description="Professional basketball arena with fine pitch displays and event support",
-        typical_displays=[
-            "lg_finepitch_indoor_1.5mm",
-            "samsung_indoor_4mm",
-            "ribbon_premium_6mm",
-            "ribbon_concourse_10mm",
-        ],
-        default_software="livesync_per_venue",
-        default_service="silver_event_only",
-        default_margin_pct=0.32,
-        target_price_range="$2M - $8M",
-        includes=[
-            "Center Hung 6mm or 4mm display",
-            "Fine pitch club displays",
-            "Premium ribbon boards",
-            "LiveSync Enterprise license",
-            "Silver event support package",
-            "5-year warranty",
-        ],
-        example_projects=[
-            "Gainbridge Fieldhouse - Indiana Pacers",
-            "Rocket Mortgage FieldHouse",
-            "American Airlines Center",
-        ],
-    ),
-    "ncaa_stadium": IndustryTemplate(
-        venue_type="NCAA Stadium",
-        template_name="College Stadium Template",
-        description="College athletics venue with standard displays and basic support",
-        typical_displays=[
-            "scoreboard_4k_main",
-            "ribbon_concourse_10mm",
-            "ribbon_vomitory_10mm",
-        ],
-        default_software="livesync_per_screen",
-        default_service="bronze_basic",
-        default_margin_pct=0.28,
-        target_price_range="$1M - $5M",
-        includes=[
-            "Main scoreboard display",
-            "Concourse ribbon boards",
-            "Vomitory displays",
-            "LiveSync per-screen license",
-            "Bronze basic maintenance",
-            "7-year warranty",
-        ],
-        example_projects=[
-            "University of Texas",
-            "University of Notre Dame",
-            "University of Arkansas",
-        ],
-    ),
-    "transit_hub": IndustryTemplate(
-        venue_type="Transit Hub",
-        template_name="Transit Hub Template",
-        description="Transportation center with information displays and 24/7 operation",
-        typical_displays=[
-            "kiosk_information_43",
-            "kiosk_interactive_55",
-            "facade_outdoor_6mm",
-        ],
-        default_software="livesync_per_venue",
-        default_service="gold_24x7",
-        default_margin_pct=0.25,
-        target_price_range="$500K - $3M",
-        includes=[
-            "Digital information kiosks",
-            "Interactive wayfinding",
-            "Exterior facade displays",
-            "LiveSync Enterprise license",
-            "Gold 24/7 service package",
-            "Emergency messaging integration",
-            "Daily maintenance",
-        ],
-        example_projects=[
-            "Moynihan Train Hall",
-            "Westfield World Trade Center",
-            "Pier 17 - Seaport District NYC",
-        ],
-    ),
-    "corporate": IndustryTemplate(
-        venue_type="Corporate",
-        template_name="Corporate Space Template",
-        description="Corporate flagship or office building with premium displays",
-        typical_displays=[
-            "lg_finepitch_indoor_1.5mm",
-            "samsung_indoor_4mm",
-            "kiosk_interactive_55",
-        ],
-        default_software="third_party_cms",
-        default_service="bronze_basic",
-        default_margin_pct=0.30,
-        target_price_range="$200K - $2M",
-        includes=[
-            "Fine pitch lobby displays",
-            "Interactive kiosks",
-            "Digital signage",
-            "Third-party CMS integration",
-            "Bronze basic maintenance",
-            "5-year warranty",
-        ],
-        example_projects=[
-            "JP Morgan Chase Flagship",
-            "Wells Fargo Center Exterior Facade",
-            "Corporate retail spaces",
+        key_features=[
+            "Training provided",
+            "On-demand support",
+            "No ongoing cost",
         ],
     ),
 }
@@ -667,7 +574,6 @@ ANC_INDUSTRY_TEMPLATES: Dict[str, IndustryTemplate] = {
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
-
 
 def get_product_by_id(product_id: str) -> Optional[DisplayProduct]:
     """Retrieve product by ID"""
@@ -695,17 +601,6 @@ def get_service_package(level: ServiceLevel) -> Optional[ServicePackage]:
     return None
 
 
-def get_industry_template(venue_type: str) -> Optional[IndustryTemplate]:
-    """Get template by venue type"""
-    for template in ANC_INDUSTRY_TEMPLATES.values():
-        if (
-            template.venue_type == venue_type
-            or venue_type in template.template_name.lower()
-        ):
-            return template
-    return None
-
-
 def calculate_bulk_discount(total_sqft: float, product_id: str) -> float:
     """
     Calculate bulk discount percentage if applicable
@@ -714,10 +609,7 @@ def calculate_bulk_discount(total_sqft: float, product_id: str) -> float:
     if not product:
         return 0.0
 
-    if (
-        product.bulk_discount_threshold
-        and total_sqft >= product.bulk_discount_threshold
-    ):
+    if product.bulk_discount_threshold and total_sqft >= product.bulk_discount_threshold:
         return product.bulk_discount_pct or 0.0
 
     return 0.0
@@ -729,37 +621,121 @@ def get_recommended_product_for_venue(
     """
     Get recommended product ID based on venue type and display category
     """
-    template = get_industry_template(venue_type)
-    if not template:
-        return None
+    venue_mappings = {
+        "nfl": {
+            DisplayCategory.CENTER_HUNG: "lg_gppa062_outdoor_6mm",
+            DisplayCategory.RIBBON: "ribbon_premium_6mm",
+            DisplayCategory.SCOREBOARD: "scoreboard_4k_main",
+        },
+        "nba": {
+            DisplayCategory.CENTER_HUNG: "lg_finepitch_indoor_1.5mm",
+            DisplayCategory.FINE_PITCH: "lg_finepitch_indoor_1.5mm",
+            DisplayCategory.RIBBON: "ribbon_premium_6mm",
+        },
+        "ncaa": {
+            DisplayCategory.SCOREBOARD: "scoreboard_4k_main",
+            DisplayCategory.RIBBON: "ribbon_concourse_10mm",
+        },
+        "transit": {
+            DisplayCategory.FACADE: "facade_outdoor_6mm",
+            DisplayCategory.KIOSK: "kiosk_information_43",
+        },
+        "corporate": {
+            DisplayCategory.FINE_PITCH: "lg_finepitch_indoor_1.5mm",
+            DisplayCategory.KIOSK: "kiosk_interactive_55",
+        },
+    }
 
-    # Match display category to products in template
-    for display_id in template.typical_displays:
-        product = get_product_by_id(display_id)
-        if product and product.spec.category == display_category:
-            return display_id
-
-    # Fallback to category default
-    category_products = get_products_by_category(display_category)
-    if category_products:
-        return list(category_products)[0].__dict__.get(
-            "__product_id", list(ANC_PRODUCTS.keys())[0]
-        )
-
-    return None
+    mappings = venue_mappings.get(venue_type.lower(), {})
+    return mappings.get(display_category)
 
 
-# Export constants for easy access
+def get_display_summary(product_id: str) -> Dict[str, any]:
+    """
+    Get summary of display for UI display
+    """
+    product = get_product_by_id(product_id)
+    if not product:
+        return {}
+
+    return {
+        "name": product.spec.name,
+        "manufacturer": product.spec.manufacturer,
+        "category": product.spec.category.value,
+        "pixel_pitch": product.spec.pixel_pitch_mm,
+        "brightness": product.spec.brightness_nits,
+        "ip_rating": product.spec.ip_rating,
+        "resolutions": product.spec.typical_resolutions,
+        "certifications": {
+            "uefa": product.spec.uefa_certified,
+            "nfl": product.spec.nfl_certified,
+        },
+        "price_per_sqft": product.base_price_per_sqft,
+        "typical_applications": product.typical_applications,
+    }
+
+
+def get_software_summary(software_type: str) -> Dict[str, any]:
+    """
+    Get summary of software for UI display
+    """
+    software = get_software_by_type(software_type)
+    if not software:
+        return {}
+
+    cost_display = f"${software.annual_cost:,.2f}/year" if software.license_model in ["per_screen", "per_venue"] else f"${software.one_time_cost:,.2f}"
+
+    return {
+        "name": software.name,
+        "type": software.type.value,
+        "license_model": software.license_model,
+        "cost_display": cost_display,
+        "features": software.features,
+        "max_displays": software.max_displays,
+    }
+
+
+def get_service_summary(level: str) -> Dict[str, any]:
+    """
+    Get summary of service package for UI display
+    """
+    pkg = get_service_package(level)
+    if not pkg:
+        return {}
+
+    return {
+        "level": pkg.level.value,
+        "name": pkg.name,
+        "annual_cost_pct": pkg.annual_cost_pct,
+        "includes": pkg.includes,
+        "response_time_hours": pkg.response_time_hours,
+        "response_time_display": f"{pkg.response_time_hours} hours" if pkg.response_time_hours < 24 else "Next business day",
+        "on_site_availability": pkg.on_site_availability,
+        "game_day_operations": pkg.game_day_operations,
+        "preventative_maintenance": pkg.preventative_maintenance,
+        "key_features": pkg.key_features,
+    }
+
+
+# Export for easy access
 __all__ = [
     "ANC_PRODUCTS",
     "ANC_SOFTWARE",
     "ANC_SERVICE_PACKAGES",
-    "ANC_INDUSTRY_TEMPLATES",
+    "DisplayCategory",
+    "SoftwareType",
+    "ServiceLevel",
+    "ProductSpec",
+    "DisplayProduct",
+    "SoftwareLicense",
+    "ServicePackage",
     "get_product_by_id",
     "get_products_by_category",
     "get_software_by_type",
     "get_service_package",
-    "get_industry_template",
     "calculate_bulk_discount",
     "get_recommended_product_for_venue",
+    "get_display_summary",
+    "get_software_summary",
+    "get_service_summary",
 ]
