@@ -271,64 +271,65 @@ function ExcelDataRow({
                 {label}
             </td>
             <td className="border border-slate-300 p-2 text-right text-slate-900">
-        {widthFt}' x {heightFt}'
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        {areaSqFt}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        ${baseRate}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        $
-        {rawHwCost.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        ${baseRate}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        ${structuralCost.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        ${laborCost.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        ${expenseCost.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        {marginPct}%
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        $
-        {hwPrice.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        $
-        {strPrice.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        $
-        {laborPrice.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    </td>
-    <td className="border border-slate-300 p-2 text-right text-slate-900">
-        $
-        {subtotalPrice.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-        })}
-    </td>
+                {widthFt}' x {heightFt}'
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                {areaSqFt}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                ${baseRate}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                $
+                {rawHwCost.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                ${baseRate}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                ${structuralCost.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                ${laborCost.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                ${expenseCost.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                {marginPct}%
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                $
+                {hwPrice.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                $
+                {strPrice.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                $
+                {laborPrice.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
+            <td className="border border-slate-300 p-2 text-right text-slate-900">
+                $
+                {subtotalPrice.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })}
+            </td>
             <td className="border border-slate-300 p-2 text-right font-bold">
                 $
                 {subtotalPrice.toLocaleString(undefined, {

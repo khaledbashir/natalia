@@ -230,11 +230,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
                         <p className="text-sm font-semibold text-gray-900 mb-1">
                           {category.category}
                         </p>
-                        {category.calculation && (
-                          <p className="text-xs text-gray-600 mb-1">
-                            Calculation: {category.calculation}
-                          </p>
-                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-gray-900">

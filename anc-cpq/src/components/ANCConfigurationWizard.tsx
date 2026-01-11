@@ -12,8 +12,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Check,
-  Football,
-  Basketball,
+  Trophy,
+  Medal,
   GraduationCap,
   Train,
   Building2,
@@ -84,7 +84,7 @@ const VENUE_TYPES: VenueType[] = [
   {
     id: 'nfl',
     label: 'NFL Stadium',
-    icon: <Football className="w-8 h-8" />,
+    icon: <Trophy className="w-8 h-8" />,
     description: 'Professional football stadium (e.g., Levi\'s Stadium)',
     specs: {
       minResolution: '4mm',
@@ -95,7 +95,7 @@ const VENUE_TYPES: VenueType[] = [
   {
     id: 'nba',
     label: 'NBA Arena',
-    icon: <Basketball className="w-8 h-8" />,
+    icon: <Medal className="w-8 h-8" />,
     description: 'Professional basketball arena (e.g., Gainbridge Fieldhouse)',
     specs: {
       minResolution: '6mm',
@@ -957,7 +957,8 @@ export function ANCConfigurationWizard({ onComplete, onUpdate, initialConfig = {
                 </div>
               </div>
             </div>
-          </div );
+          </div>
+        );
 
       default:
         return null;
