@@ -5,6 +5,7 @@ import { Download, Layers, ShieldCheck, Clock, Zap, FileText, Table2 } from 'luc
 import { ANCLogo } from './ANCLogo';
 import { calculateScreen } from '../lib/calculator';
 import { ExcelPreview } from './ExcelPreview';
+import { CostBreakdownDisplay } from './CostBreakdownDisplay';
 
 interface PreviewProps {
     input: CPQInput;
@@ -323,6 +324,17 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                                     <div className="h-8" />
                                     <SectionTitle>Investment Summary</SectionTitle>
                                     <PricingTable result={result} />
+                                    
+                                    <div className="mt-8 print:hidden bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Internal Cost Analysis</div>
+                                        {result.costBreakdown && (
+                                            <CostBreakdownDisplay 
+                                                costBreakdown={result.costBreakdown} 
+                                                totalAmount={result.sellPrice}
+                                                margin={result.margin} 
+                                            />
+                                        )}
+                                    </div>
                                 </>
                             )}
                         </>

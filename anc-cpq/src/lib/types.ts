@@ -84,4 +84,5 @@ export interface CalculationResult {
     margin: number;
     contingencyCost: number;
     powerAmps: number;
+    costBreakdown?: { [key: string]: number };
 }

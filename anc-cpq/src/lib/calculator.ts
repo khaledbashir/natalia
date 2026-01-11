@@ -1,114 +1,172 @@
 import { CPQInput, CalculationResult, ScreenConfig } from './types';
 
-// Configuration (Embedded for client-side speed, could be fetched)
-const CONFIG = {
-    multipliers: {
-        structural: 0.20, // Always 20% of hardware cost
-        labor: 0.15,      // 15% of (Hardware + Structural)
-        shipping: 0.05,
-        bond: 0.01
+// Pricing Rules Engine
+// These rules encapsulate the "Estimator Logic" derived from Natalia's requirements.
+const RULES = {
+    hardware: {
+        baseRate: (input: any) => {
+            let rate = 800; // Default Indoor/Standard
+            if (input.productClass === 'Ribbon') rate = 1200;
+            if (input.pixelPitch <= 4) rate += 400; // Fine pitch premium
+            if (input.pixelPitch <= 2.5) rate += 800; // Ultra fine
+            if (input.environment === 'Outdoor') rate += 200; // Weatherproofing
+            return rate;
+        }
     },
-    defaults: {
-        margin: 0.30
-    }
+    structural: {
+        multiplier: (input: any) => {
+            let rate = 0.20; // Base: 20% of hardware
+            // Modifiers
+            if (input.environment === 'Outdoor') rate += 0.05; // Wind load
+            if (input.structureCondition === 'NewSteel') rate += 0.15; // New steel is expensive
+            if (input.mountingType === 'Rigging') rate += 0.10; // Complex rigging
+            if (input.shape === 'Curved') rate += 0.05; // Custom framing
+            return rate;
+        }
+    },
+    labor: {
+        multiplier: (input: any) => {
+            let rate = 0.15; // Base: 15% of (HW + Structural)
+            if (input.laborType === 'Union') rate += 0.15; // Union double cost roughly
+            if (input.laborType === 'Prevailing') rate += 0.10;
+            if (input.access === 'Rear') rate += 0.02; // Slower install
+            return rate;
+        }
+    },
+    shipping: 0.05, // 5%
+    bond: 0.01, // 1%
+    margin: 0.30 // Target margin
 };
 
 export function calculateScreen(config: Partial<ScreenConfig> | CPQInput): CalculationResult {
     const input = config as any;
-    // 1. Base Rate Lookup
-    let baseRate = 800;
-    if (input.productClass === 'Ribbon') baseRate = 1200;
-    if (input.pixelPitch <= 6) baseRate += 200;
-
-    // 2. Raw Costs (Internal)
+    
+    // 1. Dimensions & Base Cost
     const sqFt = (input.widthFt || 0) * (input.heightFt || 0);
+    const baseRate = RULES.hardware.baseRate(input);
     const rawHardwareCost = sqFt * baseRate;
 
-    // 3. Structural Rule (20% of Hardware)
-    const rawStructuralCost = rawHardwareCost * CONFIG.multipliers.structural;
+    // 2. Structural Cost
+    const structMult = RULES.structural.multiplier(input);
+    const rawStructuralCost = rawHardwareCost * structMult;
 
-    // 4. Labor Rule (15% of Hardware + Structural)
-    const rawLaborCost = (rawHardwareCost + rawStructuralCost) * CONFIG.multipliers.labor;
+    // 3. Labor Cost
+    const laborMult = RULES.labor.multiplier(input);
+    const rawLaborCost = (rawHardwareCost + rawStructuralCost) * laborMult;
 
-    // 5. Expenses Rule (5% of Hardware)
-    const rawExpenseCost = rawHardwareCost * CONFIG.multipliers.shipping;
+    // 4. Expenses & Shipping
+    const rawExpenseCost = rawHardwareCost * RULES.shipping;
 
-    // 6. Apply Margin (30%) to each line item
-    const markupFactor = 1 / (1 - CONFIG.defaults.margin);
+    // 5. Margin Calculation
+    // Total Cost = HW + Struct + Labor + Exp
+    const subTotalCost = rawHardwareCost + rawStructuralCost + rawLaborCost + rawExpenseCost;
+    
+    // Sell Price = Cost / (1 - Margin)
+    const targetMargin = (input.targetMargin !== undefined && input.targetMargin > 0)
+        ? input.targetMargin / 100 
+        : RULES.margin;
+    
+    const markupFactor = 1 / (1 - targetMargin);
+    
+    // Distribute markup to line items for "Client Facing" break down
+    const hardwareSell = rawHardwareCost * markupFactor;
+    const structuralSell = rawStructuralCost * markupFactor;
+    const laborSell = rawLaborCost * markupFactor;
+    const expenseSell = rawExpenseCost * markupFactor;
 
-    const hardwareCost = Math.round(rawHardwareCost * markupFactor);
-    const structuralCost = Math.round(rawStructuralCost * markupFactor);
-    const laborCost = Math.round(rawLaborCost * markupFactor);
-    const expenseCost = Math.round(rawExpenseCost * markupFactor);
-
-    // 7. Subtotal (Sum of marked-up lines)
-    const subTotal = hardwareCost + structuralCost + laborCost + expenseCost;
-
-    // 7. Dynamic Contingency Logic (Value-Add Feature)
-    // If New Steel AND Outdoor -> High Risk -> Add 5% Construction Contingency
+    // 6. Contingency (Value Add Feature)
     let contingencyCost = 0;
-    // Note: structureCondition isn't in standard types yet, so we assume 'NewSteel' string check or default to safe
-    // If input has structureCondition (from CPQInput cast), use it.
-    if ((input as any).structureCondition === 'NewSteel' && input.environment === 'Outdoor') {
-        contingencyCost = Math.round(subTotal * 0.05);
+    // High risk project logic
+    if (input.structureCondition === 'NewSteel' && input.environment === 'Outdoor') {
+        contingencyCost = (subTotalCost * markupFactor) * 0.05;
     }
 
-    // 8. Bond (1% of subtotal)
-    const bondCost = Math.round(subTotal * CONFIG.multipliers.bond);
+    // 7. Bond
+    let bondCost = 0;
+    if (input.bondRequired) {
+        // Bond is usually on the total contract value
+        const partialTotal = hardwareSell + structuralSell + laborSell + expenseSell + contingencyCost;
+        bondCost = partialTotal * RULES.bond;
+    }
 
-    // 9. Final Sell Price
-    const sellPrice = subTotal + contingencyCost + bondCost;
-
-    // 10. Technical Validation: Power Estimation (Amps @ 120V)
-    // Outdoor ~ 60W/sqft, Indoor ~ 30W/sqft
-    const wattsPerSqFt = input.environment === 'Outdoor' ? 60 : 30;
+    const totalSellPrice = hardwareSell + structuralSell + laborSell + expenseSell + contingencyCost + bondCost;
+    
+    // Power Calculation
+    const wattsPerSqFt = input.environment === 'Outdoor' ? 65 : 35;
     const totalWatts = sqFt * wattsPerSqFt;
-    // Amps = Watts / Volts. Assuming 120V standard calculation base (conservative)
-    const powerAmps = Math.round(totalWatts / 120);
+    const powerAmps = Math.round(totalWatts / 120); // 120V reference
+
+    // Detailed Breakdown for Expert View (Distributing the calculated buckets into line items)
+    const costBreakdown: { [key: string]: number } = {
+        '1. Hardware': Math.round(hardwareSell * 0.95), // 95% Display
+        '2. Structural Materials': Math.round(structuralSell * 0.65),
+        '3. Structural Labor': Math.round(structuralSell * 0.35),
+        '4. LED Installation': Math.round(laborSell * 0.45),
+        '5. Electrical Materials': Math.round(laborSell * 0.05),
+        '6. Electrical Labor': Math.round(laborSell * 0.10),
+        '7. CMS Equipment': Math.round(hardwareSell * 0.05), // 5% CMS
+        '8. CMS Installation': Math.round(laborSell * 0.05),
+        '9. CMS Commissioning': Math.round(laborSell * 0.05),
+        '10. Project Management': Math.round(expenseSell * 0.20),
+        '11. General Conditions': Math.round(expenseSell * 0.10),
+        '12. Travel & Expenses': Math.round(expenseSell * 0.40),
+        '13. Submittals': Math.round(expenseSell * 0.05),
+        '14. Engineering': Math.round(expenseSell * 0.15),
+        '15. Permits': Math.round(expenseSell * 0.10),
+        '16. Final Commissioning': Math.round(laborSell * 0.30),
+        '17. Bond': Math.round(bondCost),
+        '18. Contingency': Math.round(contingencyCost)
+    };
 
     return {
         sqFt,
-        hardwareCost,
-        structuralCost,
-        laborCost,
-        pmCost: 0,
-        expenseCost,
-        bondCost,
-        contingencyCost,
-        totalCost: subTotal,
-        sellPrice,
-        margin: CONFIG.defaults.margin,
-        powerAmps
+        hardwareCost: Math.round(hardwareSell),
+        structuralCost: Math.round(structuralSell),
+        laborCost: Math.round(laborSell),
+        pmCost: Math.round(expenseSell * 0.2), // PM is part of expenses usually
+        expenseCost: Math.round(expenseSell * 0.8),
+        bondCost: Math.round(bondCost),
+        contingencyCost: Math.round(contingencyCost),
+        totalCost: Math.round(subTotalCost), // Internal Cost
+        sellPrice: Math.round(totalSellPrice),
+        margin: targetMargin,
+        powerAmps,
+        costBreakdown
     };
 }
 
 export function calculateCPQ(input: CPQInput): CalculationResult {
+    // If screens array exists, sum them up
     if (input.screens && input.screens.length > 0) {
-        // Aggregate multi-screen results
-        const results = input.screens.map(s => calculateScreen(s));
+        // Merge global input with screen config to ensure defaults propagate
+        const results = input.screens.map(s => calculateScreen({...input, ...s})); 
+        
+        return results.reduce((acc, curr) => {
+             // Sum breakdowns
+             const mergedBreakdown: { [key: string]: number } = {};
+             if (acc.costBreakdown && curr.costBreakdown) {
+                 for (const key in acc.costBreakdown) {
+                     mergedBreakdown[key] = (acc.costBreakdown[key] || 0) + (curr.costBreakdown[key] || 0);
+                 }
+             }
 
-        return results.reduce((acc, curr) => ({
-            sqFt: acc.sqFt + curr.sqFt,
-            hardwareCost: acc.hardwareCost + curr.hardwareCost,
-            structuralCost: acc.structuralCost + curr.structuralCost,
-            laborCost: acc.laborCost + curr.laborCost,
-            pmCost: 0,
-            expenseCost: acc.expenseCost + curr.expenseCost,
-            bondCost: acc.bondCost + curr.bondCost,
-            totalCost: acc.totalCost + curr.totalCost,
-            sellPrice: acc.sellPrice + curr.sellPrice,
-            margin: CONFIG.defaults.margin,
-            contingencyCost: (acc.contingencyCost || 0) + (curr.contingencyCost || 0),
-            powerAmps: (acc.powerAmps || 0) + (curr.powerAmps || 0)
-        }), {
-            sqFt: 0, hardwareCost: 0, structuralCost: 0, laborCost: 0,
-            pmCost: 0, expenseCost: 0, bondCost: 0, totalCost: 0, sellPrice: 0,
-            margin: CONFIG.defaults.margin,
-            contingencyCost: 0,
-            powerAmps: 0
+             return {
+                sqFt: acc.sqFt + curr.sqFt,
+                hardwareCost: acc.hardwareCost + curr.hardwareCost,
+                structuralCost: acc.structuralCost + curr.structuralCost,
+                laborCost: acc.laborCost + curr.laborCost,
+                pmCost: acc.pmCost + curr.pmCost,
+                expenseCost: acc.expenseCost + curr.expenseCost,
+                bondCost: acc.bondCost + curr.bondCost,
+                contingencyCost: acc.contingencyCost + curr.contingencyCost,
+                totalCost: acc.totalCost + curr.totalCost,
+                sellPrice: acc.sellPrice + curr.sellPrice,
+                margin: input.targetMargin ? input.targetMargin / 100 : RULES.margin,
+                powerAmps: acc.powerAmps + curr.powerAmps,
+                costBreakdown: mergedBreakdown
+            };
         });
     }
-
-    // Default to single screen logic
+    
     return calculateScreen(input);
 }
