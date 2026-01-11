@@ -172,27 +172,27 @@ export function ExcelPreview({ input, result }: ExcelPreviewProps) {
                                 );
                             })}
                             <tr
-                                className="bg-slate-100 font-bold"
+                                className="font-bold"
                                 style={{ backgroundColor: "#003D8220" }}
                             >
                                 <td
                                     colSpan={13}
-                                    className="border border-slate-300 p-2 text-right font-black"
+                                    className="border border-slate-300 p-2 text-right font-black text-white"
                                 >
                                     AGGREGATE PROJECT TOTAL
                                 </td>
-                                <td className="border border-slate-300 p-2 text-right font-black">
+                                <td className="border border-slate-300 p-2 text-right font-black text-white">
                                     ${result.sellPrice.toLocaleString()}
                                 </td>
-                                <td className="border border-slate-300 p-2 text-right font-black">
+                                <td className="border border-slate-300 p-2 text-right font-black text-white">
                                     $
                                     {(result.sellPrice * 0.01).toLocaleString()}
                                 </td>
-                                <td className="border border-slate-300 p-2 text-right font-black">
+                                <td className="border border-slate-300 p-2 text-right font-black text-white">
                                     $
                                     {(result.sellPrice * 0.05).toLocaleString()}
                                 </td>
-                                <td className="border border-slate-300 p-2 text-right font-black">
+                                <td className="border border-slate-300 p-2 text-right font-black text-white">
                                     $
                                     {(result.sellPrice * 1.06).toLocaleString()}
                                 </td>
@@ -346,7 +346,7 @@ function ExcelDataRow({
                 })}
             </td>
             <td
-                className="border border-slate-300 p-2 text-right font-bold"
+                className="border border-slate-300 p-2 text-right font-bold text-white"
                 style={{ backgroundColor: "#003D8220" }}
             >
                 $
