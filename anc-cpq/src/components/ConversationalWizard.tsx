@@ -320,6 +320,40 @@ export function ConversationalWizard({
         }
     };
 
+    const performAutoAddressLookup = async (query: string) => {
+        setIsSearchingAddress(true);
+        try {
+            console.log("🕵️ Auto-searching for:", query);
+            const res = await fetch(`/api/search-places?query=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            
+            if (data.results && data.results.length > 0) {
+                const bestMatch = data.results[0];
+                const address = bestMatch.address || bestMatch.display_name;
+                const title = bestMatch.title;
+                
+                // Auto-inject the result as a suggestion
+                const autoMsg: Message = {
+                    role: 'assistant',
+                    content: `I found **${title}** at:\n📍 ${address}\n\nIs this correct?`,
+                    suggestedOptions: [
+                        { value: address, label: "✅ Yes, confirm location" },
+                        { value: "No", label: "❌ No, search again" }
+                    ]
+                };
+                
+                setMessages(prev => [...prev, autoMsg]);
+
+                // Also populate suggestions for the dropdown in case they want to pick another
+                setAddressSuggestions(data.results);
+            }
+        } catch (e) {
+            console.error("Auto-search failed", e);
+        } finally {
+            setIsSearchingAddress(false);
+        }
+    };
+
     const handleSend = async (text: string, isAddressSelection = false) => {
         if (!text.trim()) return;
 
@@ -488,7 +522,7 @@ export function ConversationalWizard({
                         "🔍 Auto-triggering address search for:",
                         searchQuery,
                     );
-                    debouncedSearch(searchQuery);
+                    performAutoAddressLookup(searchQuery);
                 }
 
                 // Also trigger if AI explicitly transitions to address step
@@ -502,7 +536,7 @@ export function ConversationalWizard({
                             "🔍 Address step triggered, searching for:",
                             searchQuery,
                         );
-                        debouncedSearch(searchQuery);
+                        performAutoAddressLookup(searchQuery);
                     }
                 }
 
