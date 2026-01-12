@@ -50,7 +50,12 @@ class CPQInput:
     target_margin: Optional[float] = 0.0
     structure_condition: Optional[str] = "Existing"
     # NEW: ANC-specific fields
-    venue_type: Optional[str] = None
+    labor_type: Optional[str] = "NonUnion"
+    power_distance: Optional[str] = "Close"
+    permits: Optional[str] = "Client"
+    control_system: Optional[str] = "Include"
+    bond_required: Optional[bool] = False
+    venue_type: Optional[str] = "corporate"
     display_types: Optional[List[str]] = None
     installation_type: Optional[str] = "new"
     electrical_capacity: Optional[str] = "adequate"
@@ -128,12 +133,15 @@ class CPQCalculator:
 
         raw_structural_materials = hardware_cost * 0.20 * structural_material_multiplier
 
-        # Structural Labor
+        # Structural Labor (Union/Prevailing Wage Handling)
         structural_labor_multiplier = 1.0
-        if project_input.access == "rear":
-            structural_labor_multiplier = 1.15
-        elif project_input.installation_type == "retrofit":
-            structural_labor_multiplier = 1.2
+        if project_input.labor_type == "Union":
+            structural_labor_multiplier = 1.3
+        elif project_input.labor_type == "Prevailing":
+            structural_labor_multiplier = 1.5
+
+        if project_input.access == "Rear":
+            structural_labor_multiplier += 0.15
 
         raw_structural_labor = (
             (hardware_cost + raw_structural_materials)
@@ -209,7 +217,8 @@ class CPQCalculator:
         pdu_cost = num_pdus * 2500.0  # $2,500 per PDU
 
         # Cabling - $15 per foot per display
-        distance = project_input.distance_to_power_ft or 50.0
+        distance_map = {"Close": 50.0, "Medium": 150.0, "Far": 300.0}
+        distance = distance_map.get(project_input.power_distance, 50.0)
         cabling_cost = num_displays * distance * 15.0
 
         # Data switches - 1 per 4 displays
@@ -246,13 +255,10 @@ class CPQCalculator:
     def _calculate_cms_costs(self, project_input: CPQInput, num_displays: int) -> Dict:
         """Category 7-9: CMS Equipment, Installation, Commissioning"""
         # CMS Equipment
-        if project_input.cms_type == "livesync":
-            # LiveSync: $5K/venue + $2K/display annually
-            cms_equipment_cost = 50000.0 + (num_displays * 2000.0)
-        elif project_input.cms_type == "thirdparty":
-            cms_equipment_cost = 25000.0  # Third-party CMS license
+        if project_input.control_system == "Include":
+            cms_equipment_cost = 25000.0
         else:
-            cms_equipment_cost = 10000.0  # Basic control equipment
+            cms_equipment_cost = 0.0
 
         # Content Players - 1 per 3 displays
         num_players = math.ceil(num_displays / 3.0)
@@ -637,8 +643,9 @@ class CPQCalculator:
         # Update total with permits
         total_marked_up += marked_up["permits"]
 
-        # Bond (1% of subtotal)
-        bond_cost = round(total_marked_up * CONFIG["multipliers"]["bond"])
+        # Bond (1.5% of subtotal if required)
+        bond_multiplier = 0.015 if project_input.bond_required else 0.0
+        bond_cost = round(total_marked_up * bond_multiplier)
         marked_up["bond"] = bond_cost
 
         # Final subtotal

@@ -63,17 +63,22 @@ def on_startup():
 # --- Pydantic Models ---
 class ScreenRequest(BaseModel):
     client_name: str = ""
-    width_ft: float
-    height_ft: float
-    pixel_pitch: float
-    is_outdoor: bool
-    product_class: str
-    shape: str
-    access: str
-    complexity: str
+    width_ft: float = 0.0
+    height_ft: float = 0.0
+    pixel_pitch: float = 10.0
+    is_outdoor: bool = False
+    product_class: str = "Scoreboard"
+    shape: str = "Flat"
+    access: str = "Front"
+    complexity: str = "Standard"
     unit_cost: float = 0.0
     target_margin: float = 0.0
     structure_condition: str = "Existing"
+    labor_type: str = "NonUnion"
+    power_distance: str = "Close"
+    permits: str = "Client"
+    control_system: str = "Include"
+    bond_required: bool = False
 
 class ProjectRequest(BaseModel):
     client_name: str
@@ -257,7 +262,12 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
                 complexity=s.complexity,
                 unit_cost=s.unit_cost,
                 target_margin=s.target_margin,
-                structure_condition=s.structure_condition
+                structure_condition=s.structure_condition,
+                labor_type=s.labor_type,
+                power_distance=s.power_distance,
+                permits=s.permits,
+                control_system=s.control_system,
+                bond_required=s.bond_required
             )
             
             result = calc.calculate_quote(inp)

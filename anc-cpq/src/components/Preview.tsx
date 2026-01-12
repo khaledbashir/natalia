@@ -165,7 +165,13 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         is_outdoor: s.environment === 'Outdoor',
                         shape: s.shape,
                         access: s.access,
-                        complexity: s.complexity
+                        complexity: s.complexity,
+                        structure_condition: s.structure_condition || 'Existing',
+                        labor_type: s.labor_type || 'NonUnion',
+                        power_distance: s.power_distance || 'Close',
+                        permits: s.permits || 'Client',
+                        control_system: s.control_system || 'Include',
+                        bond_required: !!s.bond_required
                     })) : [{
                         product_class: input.productClass,
                         pixel_pitch: input.pixelPitch,
@@ -177,7 +183,12 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         complexity: input.complexity,
                         structure_condition: input.structureCondition || 'Existing',
                         unit_cost: input.unitCost || 0,
-                        target_margin: input.targetMargin || 0
+                        target_margin: input.targetMargin || 0,
+                        labor_type: input.laborType || 'NonUnion',
+                        power_distance: input.powerDistance || 'Close',
+                        permits: input.permits || 'Client',
+                        control_system: input.controlSystem || 'Include',
+                        bond_required: !!input.bondRequired
                     }]
                 };
 
