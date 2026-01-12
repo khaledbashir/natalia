@@ -216,6 +216,32 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         ],
         required: true,
         formulaImpact: 'Affects project management overhead'
+    },
+    {
+        id: 'unitCost',
+        category: 'project',
+        question: "Do you have a target dollar per sq ft for the hardware?",
+        type: 'number',
+        required: false
+    },
+    {
+        id: 'targetMargin',
+        category: 'project',
+        question: "What is the target gross margin percentage?",
+        type: 'number',
+        required: false
+    },
+    {
+        id: 'serviceLevel',
+        category: 'project',
+        question: "What level of ongoing service is required?",
+        type: 'select',
+        options: [
+            { value: 'bronze', label: 'Bronze' },
+            { value: 'silver', label: 'Silver' },
+            { value: 'gold', label: 'Gold' }
+        ],
+        required: true
     }
 ];
 

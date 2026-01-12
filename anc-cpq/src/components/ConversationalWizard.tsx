@@ -60,10 +60,10 @@ const INITIAL_CPQ_STATE: CPQInput = {
 
 const getInitialMessage = (): Message => ({
     role: "assistant",
-    content: "Hi! I'm your ANC Sales Engineer. I'm ready to help you build a professional LED display proposal. Shall we proceed?",
-    thinking: "Initial greeting. Waiting for user to initiate the wizard.",
+    content: "ANC Project Assistant initialized. Ready to audit project requirements and generate technical proposals. Shall we begin setup?",
+    thinking: "System initialized. Waiting for user to trigger the config audit.",
     suggestedOptions: [
-        { value: "Proceed", label: "Proceed and Start Wizard" }
+        { value: "Proceed", label: "Begin Audit & Setup" }
     ]
 });
 
@@ -71,8 +71,35 @@ const PROGRESS_STEPS = [
     { id: "metadata", label: "CLIENT", fields: ["clientName", "address", "projectName"] },
     { id: "display", label: "DISPLAY", fields: ["productClass", "pixelPitch", "widthFt", "heightFt"] },
     { id: "config", label: "DETAILS", fields: ["environment", "shape", "access", "mountingType", "structureCondition"] },
-    { id: "project", label: "LOGISTICS", fields: ["laborType", "powerDistance", "permits", "controlSystem", "bondRequired", "complexity"] },
+    { id: "project", label: "LOGISTICS", fields: ["laborType", "powerDistance", "permits", "controlSystem", "bondRequired", "complexity", "unitCost", "targetMargin", "serviceLevel"] },
 ];
+
+// Normalization helper for AI parameters
+const normalizeParams = (params: any) => {
+    if (!params) return {};
+    const normalized: any = {};
+    const aliasMap: Record<string, string> = {
+        'pitch': 'pixelPitch',
+        'width': 'widthFt',
+        'height': 'heightFt',
+        'class': 'productClass',
+        'labor': 'laborType',
+        'bond': 'bondRequired',
+        'controls': 'controlSystem'
+    };
+
+    Object.entries(params).forEach(([key, val]) => {
+        // 1. Convert snake_case to camelCase
+        let camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+
+        // 2. Map aliases to standard field IDs
+        if (aliasMap[camelKey.toLowerCase()]) {
+            camelKey = aliasMap[camelKey.toLowerCase()];
+        }
+        normalized[camelKey] = val;
+    });
+    return normalized;
+};
 
 export function ConversationalWizard({
     onComplete,
@@ -301,10 +328,27 @@ export function ConversationalWizard({
                 ]);
             }
             if (data.updatedParams) {
-                // Normalize snake_case to camelCase for progress tracking
+                // Normalize keys and handle common AI aliases for progress tracking
                 const normalizedParams: any = {};
+                const aliasMap: Record<string, string> = {
+                    'pitch': 'pixelPitch',
+                    'width': 'widthFt',
+                    'height': 'heightFt',
+                    'class': 'productClass',
+                    'labor': 'laborType',
+                    'bond': 'bondRequired',
+                    'controls': 'controlSystem'
+                };
+
                 Object.entries(data.updatedParams).forEach(([key, val]) => {
-                    const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                    // 1. Convert snake_case to camelCase
+                    let camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+
+                    // 2. Map aliases to standard field IDs
+                    if (aliasMap[camelKey.toLowerCase()]) {
+                        camelKey = aliasMap[camelKey.toLowerCase()];
+                    }
+
                     normalizedParams[camelKey] = val;
                 });
 
@@ -492,16 +536,15 @@ export function ConversationalWizard({
                 data.updatedParams &&
                 Object.keys(data.updatedParams).length > 0
             ) {
+                const normalized = normalizeParams(data.updatedParams);
                 const newState = {
                     ...currentStateToSend,
-                    ...data.updatedParams,
+                    ...normalized,
                 };
-                // Special handling for screens to ensure it's always an array if present
-                if (
-                    data.updatedParams.screens &&
-                    Array.isArray(data.updatedParams.screens)
-                ) {
-                    newState.screens = data.updatedParams.screens;
+
+                // Special handling for screens
+                if (normalized.screens && Array.isArray(normalized.screens)) {
+                    newState.screens = normalized.screens;
                 }
                 setCpqState(newState);
                 onUpdate(newState);
