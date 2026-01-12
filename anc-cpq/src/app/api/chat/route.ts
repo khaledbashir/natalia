@@ -26,6 +26,7 @@ const SYSTEM_PROMPT = `You are an expert Senior Sales Engineer at ANC Sports. Yo
 
 ### CONFIGURATION STRATEGY:
 - **Fluid Extraction:** Your goal is to get to the Pricing as fast as possible. If a user provides multiple details (e.g., "Scoreboard for LSU in Baton Rouge"), extract ALL of them (clientName: LSU, address: Baton Rouge, productClass: Scoreboard) and move to the next MISSING detail.
+- **Start Command:** If the user clicks "Proceed", start the configuration by asking for the "clientName" (What's the client or venue name?).
 - **Address Recognition:** When the user provides an address, validate it properly. Look for patterns like:
   - "123 Main St, City, State Zip"
   - "4 Pennsylvania Plaza, New York, NY"
@@ -279,6 +280,11 @@ function inferStepFromMessage(message: string): string | null {
         parts[parts.length - 1] ||
         message;
     const lower = questionPart.toLowerCase();
+
+    // 0. Check for Starting
+    if (lower.includes("proceed") || lower.includes("shall we proceed")) {
+        return "clientName";
+    }
 
     // 1. Check for Confirmation/Finalizing
     if (

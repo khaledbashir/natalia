@@ -60,9 +60,11 @@ const INITIAL_CPQ_STATE: CPQInput = {
 
 const getInitialMessage = (): Message => ({
     role: "assistant",
-    content:
-        "Hi! I'm your ANC Sales Engineer. Tell me about the project you're working on today, or upload a client brief to get started.",
-    thinking: "Initial greeting. Waiting for user input or document upload.",
+    content: "Hi! I'm your ANC Sales Engineer. I'm ready to help you build a professional LED display proposal. Shall we proceed?",
+    thinking: "Initial greeting. Waiting for user to initiate the wizard.",
+    suggestedOptions: [
+        { value: "Proceed", label: "Proceed and Start Wizard" }
+    ]
 });
 
 const PROGRESS_STEPS = [
