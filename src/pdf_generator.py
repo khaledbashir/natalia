@@ -1,6 +1,5 @@
-import datetime
-from typing import Dict, List
-
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import LETTER
 from reportlab.platypus import (
     SimpleDocTemplate,
     Table,
@@ -10,7 +9,6 @@ from reportlab.platypus import (
     Image,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
 from typing import List, Dict
 import datetime
 
@@ -93,7 +91,8 @@ class PDFGenerator:
 
         for item in project_data:
             inp = item["inputs"]
-            math = item["math"]
+            summary = item["summary"]
+            sq_ft = inp.width_ft * inp.height_ft
 
             desc = f"{inp.product_class} ({inp.shape}, {inp.access} Access)"
             if inp.is_outdoor:
@@ -101,13 +100,13 @@ class PDFGenerator:
 
             row = [
                 desc,
-                f"{inp.width_ft}' x {inp.height_ft}'\n({math['sq_ft']:.1f} sqft)",
+                f"{inp.width_ft}' x {inp.height_ft}'\n({sq_ft:.1f} sqft)",
                 f"{inp.pixel_pitch}mm",
                 "1",
-                f"${math['sell_price']:,.2f}",
+                f"${summary['final_sell_price']:,.2f}",
             ]
             table_data.append(row)
-            total_contract_value += math["sell_price"]
+            total_contract_value += summary["final_sell_price"]
 
         # Total Row
         table_data.append(["", "", "", "TOTAL:", f"${total_contract_value:,.2f}"])
