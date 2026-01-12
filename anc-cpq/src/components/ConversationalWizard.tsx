@@ -551,10 +551,24 @@ export function ConversationalWizard({
             }
 
             if (data.message) {
+                // GUARDRAIL: Validate nextStep against known field IDs
+                const VALID_FIELD_IDS = WIZARD_QUESTIONS.map(q => q.id);
+                let validatedNextStep = data.nextStep;
+
+                if (data.nextStep && !VALID_FIELD_IDS.includes(data.nextStep) && data.nextStep !== 'confirm') {
+                    console.warn(`⚠️ AI hallucinated unknown field '${data.nextStep}'. Falling back to next incomplete field.`);
+                    // Find next incomplete field
+                    const nextIncomplete = WIZARD_QUESTIONS.find(q => {
+                        const currentVal = cpqState[q.id as keyof CPQInput];
+                        return currentVal === undefined || currentVal === null || currentVal === '' || currentVal === 0;
+                    });
+                    validatedNextStep = nextIncomplete?.id || 'confirm';
+                }
+
                 const assistantMsg = {
                     role: "assistant" as const,
                     content: data.message,
-                    nextStep: data.nextStep,
+                    nextStep: validatedNextStep,
                     thinking: data.thinking,
                     suggestedOptions: data.suggestedOptions,
                 };
