@@ -234,26 +234,24 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         <span className="block text-slate-900 text-sm font-bold tracking-tight">Project Proposal</span>
                     </div>
                 </div>
-                
+
                 {/* Tab Toggle */}
                 <div className="flex gap-2 bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
-                    <button 
+                    <button
                         onClick={() => setActiveTab('pdf')}
-                        className={`px-4 py-2 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 ${
-                            activeTab === 'pdf' 
-                                ? 'bg-[#003D82] text-white shadow-lg shadow-blue-900/20' 
-                                : 'bg-transparent text-slate-600 hover:bg-slate-50'
-                        }`}
+                        className={`px-4 py-2 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 ${activeTab === 'pdf'
+                            ? 'bg-[#003D82] text-white shadow-lg shadow-blue-900/20'
+                            : 'bg-transparent text-slate-600 hover:bg-slate-50'
+                            }`}
                     >
                         <FileText size={14} /> PDF
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('excel')}
-                        className={`px-4 py-2 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 ${
-                            activeTab === 'excel' 
-                                ? 'bg-[#003D82] text-white shadow-lg shadow-blue-900/20' 
-                                : 'bg-transparent text-slate-600 hover:bg-slate-50'
-                        }`}
+                        className={`px-4 py-2 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 ${activeTab === 'excel'
+                            ? 'bg-[#003D82] text-white shadow-lg shadow-blue-900/20'
+                            : 'bg-transparent text-slate-600 hover:bg-slate-50'
+                            }`}
                     >
                         <Table2 size={14} /> EXCEL
                     </button>
@@ -281,187 +279,176 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                 <div className="w-full max-w-4xl bg-white shadow-2xl relative brand-font print:shadow-none print:w-full print:max-w-none print:m-0">
                     {/* PDF Preview */}
 
-                {/* PAGE 1: HEADER & OVERVIEW */}
-                <div className="min-h-[1056px] relative p-16 print:p-20 flex flex-col">
-                    <div className="flex justify-between items-start mb-16">
-                        <div className="flex flex-col gap-8">
-                            <ANCLogo className="h-[48px] w-auto" color={BRAND_BLUE} />
-                            <div>
-                                <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase leading-none">
-                                    {input.clientName || 'PROSPECT NAME'}
-                                </h1>
-                                <p className="text-xs text-slate-400 font-medium mt-1 tracking-tight">{input.address || input.projectName || 'Project Location Details'}</p>
+                    {/* PAGE 1: HEADER & OVERVIEW */}
+                    <div className="min-h-[1056px] relative p-16 print:p-20 flex flex-col">
+                        <div className="flex justify-between items-start mb-16">
+                            <div className="flex flex-col gap-8">
+                                <ANCLogo className="h-[48px] w-auto" color={BRAND_BLUE} />
+                                <div>
+                                    <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase leading-none">
+                                        {input.clientName || 'PROSPECT NAME'}
+                                    </h1>
+                                    <p className="text-xs text-slate-400 font-medium mt-1 tracking-tight">{input.address || input.projectName || 'Project Location Details'}</p>
+                                </div>
+                            </div>
+                            <div className="text-right flex flex-col items-end">
+                                <h2 className="text-[10px] font-black tracking-[0.3em] mb-4 text-slate-400 uppercase">Document Information</h2>
+                                <div className="grid grid-cols-1 gap-1">
+                                    <p className="text-[10px] text-slate-700 font-bold uppercase tracking-wider"><span className="text-slate-400 font-bold mr-2">DATE:</span> {today}</p>
+                                    <p className="text-[10px] text-slate-700 font-bold uppercase tracking-wider"><span className="text-slate-400 font-bold mr-2">REF:</span> ANC-{referenceNum}</p>
+                                    <p className="text-[10px] font-bold mt-2 px-2 py-1 bg-slate-100 rounded inline-block" style={{ color: BRAND_BLUE }}>
+                                        {isMultiScreen ? "PROJECT PROPOSAL" : "SALES QUOTATION"}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="text-right flex flex-col items-end">
-                            <h2 className="text-[10px] font-black tracking-[0.3em] mb-4 text-slate-400 uppercase">Document Information</h2>
-                            <div className="grid grid-cols-1 gap-1">
-                                <p className="text-[10px] text-slate-700 font-bold uppercase tracking-wider"><span className="text-slate-400 font-bold mr-2">DATE:</span> {today}</p>
-                                <p className="text-[10px] text-slate-700 font-bold uppercase tracking-wider"><span className="text-slate-400 font-bold mr-2">REF:</span> ANC-{referenceNum}</p>
-                                <p className="text-[10px] font-bold mt-2 px-2 py-1 bg-slate-100 rounded inline-block" style={{ color: BRAND_BLUE }}>
-                                    {isMultiScreen ? "PROJECT PROPOSAL" : "SALES QUOTATION"}
-                                </p>
-                            </div>
+
+                        <div className="h-[2px] w-16 mb-8" style={{ background: BRAND_BLUE }} />
+
+                        <div className="prose prose-slate max-w-none mb-12">
+                            <p className="text-xs text-slate-600 leading-relaxed text-justify font-medium">
+                                This memorandum ("Document") sets forth the summary terms and technical specifications by which <strong>{input.clientName || 'Purchaser'}</strong> ("Purchaser"), and ANC Sports Enterprises, LLC ("ANC") agree to proceed with the procurement and installation of the LED Display Systems described herein. The technical parameters and investment values presented represent the final engineering estimates for professional venue deployment.
+                            </p>
                         </div>
-                    </div>
 
-                    <div className="h-[2px] w-16 mb-8" style={{ background: BRAND_BLUE }} />
+                        {/* RENDER CONTENT BLOCKS */}
+                        {!isMultiScreen ? (
+                            <>
+                                <SectionTitle>Technical Specifications</SectionTitle>
+                                <SpecsTable config={input} />
 
-                    <div className="prose prose-slate max-w-none mb-12">
-                        <p className="text-xs text-slate-600 leading-relaxed text-justify font-medium">
-                            This memorandum ("Document") sets forth the summary terms and technical specifications by which <strong>{input.clientName || 'Purchaser'}</strong> ("Purchaser"), and ANC Sports Enterprises, LLC ("ANC") agree to proceed with the procurement and installation of the LED Display Systems described herein. The technical parameters and investment values presented represent the final engineering estimates for professional venue deployment.
-                        </p>
-                    </div>
-
-                    {/* RENDER CONTENT BLOCKS */}
-                    {!isMultiScreen ? (
-                        <>
-                            <SectionTitle>Technical Specifications</SectionTitle>
-                            <SpecsTable config={input} />
-
-                            {showPricing && (
-                                <>
-                                    <div className="h-8" />
-                                    <SectionTitle>Investment Summary</SectionTitle>
-                                    <PricingTable result={result} />
-                                    
-                                    <div className="mt-8 print:hidden bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Internal Cost Analysis</div>
-                                        {result.costBreakdown && (
-                                            <CostBreakdownDisplay 
-                                                costBreakdown={result.costBreakdown} 
-                                                totalAmount={result.sellPrice}
-                                                margin={result.margin} 
-                                            />
-                                        )}
-                                    </div>
-                                </>
-                            )}
-                        </>
-                    ) : (
-                        <div className="space-y-16">
-                            {input.screens?.map((screen, idx) => {
-                                const screenResult = calculateScreen(screen);
-                                return (
-                                    <div key={idx} className={idx > 0 && idx % 2 === 0 ? "page-break pt-8" : ""}>
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-sm" style={{ backgroundColor: BRAND_BLUE }}>
-                                                {idx + 1}
+                                {showPricing && (
+                                    <>
+                                        <div className="h-8" />
+                                        <SectionTitle>Investment Summary</SectionTitle>
+                                        <PricingTable result={result} />
+                                    </>
+                                )}
+                            </>
+                        ) : (
+                            <div className="space-y-16">
+                                {input.screens?.map((screen, idx) => {
+                                    const screenResult = calculateScreen(screen);
+                                    return (
+                                        <div key={idx} className={idx > 0 && idx % 2 === 0 ? "page-break pt-8" : ""}>
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-sm" style={{ backgroundColor: BRAND_BLUE }}>
+                                                    {idx + 1}
+                                                </div>
+                                                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                                                    {screen.productClass} <span className="text-slate-300">/ Pitch {screen.pixelPitch}mm</span>
+                                                </h4>
                                             </div>
-                                            <h4 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-                                                {screen.productClass} <span className="text-slate-300">/ Pitch {screen.pixelPitch}mm</span>
-                                            </h4>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                <SectionTitle>Specifications</SectionTitle>
+                                                <SpecsTable config={screen} />
+                                                {showPricing && (
+                                                    <>
+                                                        <SectionTitle>Investment Breakout</SectionTitle>
+                                                        <PricingTable result={screenResult} showFooter={false} titleSuffix={`- ${screen.productClass}`} />
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="grid grid-cols-1 gap-2">
-                                            <SectionTitle>Specifications</SectionTitle>
-                                            <SpecsTable config={screen} />
-                                            {showPricing && (
-                                                <>
-                                                    <SectionTitle>Investment Breakout</SectionTitle>
-                                                    <PricingTable result={screenResult} showFooter={false} titleSuffix={`- ${screen.productClass}`} />
-                                                </>
-                                            )}
-                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Aggregate Total if Multi-Screen */}
+                        {isMultiScreen && showPricing && (
+                            <div className="mt-16 bg-slate-50 p-8 rounded-2xl border border-slate-200">
+                                <SectionTitle>Project Aggregate Investment</SectionTitle>
+                                <PricingTable result={result} titleSuffix="(All Displays)" />
+                                <div className="grid grid-cols-3 gap-6 mt-4">
+                                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                                        <Zap size={14} className="text-amber-500" /> Professional Grade
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                                        <ShieldCheck size={14} className="text-emerald-500" /> Full Warranty Included
+                                    </div>
+                                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                                        <Clock size={14} className="text-blue-500" /> Validity: 30 Days
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                    {/* Aggregate Total if Multi-Screen */}
-                    {isMultiScreen && showPricing && (
-                        <div className="mt-16 bg-slate-50 p-8 rounded-2xl border border-slate-200">
-                            <SectionTitle>Project Aggregate Investment</SectionTitle>
-                            <PricingTable result={result} titleSuffix="(All Displays)" />
-                            <div className="grid grid-cols-3 gap-6 mt-4">
-                                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
-                                    <Zap size={14} className="text-amber-500" /> Professional Grade
+                        {/* PAGE FOOTER (PAGE 1) */}
+                        <div className="mt-auto pt-10 border-t border-slate-100 flex justify-between items-center">
+                            <div className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">
+                                Page 01 of {isMultiScreen ? '03' : '02'} | ANC {new Date().getFullYear()}
+                            </div>
+                            <div className="flex gap-4 items-center">
+                                <div className="h-[12px]">
+                                    <ANCLogo className="h-full w-auto opacity-20" color="#000" />
                                 </div>
-                                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
-                                    <ShieldCheck size={14} className="text-emerald-500" /> Full Warranty Included
+                                <span className="text-[9px] text-slate-300 font-bold">CONFIDENTIAL MEMORANDUM</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* TERMS PAGE */}
+                    <div className="page-break min-h-[1056px] relative p-16 print:p-20 flex flex-col">
+                        <div className="flex justify-between items-center mb-12">
+                            <ANCLogo className="h-[30px] w-auto" color={BRAND_BLUE} />
+                            <h2 className="text-[10px] font-black tracking-[0.3em] text-slate-300 uppercase">Terms & Execution</h2>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-16">
+                            <div>
+                                <h4 className="text-xs font-black uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-100" style={{ color: BRAND_BLUE }}>Payment Schedule</h4>
+                                <div className="space-y-6">
+                                    {[
+                                        { pct: "50%", label: "Deposit upon execution", detail: "Procurement kick-off" },
+                                        { pct: "40%", label: "Shipping Milestone", detail: "Prior to logistics departure" },
+                                        { pct: "10%", label: "Final Commissioning", detail: "Net 15 upon acceptance" }
+                                    ].map((item, i) => (
+                                        <div key={i} className="flex items-start gap-4">
+                                            <div className="text-lg font-black text-slate-900 w-12 pt-0.5">{item.pct}</div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-800 leading-tight">{item.label}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{item.detail}</p>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
-                                    <Clock size={14} className="text-blue-500" /> Validity: 30 Days
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-black uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-100" style={{ color: BRAND_BLUE }}>Clarifications</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-[11px] font-bold text-slate-900 mb-1 leading-tight">Project Exclusions</p>
+                                        <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Union labor (unless specified), primary power feed, structural reinforcement, and data conduit infrastructure.</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-slate-900 mb-1 leading-tight">Tax & Logistics</p>
+                                        <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Estimated tax is calculated at 9.5%. Final shipping costs may vary based on fuel surcharges at time of departure.</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                    {/* PAGE FOOTER (PAGE 1) */}
-                    <div className="mt-auto pt-10 border-t border-slate-100 flex justify-between items-center">
-                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">
-                            Page 01 of {isMultiScreen ? '03' : '02'} | ANC {new Date().getFullYear()}
-                        </div>
-                        <div className="flex gap-4 items-center">
-                            <div className="h-[12px]">
-                                <ANCLogo className="h-full w-auto opacity-20" color="#000" />
+                        <div className="mt-24">
+                            <h4 className="text-xs font-black uppercase tracking-widest mb-12 text-center text-slate-300">Authorized Execution</h4>
+                            <div className="grid grid-cols-2 gap-24">
+                                <div className="border-t-2 border-slate-900 pt-4">
+                                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">ANC Sports Enterprises, LLC</p>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-1">Authorized Signature</p>
+                                </div>
+                                <div className="border-t-2 border-slate-200 pt-4">
+                                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{input.clientName || 'Purchaser'}</p>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-1">Acceptance Signature</p>
+                                </div>
                             </div>
-                            <span className="text-[9px] text-slate-300 font-bold">CONFIDENTIAL MEMORANDUM</span>
+                        </div>
+
+                        <div className="mt-auto pt-10 border-t border-slate-100 flex justify-between items-center text-[9px] text-slate-400 font-bold">
+                            <div>NY 914.696.2100 | TX 940.464.2320</div>
+                            <div className="tracking-widest uppercase">WWW.ANC.COM</div>
                         </div>
                     </div>
                 </div>
-
-                {/* TERMS PAGE */}
-                <div className="page-break min-h-[1056px] relative p-16 print:p-20 flex flex-col">
-                    <div className="flex justify-between items-center mb-12">
-                        <ANCLogo className="h-[30px] w-auto" color={BRAND_BLUE} />
-                        <h2 className="text-[10px] font-black tracking-[0.3em] text-slate-300 uppercase">Terms & Execution</h2>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-16">
-                        <div>
-                            <h4 className="text-xs font-black uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-100" style={{ color: BRAND_BLUE }}>Payment Schedule</h4>
-                            <div className="space-y-6">
-                                {[
-                                    { pct: "50%", label: "Deposit upon execution", detail: "Procurement kick-off" },
-                                    { pct: "40%", label: "Shipping Milestone", detail: "Prior to logistics departure" },
-                                    { pct: "10%", label: "Final Commissioning", detail: "Net 15 upon acceptance" }
-                                ].map((item, i) => (
-                                    <div key={i} className="flex items-start gap-4">
-                                        <div className="text-lg font-black text-slate-900 w-12 pt-0.5">{item.pct}</div>
-                                        <div>
-                                            <p className="text-sm font-black text-slate-800 leading-tight">{item.label}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{item.detail}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="text-xs font-black uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-100" style={{ color: BRAND_BLUE }}>Clarifications</h4>
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-[11px] font-bold text-slate-900 mb-1 leading-tight">Project Exclusions</p>
-                                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Union labor (unless specified), primary power feed, structural reinforcement, and data conduit infrastructure.</p>
-                                </div>
-                                <div>
-                                    <p className="text-[11px] font-bold text-slate-900 mb-1 leading-tight">Tax & Logistics</p>
-                                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Estimated tax is calculated at 9.5%. Final shipping costs may vary based on fuel surcharges at time of departure.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-24">
-                        <h4 className="text-xs font-black uppercase tracking-widest mb-12 text-center text-slate-300">Authorized Execution</h4>
-                        <div className="grid grid-cols-2 gap-24">
-                            <div className="border-t-2 border-slate-900 pt-4">
-                                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">ANC Sports Enterprises, LLC</p>
-                                <p className="text-[9px] text-slate-400 font-bold mt-1">Authorized Signature</p>
-                            </div>
-                            <div className="border-t-2 border-slate-200 pt-4">
-                                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{input.clientName || 'Purchaser'}</p>
-                                <p className="text-[9px] text-slate-400 font-bold mt-1">Acceptance Signature</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-auto pt-10 border-t border-slate-100 flex justify-between items-center text-[9px] text-slate-400 font-bold">
-                        <div>NY 914.696.2100 | TX 940.464.2320</div>
-                        <div className="tracking-widest uppercase">WWW.ANC.COM</div>
-                    </div>
-                </div>
-            </div>
             )}
         </div>
     );

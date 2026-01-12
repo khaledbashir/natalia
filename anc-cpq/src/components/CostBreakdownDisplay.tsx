@@ -280,32 +280,7 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <h4 className="font-bold text-gray-900 mb-2 text-sm">Cost Distribution Legend</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-green-500" />
-            <span className="text-gray-700">≤ 10% (Standard)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-blue-500" />
-            <span className="text-gray-700">10-15% (Moderate)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-yellow-500" />
-            <span className="text-gray-700">15-20% (Elevated)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-orange-500" />
-            <span className="text-gray-700">20-30% (High)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-red-500" />
-            <span className="text-gray-700">&gt; 30% (Critical)</span>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 }
