@@ -651,13 +651,13 @@ export function ConversationalWizard({
                         "text-[10px] font-black uppercase tracking-[0.15em] transition-colors duration-500",
                         progress === 100 ? "text-emerald-400" : "text-slate-500"
                     )}>
-                        {progress === 100 ? "✨ Proposal Ready" : "Proposal Progress"}
+                        {progress === 100 ? "✨ Proposal Ready" : `Configuration Phase: ${filledFields} / ${totalFields}`}
                     </span>
                     <span className={clsx(
                         "text-[10px] font-black transition-colors duration-500",
                         progress === 100 ? "text-emerald-400" : "text-slate-400"
                     )}>
-                        {progress}%
+                        {progress === 100 ? "COMPLETE" : `${totalFields - filledFields} QUESTIONS REMAINING • ${progress}%`}
                     </span>
                 </div>
 
