@@ -103,17 +103,16 @@ function inferStepFromMessage(message: string): string | null {
     )
         return "productClass";
 
-    // Dimensions
-    if (lower.includes("width") || lower.includes("how wide")) return "widthFt";
+    // Dimensions - ONLY match if asking, NOT acknowledging
+    if ((lower.includes("width") || lower.includes("how wide")) && !lower.includes("locked") && !lower.includes("set")) return "widthFt";
     if (
-        lower.includes("height") ||
-        lower.includes("how high") ||
-        lower.includes("how tall")
+        (lower.includes("height") || lower.includes("how high") || lower.includes("how tall")) &&
+        !lower.includes("locked") && !lower.includes("set")
     )
         return "heightFt";
 
     // Pixel Pitch
-    if (lower.includes("pixel") || lower.includes("pitch")) return "pixelPitch";
+    if ((lower.includes("pixel") || lower.includes("pitch")) && !lower.includes("locked") && !lower.includes("set")) return "pixelPitch";
 
     // Shape (Check BEFORE environment to prevent "outdoor" in acknowledgment overriding "shape" question)
     if (lower.includes("shape") || lower.includes("configuration"))
@@ -262,8 +261,9 @@ function extractJSON(text: string) {
                     { value: "Prevailing", label: "Prevailing Wage" },
                 ];
             }
-            // SPECS (Width/Height/Pitch)
-            else if (lower.includes("width")) {
+            // SPECS (Width/Height/Pitch) - ONLY match if actually ASKING for the value
+            // Do NOT match acknowledgments like "Field 'widthFt' locked to 40"
+            else if (lower.includes("width") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "widthFt";
                 inferredOptions = [
                     { value: "20", label: "20 ft" },
@@ -272,7 +272,7 @@ function extractJSON(text: string) {
                     { value: "100", label: "100 ft" },
                     { value: "200", label: "200 ft" },
                 ];
-            } else if (lower.includes("height")) {
+            } else if (lower.includes("height") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "heightFt";
                 inferredOptions = [
                     { value: "3", label: "3 ft" },
@@ -281,7 +281,7 @@ function extractJSON(text: string) {
                     { value: "30", label: "30 ft" },
                     { value: "40", label: "40 ft" },
                 ];
-            } else if (lower.includes("pitch")) {
+            } else if (lower.includes("pitch") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "pixelPitch";
                 inferredOptions = [
                     { value: "4", label: "4mm (Ultra Fine)" },
