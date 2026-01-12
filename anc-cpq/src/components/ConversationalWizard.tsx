@@ -576,9 +576,11 @@ export function ConversationalWizard({
 
                 // AUTO-SEARCH: IMMEDIATELY trigger search when clientName is captured
                 // Don't wait for address step - search as soon as we have a client name
+                // BUT ONLY if we don't already have an address
                 if (
                     data.updatedParams?.clientName &&
-                    !data.updatedParams?.address
+                    !data.updatedParams?.address &&
+                    !cpqState.address // Don't search if address already exists
                 ) {
                     const searchQuery = data.updatedParams.clientName;
                     console.log(
@@ -589,12 +591,12 @@ export function ConversationalWizard({
                 }
 
                 // Also trigger if AI explicitly transitions to address step
-                if (data.nextStep === "address") {
+                // BUT ONLY if we're not already confirming an address (avoid loop)
+                if (data.nextStep === "address" && !isAddressSelection && !cpqState.address) {
                     const searchQuery =
                         data.updatedParams?.clientName ||
-                        data.updatedParams?.address ||
                         text;
-                    if (searchQuery) {
+                    if (searchQuery && !searchQuery.includes(",")) { // Avoid re-searching formatted addresses
                         console.log(
                             "🔍 Address step triggered, searching for:",
                             searchQuery,
