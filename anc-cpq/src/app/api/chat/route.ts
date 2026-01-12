@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  classifyUserMessage,
-  validateAddress,
-  formatAddressForConfirmation,
-  validateNumericInput,
-  parseNumericInput,
-  normalizePermitAnswer,
-  MessageType
+    classifyUserMessage,
+    validateAddress,
+    formatAddressForConfirmation,
+    validateNumericInput,
+    parseNumericInput,
+    normalizePermitAnswer,
+    MessageType
 } from "../../../lib/input-validator";
 import {
-  processUserMessage,
-  getCurrentStep,
-  getNextIncompleteStep,
-  isSessionComplete,
-  getSessionProgress,
-  STEPS
+    processUserMessage,
+    getCurrentStep,
+    getNextIncompleteStep,
+    isSessionComplete,
+    getSessionProgress,
+    STEPS
 } from "../../../lib/state-machine";
 import {
-  calculatePrice,
-  shouldRecalculatePrice,
-  invalidatePriceCache
+    calculatePrice,
+    shouldRecalculatePrice,
+    invalidatePriceCache
 } from "../../../lib/pricing-service";
 
 const SYSTEM_PROMPT = `You are an expert Senior Sales Engineer at ANC Sports. Your goal is to configure a precise LED display system and gather all variables required for the "Estimator Logic" to calculate the final price.
@@ -321,6 +321,14 @@ function inferStepFromMessage(message: string): string | null {
     )
         return "environment";
 
+    // Structure (More specific - only when asking about steel/existing, NOT general "structural")
+    // CHECK BEFORE MOUNTING to avoid "mounting to existing steel" triggering mountingType
+    if (lower.includes("existing") && lower.includes("steel"))
+        return "structureCondition";
+    if (lower.includes("new") && lower.includes("steel"))
+        return "structureCondition";
+    if (lower.includes("mounting to") && lower.includes("steel")) return "structureCondition";
+
     // Mounting
     if (
         lower.includes("mount") ||
@@ -339,13 +347,6 @@ function inferStepFromMessage(message: string): string | null {
 
     // Permits (CHECK BEFORE structural - "structural permits" should match permits not structure)
     if (lower.includes("permit")) return "permits";
-
-    // Structure (More specific - only when asking about steel/existing, NOT general "structural")
-    if (lower.includes("existing") && lower.includes("steel"))
-        return "structureCondition";
-    if (lower.includes("new") && lower.includes("steel"))
-        return "structureCondition";
-    if (lower.includes("mounting to")) return "structureCondition";
 
     // Labor
     if (
@@ -622,11 +623,11 @@ export async function POST(request: NextRequest) {
 
         // Classify user message type
         const messageType = classifyUserMessage(message);
-        
+
         // Handle SERP snippets for address
         if (messageType === MessageType.SERP_SNIPPET) {
             const validated = validateAddress(message);
-            
+
             if (validated.isValid) {
                 // Extract venue name and ask for confirmation
                 return NextResponse.json({
@@ -656,7 +657,7 @@ export async function POST(request: NextRequest) {
         const currentStep = STEPS.find((s: any) => s.id === currentState.nextStep);
         if (currentStep && ['pixelPitch', 'widthFt', 'heightFt', 'unitCost', 'targetMargin'].includes(currentStep.id)) {
             const numericValidation = parseNumericInput(currentStep.id, message);
-            
+
             if (!numericValidation.valid) {
                 return NextResponse.json({
                     message: numericValidation.error || "Please enter a valid number.",
@@ -671,7 +672,7 @@ export async function POST(request: NextRequest) {
         // Validate permit answers
         if (currentStep && currentStep.id === 'permits') {
             const normalizedPermit = normalizePermitAnswer(message);
-            
+
             if (!normalizedPermit) {
                 return NextResponse.json({
                     message: "Please choose from: Client, ANC, or Existing",
@@ -694,8 +695,8 @@ export async function POST(request: NextRequest) {
                 content: h.content,
                 ...(h.thinking &&
                     modelConfig.supportsThinking && {
-                        reasoning_content: h.thinking,
-                    }),
+                    reasoning_content: h.thinking,
+                }),
             })),
             {
                 role: "user",
@@ -746,7 +747,7 @@ export async function POST(request: NextRequest) {
                 const needsRecalculation = changedFields.some(field =>
                     shouldRecalculatePrice(field as any)
                 );
-                
+
                 if (needsRecalculation) {
                     invalidatePriceCache();
                     console.log("Price recalculation triggered by field changes:", changedFields);

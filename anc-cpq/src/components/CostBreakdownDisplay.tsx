@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, DollarSign, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface CostCategory {
   id: string;
@@ -30,14 +30,12 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
   const costGroups = {
     hardware: {
       label: 'Hardware Costs',
-      icon: '📺',
       categories: [
         { id: 'hardware', category: 'LED Display Hardware', amount: costBreakdown['1. Hardware'] || 0, percentage: 0 },
       ]
     },
     structural: {
       label: 'Structural Costs',
-      icon: '🏗️',
       categories: [
         { id: 'structural_materials', category: 'Structural Materials', amount: costBreakdown['2. Structural Materials'] || 0, percentage: 0 },
         { id: 'structural_labor', category: 'Structural Labor', amount: costBreakdown['3. Structural Labor'] || 0, percentage: 0 },
@@ -45,7 +43,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
     },
     installation: {
       label: 'Installation Costs',
-      icon: '🔧',
       categories: [
         { id: 'led_installation', category: 'LED Installation (Labor)', amount: costBreakdown['4. LED Installation'] || 0, percentage: 0 },
         { id: 'electrical_materials', category: 'Electrical & Data - Materials', amount: costBreakdown['5. Electrical Materials'] || 0, percentage: 0 },
@@ -58,7 +55,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
     },
     professional: {
       label: 'Professional Services',
-      icon: '💼',
       categories: [
         { id: 'project_management', category: 'Project Management', amount: costBreakdown['10. Project Management'] || 0, percentage: 0 },
         { id: 'submittals', category: 'Submittals', amount: costBreakdown['13. Submittals'] || 0, percentage: 0 },
@@ -67,7 +63,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
     },
     softCosts: {
       label: 'Soft Costs',
-      icon: '💰',
       categories: [
         { id: 'general_conditions', category: 'General Conditions', amount: costBreakdown['11. General Conditions'] || 0, percentage: 0 },
         { id: 'travel_expenses', category: 'Travel & Expenses', amount: costBreakdown['12. Travel & Expenses'] || 0, percentage: 0 },
@@ -135,9 +130,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
       {/* Header */}
       <div className="mb-6">
         <h3 className="text-lg font-bold text-gray-900 mb-2">Complete Cost Breakdown</h3>
-        <p className="text-sm text-gray-600">
-          All 12+ cost categories automatically calculated based on ANC's pricing logic
-        </p>
       </div>
 
       {/* Main Summary Cards */}
@@ -146,7 +138,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
         <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-blue-500">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600 font-medium">Total Project Price</span>
-            <DollarSign className="w-5 h-5 text-blue-600" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
             {formatCurrency(totalAmount)}
@@ -162,7 +153,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600 font-medium">Target Margin</span>
-            <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
             {(margin * 100).toFixed(0)}%
@@ -176,7 +166,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600 font-medium">Cost Categories</span>
-            <CheckCircle className="w-5 h-5 text-blue-600" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
             {Object.keys(costBreakdown).length}
@@ -196,7 +185,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
             className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 transition-all"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{group.icon}</span>
               <div className="text-left">
                 <h4 className="font-bold text-lg">{group.label}</h4>
                 <p className="text-xs text-blue-100">
@@ -248,17 +236,6 @@ export function CostBreakdownDisplay({ costBreakdown, totalAmount, margin, timel
                         style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
-
-                    {/* High Cost Indicator */}
-                    {pct > 20 && (
-                      <div className="flex items-start gap-1 text-xs text-orange-700 bg-orange-50 p-2 rounded">
-                        <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        <span>
-                          This category represents a significant portion of the total cost.
-                          Consider reviewing with ANC leadership for approval.
-                        </span>
-                      </div>
-                    )}
                   </div>
                 );
               })}
