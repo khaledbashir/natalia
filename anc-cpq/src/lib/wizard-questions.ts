@@ -205,44 +205,6 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Bonds add percentage-based cost'
     },
-    // Labor
-    {
-        id: 'installEquipment',
-        category: 'labor',
-        question: "What equipment will be used for installation?",
-        type: 'select',
-        options: [
-            { value: 'Ladder', label: 'Ladder (under 20ft)', impact: 'Standard' },
-            { value: 'ScissorLift', label: 'Scissor Lift (20-40ft)', impact: '+$500/day' },
-            { value: 'Crane', label: 'Crane (over 40ft)', impact: '+$2000/day' }
-        ],
-        required: true,
-        formulaImpact: 'Affects equipment rental costs'
-    },
-    {
-        id: 'crewSize',
-        category: 'labor',
-        question: "How many crew members needed on site?",
-        type: 'select',
-        options: [
-            { value: '2', label: '2 (Small install)', impact: 'Standard' },
-            { value: '4', label: '4 (Medium install)', impact: '2x labor' },
-            { value: '6', label: '6+ (Large install)', impact: '3x labor' }
-        ],
-        required: true
-    },
-    // Project
-    {
-        id: 'includePermits',
-        category: 'project',
-        question: "Are permits included in this quote?",
-        type: 'select',
-        options: [
-            { value: 'yes', label: 'Yes - Include permits', impact: '+$2,500 avg' },
-            { value: 'no', label: 'No - Client handles permits', impact: 'Excluded' }
-        ],
-        required: true
-    },
     {
         id: 'complexity',
         category: 'project',

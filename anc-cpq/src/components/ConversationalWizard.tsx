@@ -301,7 +301,14 @@ export function ConversationalWizard({
                 ]);
             }
             if (data.updatedParams) {
-                const newState = { ...cpqState, ...data.updatedParams };
+                // Normalize snake_case to camelCase for progress tracking
+                const normalizedParams: any = {};
+                Object.entries(data.updatedParams).forEach(([key, val]) => {
+                    const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                    normalizedParams[camelKey] = val;
+                });
+
+                const newState = { ...cpqState, ...normalizedParams };
                 setCpqState(newState);
                 onUpdate(newState);
             }
@@ -334,10 +341,10 @@ export function ConversationalWizard({
                 // Auto-inject the result as a suggestion
                 const autoMsg: Message = {
                     role: 'assistant',
-                    content: `I found **${title}** at:\n📍 ${address}\n\nIs this correct?`,
+                    content: `I found **${title}** at:\n${address}\n\nIs this correct?`,
                     suggestedOptions: [
-                        { value: address, label: "✅ Yes, confirm location" },
-                        { value: "No", label: "❌ No, search again" }
+                        { value: address, label: "Yes, confirm location" },
+                        { value: "No", label: "No, search again" }
                     ]
                 };
 
@@ -651,7 +658,7 @@ export function ConversationalWizard({
                         "text-[10px] font-black uppercase tracking-[0.15em] transition-colors duration-500",
                         progress === 100 ? "text-emerald-400" : "text-slate-500"
                     )}>
-                        {progress === 100 ? "✨ Proposal Ready" : `Configuration Phase: ${filledFields} / ${totalFields}`}
+                        {progress === 100 ? "PROPOSAL READY" : `Configuration Phase: ${filledFields} / ${totalFields}`}
                     </span>
                     <span className={clsx(
                         "text-[10px] font-black transition-colors duration-500",
