@@ -66,14 +66,10 @@ const getInitialMessage = (): Message => ({
 });
 
 const PROGRESS_STEPS = [
-    { id: "client", label: "CLIENT", fields: ["clientName", "address"] },
-    { id: "product", label: "SYSTEM", fields: ["productClass", "pixelPitch"] },
-    { id: "dimensions", label: "SPECS", fields: ["widthFt", "heightFt"] },
-    {
-        id: "config",
-        label: "DETAIL",
-        fields: ["environment", "shape", "access"],
-    },
+    { id: "metadata", label: "CLIENT", fields: ["clientName", "address", "projectName"] },
+    { id: "display", label: "DISPLAY", fields: ["productClass", "pixelPitch", "widthFt", "heightFt"] },
+    { id: "config", label: "DETAILS", fields: ["environment", "shape", "access", "mountingType", "structureCondition"] },
+    { id: "project", label: "LOGISTICS", fields: ["laborType", "powerDistance", "permits", "controlSystem", "bondRequired", "complexity"] },
 ];
 
 export function ConversationalWizard({
@@ -112,12 +108,13 @@ export function ConversationalWizard({
         }
     }, [selectedModel]);
 
-    // Calculate Progress
-    const totalFields = 10;
-    const filledFields = Object.keys(cpqState).filter((k) => {
-        const val = cpqState[k as keyof CPQInput];
+    // Calculate Progress Dynamically
+    const totalFields = WIZARD_QUESTIONS.length;
+    const filledFields = WIZARD_QUESTIONS.filter(q => {
+        const val = cpqState[q.id as keyof CPQInput];
         return val !== undefined && val !== null && val !== "" && val !== 0;
     }).length;
+
     const progress = Math.min(
         100,
         Math.round((filledFields / totalFields) * 100),
@@ -326,12 +323,12 @@ export function ConversationalWizard({
             console.log("🕵️ Auto-searching for:", query);
             const res = await fetch(`/api/search-places?query=${encodeURIComponent(query)}`);
             const data = await res.json();
-            
+
             if (data.results && data.results.length > 0) {
                 const bestMatch = data.results[0];
                 const address = bestMatch.address || bestMatch.display_name;
                 const title = bestMatch.title;
-                
+
                 // Auto-inject the result as a suggestion
                 const autoMsg: Message = {
                     role: 'assistant',
@@ -341,7 +338,7 @@ export function ConversationalWizard({
                         { value: "No", label: "❌ No, search again" }
                     ]
                 };
-                
+
                 setMessages(prev => [...prev, autoMsg]);
 
                 // Also populate suggestions for the dropdown in case they want to pick another
@@ -646,10 +643,31 @@ export function ConversationalWizard({
                     </div>
                 </div>
 
+                {/* Progress Label */}
+                <div className="flex justify-between items-end mb-2">
+                    <span className={clsx(
+                        "text-[10px] font-black uppercase tracking-[0.15em] transition-colors duration-500",
+                        progress === 100 ? "text-emerald-400" : "text-slate-500"
+                    )}>
+                        {progress === 100 ? "✨ Proposal Ready" : "Proposal Progress"}
+                    </span>
+                    <span className={clsx(
+                        "text-[10px] font-black transition-colors duration-500",
+                        progress === 100 ? "text-emerald-400" : "text-slate-400"
+                    )}>
+                        {progress}%
+                    </span>
+                </div>
+
                 {/* Progress Bar */}
-                <div className="h-1 bg-slate-800 rounded-full overflow-hidden mb-4">
+                <div className="h-1.5 bg-slate-800/50 rounded-full overflow-hidden mb-6 border border-slate-700/30">
                     <div
-                        className="h-full bg-[#003D82] transition-all duration-700 ease-out"
+                        className={clsx(
+                            "h-full transition-all duration-1000 ease-out",
+                            progress === 100
+                                ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                                : "bg-[#003D82]"
+                        )}
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -669,8 +687,8 @@ export function ConversationalWizard({
                                         status === "complete"
                                             ? "bg-blue-600 border-blue-500 text-white"
                                             : status === "active"
-                                              ? "border-blue-400 bg-blue-500/10 text-blue-400 animate-pulse"
-                                              : "border-slate-700 text-slate-700",
+                                                ? "border-blue-400 bg-blue-500/10 text-blue-400 animate-pulse"
+                                                : "border-slate-700 text-slate-700",
                                     )}
                                 >
                                     {status === "complete" ? (
@@ -685,8 +703,8 @@ export function ConversationalWizard({
                                         status === "complete"
                                             ? "text-slate-300"
                                             : status === "active"
-                                              ? "text-blue-400"
-                                              : "text-slate-600",
+                                                ? "text-blue-400"
+                                                : "text-slate-600",
                                     )}
                                 >
                                     {step.label}
@@ -864,10 +882,10 @@ export function ConversationalWizard({
                                                         (cpqState.heightFt ||
                                                             0) *
                                                         (cpqState.environment ===
-                                                        "Outdoor"
+                                                            "Outdoor"
                                                             ? 60
                                                             : 30)) /
-                                                        120,
+                                                    120,
                                                 )}{" "}
                                                 Amps (120V)
                                             </span>
@@ -886,37 +904,37 @@ export function ConversationalWizard({
                                             (widgetDef &&
                                                 widgetDef.type === "select" &&
                                                 widgetDef.options)) && (
-                                            <div className="flex flex-wrap gap-2">
-                                                {(msg.suggestedOptions &&
-                                                msg.suggestedOptions.length > 0
-                                                    ? msg.suggestedOptions
-                                                    : widgetDef?.options || []
-                                                ).map((opt) => (
-                                                    <button
-                                                        key={opt.value}
-                                                        onClick={() =>
-                                                            handleSend(
-                                                                String(
-                                                                    opt.value,
-                                                                ),
-                                                            )
-                                                        }
-                                                        className="px-4 py-1.5 bg-[#0f1420] hover:bg-[#003D82] text-slate-300 hover:text-white border border-slate-700 hover:border-[#003D82] rounded-full text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5 group"
-                                                    >
-                                                        {opt.label}{" "}
-                                                        <ChevronRight
-                                                            size={10}
-                                                            className="text-slate-600 group-hover:text-white"
-                                                        />
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(msg.suggestedOptions &&
+                                                        msg.suggestedOptions.length > 0
+                                                        ? msg.suggestedOptions
+                                                        : widgetDef?.options || []
+                                                    ).map((opt) => (
+                                                        <button
+                                                            key={opt.value}
+                                                            onClick={() =>
+                                                                handleSend(
+                                                                    String(
+                                                                        opt.value,
+                                                                    ),
+                                                                )
+                                                            }
+                                                            className="px-4 py-1.5 bg-[#0f1420] hover:bg-[#003D82] text-slate-300 hover:text-white border border-slate-700 hover:border-[#003D82] rounded-full text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5 group"
+                                                        >
+                                                            {opt.label}{" "}
+                                                            <ChevronRight
+                                                                size={10}
+                                                                className="text-slate-600 group-hover:text-white"
+                                                            />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         {widgetDef &&
                                             widgetDef.type === "number" &&
                                             (!msg.suggestedOptions ||
                                                 msg.suggestedOptions.length ===
-                                                    0) && (
+                                                0) && (
                                                 <div className="flex gap-2">
                                                     <input
                                                         type="number"
@@ -959,7 +977,7 @@ export function ConversationalWizard({
                                             widgetDef.type === "text" &&
                                             (!msg.suggestedOptions ||
                                                 msg.suggestedOptions.length ===
-                                                    0) &&
+                                                0) &&
                                             !isSearchingAddress &&
                                             !(
                                                 addressSuggestions.length > 0 &&
@@ -971,7 +989,7 @@ export function ConversationalWizard({
                                                             type="text"
                                                             placeholder={
                                                                 widgetDef.id ===
-                                                                "clientName"
+                                                                    "clientName"
                                                                     ? "Enter venue or client name (we'll auto-find the address)..."
                                                                     : "Enter details..."
                                                             }
@@ -1024,113 +1042,113 @@ export function ConversationalWizard({
                                                         (addressSuggestions.length >
                                                             0 &&
                                                             cpqState.clientName)) && (
-                                                        <div className="mt-2 animate-in fade-in slide-in-from-top-2">
-                                                            {isSearchingAddress && (
-                                                                <div className="bg-[#0f1420] border border-blue-500/30 rounded-xl p-4 flex items-center gap-4">
-                                                                    <div className="relative">
-                                                                        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
-                                                                        <div className="absolute inset-0 w-8 h-8 border-2 border-transparent border-t-blue-300/50 rounded-full animate-spin [animation-duration:1.5s]"></div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                                                                            Searching
-                                                                            Address...
-                                                                        </p>
-                                                                        <p className="text-[10px] text-slate-500">
-                                                                            Looking
-                                                                            up{" "}
-                                                                            {cpqState.clientName ||
-                                                                                "venue"}{" "}
-                                                                            in
-                                                                            our
-                                                                            database
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="ml-auto flex gap-1">
-                                                                        <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0s]"></div>
-                                                                        <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]"></div>
-                                                                        <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {addressSuggestions.length >
-                                                                0 &&
-                                                                !isSearchingAddress && (
-                                                                    <div className="space-y-2">
-                                                                        <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
-                                                                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                                                                            {
-                                                                                addressSuggestions.length
-                                                                            }{" "}
-                                                                            verified
-                                                                            addresses
-                                                                            found
-                                                                        </p>
-                                                                        <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl">
-                                                                            {addressSuggestions.map(
-                                                                                (
-                                                                                    item,
-                                                                                    idx,
-                                                                                ) => (
-                                                                                    <button
-                                                                                        key={
-                                                                                            idx
-                                                                                        }
-                                                                                        onClick={() => {
-                                                                                            handleSend(
-                                                                                                item.display_name,
-                                                                                                true,
-                                                                                            );
-                                                                                            setAddressSuggestions(
-                                                                                                [],
-                                                                                            );
-                                                                                        }}
-                                                                                        className="w-full text-left p-4 hover:bg-slate-800 transition-all border-b border-slate-800 last:border-0 group"
-                                                                                    >
-                                                                                        <div className="flex items-start gap-3">
-                                                                                            <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
-                                                                                                <MapPin className="w-4 h-4 text-blue-400" />
-                                                                                            </div>
-                                                                                            <div className="flex-1">
-                                                                                                <p className="text-xs text-white font-bold group-hover:text-blue-300 transition-colors">
-                                                                                                    {item.display_name
-                                                                                                        ?.split(
-                                                                                                            ",",
-                                                                                                        )?.[0]
-                                                                                                        ?.trim() ||
-                                                                                                        "N/A"}
-                                                                                                </p>
-                                                                                                <p className="text-[10px] text-slate-500 mt-0.5">
-                                                                                                    {item.display_name
-                                                                                                        ?.split(
-                                                                                                            ",",
-                                                                                                        )
-                                                                                                        ?.slice(
-                                                                                                            1,
-                                                                                                        )
-                                                                                                        ?.join(
-                                                                                                            ",",
-                                                                                                        )
-                                                                                                        ?.trim() ||
-                                                                                                        ""}
-                                                                                                </p>
-                                                                                            </div>
-                                                                                            <ChevronRight
-                                                                                                size={
-                                                                                                    14
-                                                                                                }
-                                                                                                className="text-slate-600 group-hover:text-blue-400 transition-colors"
-                                                                                            />
-                                                                                        </div>
-                                                                                    </button>
-                                                                                ),
-                                                                            )}
+                                                            <div className="mt-2 animate-in fade-in slide-in-from-top-2">
+                                                                {isSearchingAddress && (
+                                                                    <div className="bg-[#0f1420] border border-blue-500/30 rounded-xl p-4 flex items-center gap-4">
+                                                                        <div className="relative">
+                                                                            <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
+                                                                            <div className="absolute inset-0 w-8 h-8 border-2 border-transparent border-t-blue-300/50 rounded-full animate-spin [animation-duration:1.5s]"></div>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                                                                                Searching
+                                                                                Address...
+                                                                            </p>
+                                                                            <p className="text-[10px] text-slate-500">
+                                                                                Looking
+                                                                                up{" "}
+                                                                                {cpqState.clientName ||
+                                                                                    "venue"}{" "}
+                                                                                in
+                                                                                our
+                                                                                database
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="ml-auto flex gap-1">
+                                                                            <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0s]"></div>
+                                                                            <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]"></div>
+                                                                            <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
                                                                         </div>
                                                                     </div>
                                                                 )}
-                                                        </div>
-                                                    )}
+
+                                                                {addressSuggestions.length >
+                                                                    0 &&
+                                                                    !isSearchingAddress && (
+                                                                        <div className="space-y-2">
+                                                                            <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
+                                                                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                                                                {
+                                                                                    addressSuggestions.length
+                                                                                }{" "}
+                                                                                verified
+                                                                                addresses
+                                                                                found
+                                                                            </p>
+                                                                            <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl">
+                                                                                {addressSuggestions.map(
+                                                                                    (
+                                                                                        item,
+                                                                                        idx,
+                                                                                    ) => (
+                                                                                        <button
+                                                                                            key={
+                                                                                                idx
+                                                                                            }
+                                                                                            onClick={() => {
+                                                                                                handleSend(
+                                                                                                    item.display_name,
+                                                                                                    true,
+                                                                                                );
+                                                                                                setAddressSuggestions(
+                                                                                                    [],
+                                                                                                );
+                                                                                            }}
+                                                                                            className="w-full text-left p-4 hover:bg-slate-800 transition-all border-b border-slate-800 last:border-0 group"
+                                                                                        >
+                                                                                            <div className="flex items-start gap-3">
+                                                                                                <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+                                                                                                    <MapPin className="w-4 h-4 text-blue-400" />
+                                                                                                </div>
+                                                                                                <div className="flex-1">
+                                                                                                    <p className="text-xs text-white font-bold group-hover:text-blue-300 transition-colors">
+                                                                                                        {item.display_name
+                                                                                                            ?.split(
+                                                                                                                ",",
+                                                                                                            )?.[0]
+                                                                                                            ?.trim() ||
+                                                                                                            "N/A"}
+                                                                                                    </p>
+                                                                                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                                                                                        {item.display_name
+                                                                                                            ?.split(
+                                                                                                                ",",
+                                                                                                            )
+                                                                                                            ?.slice(
+                                                                                                                1,
+                                                                                                            )
+                                                                                                            ?.join(
+                                                                                                                ",",
+                                                                                                            )
+                                                                                                            ?.trim() ||
+                                                                                                            ""}
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                                <ChevronRight
+                                                                                                    size={
+                                                                                                        14
+                                                                                                    }
+                                                                                                    className="text-slate-600 group-hover:text-blue-400 transition-colors"
+                                                                                                />
+                                                                                            </div>
+                                                                                        </button>
+                                                                                    ),
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                            </div>
+                                                        )}
                                                 </div>
                                             )}
                                     </div>
