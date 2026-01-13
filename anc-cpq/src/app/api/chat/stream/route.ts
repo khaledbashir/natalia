@@ -8,31 +8,42 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant. Your goal: Collect 20 
 - Use professional, concise language. No technical IDs in messages.
 - Always check 'currentState' and skip fields already filled.
 - Prioritize fields in the order listed below.
-- If the user provides multiple values, update all of them in 'updatedParams'.
+- ALL-IN-ONE EXTRACTION: If the user provides multiple values in a single message, you MUST extract ALL of them into 'updatedParams' immediately.
+- Value Extraction: Extract ONLY the business values (e.g., {"clientName": "Madison Square Garden"} instead of {"clientName": "Hi, I'm madison..."}). Strip all conversational fluff.
+- DO NOT ask for fields if you can find them in the 'Input' or 'history'.
 
 ### 20 REQUIRED FIELDS (PRIORITY ORDER):
-1-2. clientName, address
-3-4. productClass (Scoreboard, Ribbon, CenterHung, Vomitory), pixelPitch (4, 6, 10, 16)
-5-6. widthFt, heightFt (numbers)
-7-8. environment (Indoor/Outdoor), shape (Flat/Curved)
-9-10. mountingType (Wall, Ground, Rigging, Pole), access (Front/Rear)
-11-12. structureCondition (Existing/NewSteel), laborType (NonUnion/Union/Prevailing)
-13-14. powerDistance (Close/Medium/Far), permits (Client/ANC/Existing)
-15-16. controlSystem (Include/None), bondRequired (Yes/No)
-17. complexity (Standard/High)
+1. clientName (Venue or organization name)
+2. address (Full physical location)
+3. productClass (Choices: Scoreboard, Ribbon, CenterHung, Vomitory)
+4. pixelPitch (Choices: 4, 6, 10, 16)
+5. widthFt (Number)
+6. heightFt (Number)
+7. environment (Choices: Indoor, Outdoor)
+8. shape (Choices: Flat, Curved)
+9. mountingType (Choices: Wall, Ground, Rigging, Pole)
+10. access (Choices: Front, Rear)
+11. structureCondition (Choices: Existing, NewSteel)
+12. laborType (Choices: NonUnion, Union, Prevailing)
+13. powerDistance (Choices: Close, Medium, Far)
+14. permits (Choices: Client, ANC, Existing)
+15. controlSystem (Choices: Include, None)
+16. bondRequired (Choices: Yes, No)
+17. complexity (Choices: Standard, High)
 18-20. unitCost, targetMargin, serviceLevel (bronze/silver/gold)
 
 ### RESPONSE FORMAT:
-- JSON ONLY.
+- Output a single JSON block.
 {
-  "reasoning": "Briefly state what was found and what is next.",
-  "message": "Assistant feedback/question",
+  "reasoning": "Logic trace (brief)",
+  "message": "Assistant feedback/question (Plain text only)",
   "nextStep": "fieldId",
   "suggestedOptions": [],
   "updatedParams": {}
 }
-- suggestedOptions is REQUIRED for selects/numbers.
-- updatedParams MUST include values just provided by user.`;
+- suggestedOptions is MANDATORY for all select fields.
+- updatedParams: Essential! Include ALL values extracted from user input.
+- NEVER put markdown fences or codes inside the 'message' or 'reasoning'.`;
 
 const NARRATION_SYSTEM_PROMPT = `You are a professional assistant.
 Acknowledge the captured data and ask the next question provided in the JSON input.
@@ -243,6 +254,22 @@ export async function POST(request: NextRequest) {
             { role: "user", content: `Input: "${message}"\nState: ${JSON.stringify(currentState)}` },
           ];
 
+    // Build request body
+    const body: any = {
+        model: modelConfig.id,
+        messages,
+        temperature: mode === "narrate" ? 0.4 : 0.1,
+        stream: true,
+    };
+
+    // Only enable native thinking for models that explicitly support it (GLM-4.7)
+    if (modelConfig.supportsThinking) {
+        body.thinking = {
+            type: "enabled",
+            clear_thinking: false,
+        };
+    }
+
     // Create streaming response
     const response = await fetch(modelConfig.endpoint, {
       method: "POST",
@@ -250,17 +277,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${modelConfig.apiKey}`,
       },
-      body: JSON.stringify({
-        model: modelConfig.id,
-        messages,
-        temperature: mode === "narrate" ? 0.4 : 0.1,
-        stream: true,
-        // GLM-4.7 thinking mode: stream reasoning_content and preserve it when clear_thinking is false.
-        thinking: {
-          type: "enabled",
-          clear_thinking: false,
-        },
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -417,7 +434,7 @@ export async function POST(request: NextRequest) {
             const safeMessage =
               sanitizePlainMessage(parsed.message) ||
               questionDef?.question ||
-              "What is the next required specification?";
+              "I have updated the project specifications. What is the next required detail?";
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({

@@ -98,6 +98,14 @@ const normalizeParams = (params: any) => {
     Object.entries(params).forEach(([key, val]) => {
         // 1. Convert snake_case to camelCase
         let camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+        
+        // 2. Safety Truncation: Prevent AI hallucinations from breaking the UI headers
+        let safeVal = val;
+        if (typeof val === 'string' && (camelKey === 'clientName' || camelKey === 'address' || camelKey === 'projectName')) {
+            if (val.length > 80) {
+                safeVal = val.substring(0, 80).trim() + "...";
+            }
+        }
 
         // 2. Map aliases and handle casing
         const lowerKey = camelKey.toLowerCase();
@@ -110,7 +118,14 @@ const normalizeParams = (params: any) => {
             if (match) camelKey = match;
         }
 
-        normalized[camelKey] = val;
+        // 3. Type Conversion & Safety
+        if (['widthFt', 'heightFt', 'pixelPitch', 'unitCost', 'targetMargin'].includes(camelKey)) {
+            normalized[camelKey] = parseFloat(String(safeVal)) || 0;
+        } else if (camelKey === 'bondRequired') {
+            normalized[camelKey] = String(safeVal).toLowerCase() === 'yes';
+        } else {
+            normalized[camelKey] = safeVal;
+        }
     });
     return normalized;
 };
@@ -1121,7 +1136,8 @@ export function ConversationalWizard({
                                     throw new Error(`${parsed.error || 'Streaming error'}${rid}`);
                                 }
                             } catch (e) {
-                                throw e;
+                                // Ignore parse errors for individual data chunks, just log them
+                                console.warn("Chunk parse error:", e, data);
                             }
                         }
                     }
@@ -1177,9 +1193,9 @@ export function ConversationalWizard({
                 thinking: SHOW_REASONING ? `ERROR TRACE: ${errMsg}` : undefined,
             };
 
-            // If narration mode placeholder exists, replace it; otherwise append.
+            // If placeholder exists, replace it; otherwise append.
             const placeholderIndex = assistantPlaceholderIndexRef.current;
-            if (isNarrationMode && placeholderIndex !== null) {
+            if (placeholderIndex !== null) {
                 setMessages((prev) => {
                     if (placeholderIndex >= prev.length) return [...prev, assistantMsg];
                     const next = [...prev];
@@ -1201,6 +1217,7 @@ export function ConversationalWizard({
             throw error;
         } finally {
             setIsStreaming(false);
+            setIsLoading(false);
             setStreamingThinking('');
             // Clear abort ref if this stream is the active one.
             if (activeStreamAbortRef.current === abortController) {
@@ -1921,8 +1938,8 @@ export function ConversationalWizard({
                 </div>
                 <div className="mt-2 flex justify-center">
                    <p className="text-[8px] font-bold text-slate-700 uppercase tracking-[0.2em] flex items-center gap-1">
-                      <span className="w-1 h-1 bg-green-500/40 rounded-full animate-pulse"></span>
-                      {projectId ? "Logic Vault Active" : "Initializing..."}
+                      <span className="w-1 h-1 bg-green-500/40 rounded-full"></span>
+                      {projectId ? "Session Active" : "Initializing..."}
                    </p>
                 </div>
             </div>
