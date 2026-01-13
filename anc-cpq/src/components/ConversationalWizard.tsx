@@ -194,6 +194,14 @@ export function ConversationalWizard({
     const [searchStep, setSearchStep] = useState(1);
     const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
     const [lastFieldUpdated, setLastFieldUpdated] = useState<string | null>(null);
+    const lastNarrationRequestRef = useRef<
+        | {
+              text: string;
+              state: any;
+              narration: any;
+          }
+        | null
+    >(null);
 
     // Refs
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -542,6 +550,20 @@ export function ConversationalWizard({
         setInput("");
         setIsLoading(true);
 
+        // Hard-fail + retry path (no silent fallbacks)
+        if (/^retry( ai)?$/i.test(updatedText.trim()) && lastNarrationRequestRef.current) {
+            const pending = lastNarrationRequestRef.current;
+            try {
+                await handleStreamingChat(pending.text, pending.state, {
+                    mode: "narrate",
+                    narration: pending.narration,
+                });
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
         // If the user is simply confirming to start (e.g., clicked "Proceed"), do NOT call the model.
         // Immediately move the wizard forward with the next required question.
         const isProceedIntent = /^(proceed|start|start new quote|go|continue)$/i.test(
@@ -667,7 +689,7 @@ export function ConversationalWizard({
             });
             const nextStep = nextRequired?.id || "confirm";
 
-            const assistantMsg: Message = {
+            const deterministicFallback: Message = {
                 role: "assistant",
                 content:
                     nextStep === "confirm"
@@ -680,23 +702,72 @@ export function ConversationalWizard({
                     : undefined,
             };
 
-            setIsLoading(false);
-            setIsStreaming(false);
-            setStreamingThinking("");
-            setAskedQuestions((prev) => new Set([...prev, nextStep]));
-            setMessages((prev) => [...prev, assistantMsg]);
+            // Real AI feel (without letting the model control state): ask the model to narrate.
+            // It must acknowledge the captured value and then ask the next canonical question verbatim.
+            try {
+                const nextQuestionText =
+                    nextStep === "confirm"
+                        ? "All required specifications are captured. Please confirm the configuration below."
+                        : nextRequired?.question || "What is the next required specification?";
 
-            if (projectId) {
-                fetch(`/api/projects/${projectId}/message`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(assistantMsg),
-                }).catch((e) =>
-                    console.error("Failed to log assistant message", e),
-                );
+                const narrationPayload = {
+                    fieldCapturedLabel:
+                        widgetDef.id === "clientName"
+                            ? "venue name"
+                            : widgetDef.id === "address"
+                              ? "venue address"
+                              : "specification",
+                    fieldCapturedId: widgetDef.id,
+                    valueCaptured: updatedParams[widgetDef.id],
+                    nextStep,
+                    nextQuestion: nextQuestionText,
+                    suggestedOptions: deterministicFallback.suggestedOptions || [],
+                    stateSnapshot: newState,
+                };
+
+                lastNarrationRequestRef.current = {
+                    text: updatedText,
+                    state: newState,
+                    narration: narrationPayload,
+                };
+
+                await handleStreamingChat(updatedText, newState, {
+                    mode: "narrate",
+                    narration: narrationPayload,
+                });
+
+                // The streaming handler will append the assistant message & manage loading flags.
+                return;
+            } catch (e) {
+                const errMsg = e instanceof Error ? e.message : String(e);
+                const assistantMsg: Message = {
+                    role: "assistant",
+                    content:
+                        `AI failure (no fallback): ${errMsg}\n\n` +
+                        `Type "Retry" to attempt again.`,
+                    nextStep,
+                    suggestedOptions: [{ value: "Retry", label: "Retry AI" }],
+                    thinking: SHOW_REASONING
+                        ? `ERROR TRACE: Narration failed for nextStep=${nextStep}.`
+                        : undefined,
+                };
+
+                setIsLoading(false);
+                setIsStreaming(false);
+                setStreamingThinking("");
+                setMessages((prev) => [...prev, assistantMsg]);
+
+                if (projectId) {
+                    fetch(`/api/projects/${projectId}/message`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(assistantMsg),
+                    }).catch((err) =>
+                        console.error("Failed to log assistant message", err),
+                    );
+                }
+                return;
             }
-
-            return;
         }
 
         // Client-side extraction for number fields (non-wizard/freeform fallback)
@@ -848,9 +919,31 @@ export function ConversationalWizard({
         }
     };
 
-    const handleStreamingChat = async (text: string, currentStateToSend: any) => {
+    const handleStreamingChat = async (
+        text: string,
+        currentStateToSend: any,
+        opts?: {
+            mode?: "audit" | "narrate";
+            narration?: any;
+        },
+    ) => {
         setIsStreaming(true);
         setStreamingThinking('');
+
+        const isNarrationMode = opts?.mode === "narrate";
+        const placeholderIndex: number | null = isNarrationMode ? messages.length : null;
+
+        if (isNarrationMode && placeholderIndex !== null) {
+            setMessages((prev) => [
+                ...prev,
+                {
+                    role: "assistant",
+                    content: "",
+                    nextStep: opts?.narration?.nextStep || "",
+                    suggestedOptions: opts?.narration?.suggestedOptions || [],
+                },
+            ]);
+        }
         
         try {
             const response = await fetch("/api/chat/stream", {
@@ -861,18 +954,23 @@ export function ConversationalWizard({
                     history: messages,
                     currentState: { ...currentStateToSend, askedQuestions: Array.from(askedQuestions) },
                     selectedModel,
+                    mode: opts?.mode || "audit",
+                    narration: opts?.narration,
                 }),
             });
 
-            if (!response.ok) throw new Error('Streaming failed');
+            if (!response.ok) {
+                const bodyText = await response.text();
+                throw new Error(bodyText || `Streaming failed (HTTP ${response.status})`);
+            }
             
             const reader = response.body?.getReader();
             const decoder = new TextDecoder();
             let finalContent = '';
             let finalThinking = '';
             let finalNextStep = '';
-            let finalSuggestedOptions = [];
-            let finalUpdatedParams = {};
+            let finalSuggestedOptions: { value: string; label: string }[] = [];
+            let finalUpdatedParams: Record<string, any> = {};
             
             if (reader) {
                 while (true) {
@@ -894,6 +992,22 @@ export function ConversationalWizard({
                                     setStreamingThinking(parsed.content);
                                 } else if (parsed.type === 'content') {
                                     finalContent = parsed.content;
+
+                                    // In narration mode, stream the assistant message live.
+                                    if (isNarrationMode && placeholderIndex !== null) {
+                                        const safe = sanitizeAssistantText(finalContent);
+                                        setMessages((prev) => {
+                                            if (placeholderIndex === null || placeholderIndex >= prev.length) return prev;
+                                            const next = [...prev];
+                                            const existing = next[placeholderIndex];
+                                            next[placeholderIndex] = {
+                                                ...existing,
+                                                role: "assistant",
+                                                content: safe,
+                                            };
+                                            return next;
+                                        });
+                                    }
                                 } else if (parsed.type === 'complete') {
                                     // Extraction logic to ensure ZERO JSON leaks into the UI
                                     finalContent = sanitizeAssistantText(parsed.message || parsed.content || finalContent);
@@ -905,9 +1019,31 @@ export function ConversationalWizard({
                                     finalNextStep = parsed.nextStep || "";
                                     finalSuggestedOptions = parsed.suggestedOptions || [];
                                     finalUpdatedParams = parsed.updatedParams || {};
+
+                                    if (isNarrationMode && placeholderIndex !== null) {
+                                        const safe = sanitizeAssistantText(finalContent);
+                                        setMessages((prev) => {
+                                            if (placeholderIndex === null || placeholderIndex >= prev.length) return prev;
+                                            const next = [...prev];
+                                            const existing = next[placeholderIndex];
+                                            next[placeholderIndex] = {
+                                                ...existing,
+                                                role: "assistant",
+                                                content: safe,
+                                                nextStep: finalNextStep,
+                                                suggestedOptions: finalSuggestedOptions,
+                                                thinking: SHOW_REASONING ? finalThinking : undefined,
+                                            };
+                                            return next;
+                                        });
+                                    }
+                                }
+                                else if (parsed.type === 'error') {
+                                    const rid = parsed.requestId ? ` requestId=${parsed.requestId}` : '';
+                                    throw new Error(`${parsed.error || 'Streaming error'}${rid}`);
                                 }
                             } catch (e) {
-                                console.error('Error parsing streaming data:', e);
+                                throw e;
                             }
                         }
                     }
@@ -933,8 +1069,11 @@ export function ConversationalWizard({
                 suggestedOptions: finalSuggestedOptions,
                 thinking: SHOW_REASONING ? finalThinking : undefined,
             };
-            
-            setMessages(prev => [...prev, finalMessage]);
+
+            // If narration mode already streamed into a placeholder bubble, don't append a second message.
+            if (!isNarrationMode) {
+                setMessages(prev => [...prev, finalMessage]);
+            }
 
             if (finalNextStep) {
                 setAskedQuestions((prev) => new Set([...prev, finalNextStep]));
@@ -952,7 +1091,39 @@ export function ConversationalWizard({
             }
             
         } catch (error) {
-            console.error('Streaming chat error:', error);
+            setIsLoading(false);
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const assistantMsg: Message = {
+                role: "assistant",
+                content:
+                    `AI failure (no fallback): ${errMsg}\n\n` +
+                    `Type "Retry" to attempt again.`,
+                nextStep: opts?.narration?.nextStep || "",
+                suggestedOptions: [{ value: "Retry", label: "Retry AI" }],
+                thinking: SHOW_REASONING ? `ERROR TRACE: ${errMsg}` : undefined,
+            };
+
+            // If narration mode placeholder exists, replace it; otherwise append.
+            if (isNarrationMode && placeholderIndex !== null) {
+                setMessages((prev) => {
+                    if (placeholderIndex >= prev.length) return [...prev, assistantMsg];
+                    const next = [...prev];
+                    next[placeholderIndex] = assistantMsg;
+                    return next;
+                });
+            } else {
+                setMessages((prev) => [...prev, assistantMsg]);
+            }
+
+            if (projectId) {
+                fetch(`/api/projects/${projectId}/message`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(assistantMsg),
+                }).catch((e) => console.error("Failed to log assistant message", e));
+            }
+
+            throw error;
         } finally {
             setIsStreaming(false);
             setStreamingThinking('');

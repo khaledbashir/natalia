@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AI_MODELS, DEFAULT_MODEL } from '../../../../lib/ai-models';
+import { randomUUID } from 'crypto';
 
 const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT tool. Your job is to fill exactly 20 fields for the Engineering Estimator.
 
@@ -62,6 +63,17 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - NEVER put JSON or code blocks inside the "message" field.
 - **DO NOT EXPLAIN YOUR REASONING IN THE message FIELD. ONLY IN THE reasoning FIELD.**
 - STOP immediately after the closing brace of the JSON. DO NOT EXPLAIN.`;
+
+const NARRATION_SYSTEM_PROMPT = `You are the ANC LOGIC ENGINE. Your job is to sound like a real AI assistant, but you do NOT decide the next step.
+
+Rules:
+- Output PLAIN TEXT ONLY (no JSON, no code blocks, no markdown fences).
+- Be professional and concise.
+- First: acknowledge the field that was just captured in a single short sentence.
+- Second: ask EXACTLY the provided next question, verbatim.
+- Do not add extra questions.
+- Do not mention internal field IDs.
+`;
 
 const VALID_FIELD_IDS_IN_ORDER = [
   "clientName",
@@ -193,7 +205,15 @@ function extractJSON(text: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history = [], currentState = {}, selectedModel = DEFAULT_MODEL } = await request.json();
+    const requestId = randomUUID();
+    const {
+      message,
+      history = [],
+      currentState = {},
+      selectedModel = DEFAULT_MODEL,
+      mode = "audit",
+      narration,
+    } = await request.json();
     
     const modelConfig = AI_MODELS[selectedModel];
     if (!modelConfig) {
@@ -204,14 +224,21 @@ export async function POST(request: NextRequest) {
     const cleanedHistory = cleanHistory(history);
 
     // Build messages for the AI model
-    const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...cleanedHistory.map((h: any) => ({
-        role: h.role,
-        content: h.content,
-      })),
-      { role: "user", content: `Input: "${message}"\nState: ${JSON.stringify(currentState)}` },
-    ];
+    const messages =
+      mode === "narrate"
+        ? [
+            { role: "system", content: NARRATION_SYSTEM_PROMPT },
+            // In narration mode, history often hurts (it increases repetition risk). Keep it minimal.
+            { role: "user", content: JSON.stringify(narration ?? {}) },
+          ]
+        : [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...cleanedHistory.map((h: any) => ({
+              role: h.role,
+              content: h.content,
+            })),
+            { role: "user", content: `Input: "${message}"\nState: ${JSON.stringify(currentState)}` },
+          ];
 
     // Create streaming response
     const response = await fetch(modelConfig.endpoint, {
@@ -223,13 +250,22 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: modelConfig.id,
         messages,
-        temperature: 0.1,
+        temperature: mode === "narrate" ? 0.4 : 0.1,
         stream: true,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(await response.text());
+      const bodyText = await response.text();
+      console.error(`[chat/stream] upstream_error requestId=${requestId} status=${response.status} body=${bodyText}`);
+      return NextResponse.json(
+        {
+          error: "Upstream model error",
+          requestId,
+          status: response.status,
+        },
+        { status: 502 },
+      );
     }
 
     // Create a streaming response
@@ -244,6 +280,21 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         let fullText = '';
+
+        // Truthful progress trace (not chain-of-thought).
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "thinking",
+              content:
+                mode === "narrate"
+                  ? "Generating assistant wording for the next step..."
+                  : "Running spec audit and extracting structured fields...",
+            })}\n\n`,
+          ),
+        );
+
+        // (We do NOT request or stream chain-of-thought. Only safe progress signals.)
 
         while (true) {
           const { done, value } = await reader.read();
@@ -261,10 +312,15 @@ export async function POST(request: NextRequest) {
                 const parsedChunk = JSON.parse(data);
                 const delta = parsedChunk.choices?.[0]?.delta;
 
-                // Accumulate model output, but do not stream it back to the UI.
-                // This prevents the assistant bubble from ever displaying audit steps / partial JSON.
                 if (delta?.content) {
                   fullText += delta.content;
+                  if (mode === "narrate") {
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({ type: "content", content: fullText })}\n\n`,
+                      ),
+                    );
+                  }
                 }
               } catch (e) {
                 // Silently skip parse errors
@@ -273,42 +329,47 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Final extraction (ABSOLUTE: never send raw model JSON to the client as message)
-        const parsed = extractJSON(fullText);
-        const { WIZARD_QUESTIONS } = await import("../../../../lib/wizard-questions");
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "thinking",
+              content:
+                mode === "narrate"
+                  ? "Finalizing response..."
+                  : "Validating output and selecting next required field...",
+            })}\n\n`,
+          ),
+        );
 
-        const nextStep =
-          (parsed?.nextStep && typeof parsed.nextStep === "string" && VALID_FIELD_IDS_IN_ORDER.includes(parsed.nextStep as any))
-            ? parsed.nextStep
-            : computeNextStepFromState(currentState);
+        if (mode === "narrate") {
+          const safeText = sanitizePlainMessage(fullText);
+          const nextStep = typeof narration?.nextStep === "string" ? narration.nextStep : "";
+          const suggestedOptions = Array.isArray(narration?.suggestedOptions)
+            ? narration.suggestedOptions
+            : [];
 
-        const questionDef = WIZARD_QUESTIONS.find((q) => q.id === nextStep);
-        const suggestedOptions = questionDef?.options || [];
+          if (!safeText) {
+            console.error(
+              `[chat/stream] narration_empty requestId=${requestId} raw=${fullText}`,
+            );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  requestId,
+                  error: "Narration model returned empty/unsafe output.",
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+            return;
+          }
 
-        const safeReasoning =
-          (parsed?.reasoning && typeof parsed.reasoning === "string" ? parsed.reasoning : "").trim();
-
-        if (parsed) {
-          const safeMessage = sanitizePlainMessage(parsed.message) || questionDef?.question || "What is the next required specification?";
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
                 type: "complete",
-                message: safeMessage,
-                nextStep,
-                suggestedOptions,
-                updatedParams: parsed.updatedParams || {},
-                reasoning: safeReasoning,
-              })}\n\n`,
-            ),
-          );
-        } else {
-          // Hard fallback: keep the wizard moving, but never leak the model's raw output.
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "complete",
-                message: questionDef?.question || "What is the next required specification?",
+                message: safeText,
                 nextStep,
                 suggestedOptions,
                 updatedParams: {},
@@ -316,6 +377,62 @@ export async function POST(request: NextRequest) {
               })}\n\n`,
             ),
           );
+        } else {
+          // Final extraction (ABSOLUTE: never send raw model JSON to the client as message)
+          const parsed = extractJSON(fullText);
+          const { WIZARD_QUESTIONS } = await import("../../../../lib/wizard-questions");
+
+          if (!parsed) {
+            console.error(
+              `[chat/stream] invalid_json requestId=${requestId} raw=${fullText}`,
+            );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  requestId,
+                  error:
+                    "Model output was not valid JSON for SPEC AUDIT. Check server logs for raw output.",
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+            return;
+          }
+
+          const nextStep =
+            (parsed?.nextStep &&
+              typeof parsed.nextStep === "string" &&
+              VALID_FIELD_IDS_IN_ORDER.includes(parsed.nextStep as any))
+              ? parsed.nextStep
+              : computeNextStepFromState(currentState);
+
+          const questionDef = WIZARD_QUESTIONS.find((q) => q.id === nextStep);
+          const suggestedOptions = questionDef?.options || [];
+
+          const safeReasoning =
+            (parsed?.reasoning && typeof parsed.reasoning === "string"
+              ? parsed.reasoning
+              : "").trim();
+
+          if (parsed) {
+            const safeMessage =
+              sanitizePlainMessage(parsed.message) ||
+              questionDef?.question ||
+              "What is the next required specification?";
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "complete",
+                  message: safeMessage,
+                  nextStep,
+                  suggestedOptions,
+                  updatedParams: parsed.updatedParams || {},
+                  reasoning: safeReasoning,
+                })}\n\n`,
+              ),
+            );
+          }
         }
 
         controller.close();
