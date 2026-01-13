@@ -103,11 +103,11 @@ Thinking content visible as raw HTML or hidden, not a nice accordion.
 - [x] Implement proper rendering for `msg.thinking` in frontend
 
 ### Issue 9: Progress Bar Mismatch
-**Status**: ✅ FOUND
+**Status**: ✅ FIXED
 **Description**:
 Shows "2 left" when finished.
 **Action**:
-- [ ] Fix progress calculation frontend logic
+- [x] Fix progress calculation frontend logic
 
 ### Issue 10: Excessive Price Recalculation
 **Status**: ✅ FOUND

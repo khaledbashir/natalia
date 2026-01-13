@@ -739,6 +739,28 @@ ${finalThinking}
     const currentNextStep = messages[messages.length - 1]?.nextStep;
     const widgetDef = WIZARD_QUESTIONS.find((q) => q.id === currentNextStep);
 
+    // Progress calculation
+    const totalFields = WIZARD_QUESTIONS.filter(q => q.required).length;
+    const filledFields = WIZARD_QUESTIONS.filter(q => {
+        if (!q.required) return false;
+        const val = cpqState[q.id as keyof CPQInput];
+        return val !== undefined && val !== null && val !== '' && val !== 0;
+    }).length;
+    const progress = Math.round((filledFields / totalFields) * 100);
+
+    // Step status calculation
+    const getStepStatus = (step: typeof PROGRESS_STEPS[0]) => {
+        const stepFields = step.fields;
+        const completedInStep = stepFields.filter(field => {
+            const val = cpqState[field as keyof CPQInput];
+            return val !== undefined && val !== null && val !== '' && val !== 0;
+        }).length;
+        
+        if (completedInStep === stepFields.length) return 'complete';
+        if (completedInStep > 0) return 'active';
+        return 'pending';
+    };
+
     return (
         <div className="flex flex-col h-full bg-[#0a0a0f] overflow-hidden relative border-r border-slate-800">
             {/* PROGRESS HEADER */}
