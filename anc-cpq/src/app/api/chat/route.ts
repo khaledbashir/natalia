@@ -516,7 +516,55 @@ export async function POST(request: NextRequest) {
         // Classify user message type
         const messageType = classifyUserMessage(message);
 
-        // Handle SERP snippets for address
+        // SIMPLE: If current step is address and user gives venue name, auto-search for it
+        const currentStep = await computeNextStepFromState(currentState || {});
+        const isAddressStep = currentStep === "address";
+
+        // When user provides a venue name (short text, not full address), search for it
+        if (isAddressStep && messageType === MessageType.VENUE_NAME_ONLY) {
+            const venueName = message.trim();
+            console.log(`🔍 Auto-searching address for venue: "${venueName}"`);
+
+            try {
+                // Call search-places API internally
+                const searchUrl = new URL("http://localhost:3000/api/search-places");
+                searchUrl.searchParams.set("query", venueName);
+
+                const searchRes = await fetch(searchUrl.toString());
+                const searchData = await searchRes.json();
+
+                if (searchData.results && searchData.results.length > 0) {
+                    const bestMatch = searchData.results[0];
+                    const foundAddress = bestMatch.display_name || bestMatch.address || bestMatch.title;
+
+                    return NextResponse.json({
+                        message: `I found **${bestMatch.title}** at:\n${foundAddress}\n\nIs this correct?`,
+                        nextStep: "address",
+                        suggestedOptions: [
+                            { value: foundAddress, label: "✓ Yes, use this address" },
+                            { value: "No", label: "✗ No, search again" }
+                        ],
+                        updatedParams: {
+                            clientName: venueName
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Auto-search failed:", e);
+            }
+
+            // Fallback: ask for address manually
+            return NextResponse.json({
+                message: `I couldn't find "${venueName}" automatically. Please provide the full address:`,
+                nextStep: "address",
+                suggestedOptions: [],
+                updatedParams: {
+                    clientName: venueName
+                }
+            });
+        }
+
+        // Handle SERP snippets for address (when user pastes search results)
         if (messageType === MessageType.SERP_SNIPPET) {
             const validated = validateAddress(message);
 
@@ -602,6 +650,42 @@ export async function POST(request: NextRequest) {
         // Add thinking support for ZhipuAI
         if (modelConfig.supportsThinking) {
             requestBody.thinking = { type: "enabled", clear_thinking: false };
+        }
+
+        // SPECIAL CASE: User confirming an address (e.g., clicked "Yes, use this address")
+        // Skip the AI call, just save the address and move to next step
+        const isAddressConfirmation = isAddressStep && (
+            message.toLowerCase() === "yes" ||
+            message.toLowerCase().includes("correct") ||
+            message.toLowerCase().includes("use this address") ||
+            (message.includes(",") && message.length > 30 && !message.includes("No"))
+        );
+
+        if (isAddressConfirmation) {
+            console.log("✅ Address confirmed. Moving to next step.");
+
+            const mergedState = {
+                ...(currentState || {}),
+                address: message,
+            };
+
+            // Sync projectName
+            if (mergedState.clientName) {
+                mergedState.projectName = mergedState.clientName;
+            }
+
+            const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
+            const nextStep = await computeNextStepFromState(mergedState);
+            const questionDef = WIZARD_QUESTIONS.find((q) => q.id === nextStep);
+
+            return NextResponse.json({
+                message: `Address confirmed. ${questionDef?.question || "What's next?"}`,
+                updatedParams: {
+                    address: message
+                },
+                nextStep,
+                suggestedOptions: questionDef?.options || [],
+            });
         }
 
         const response = await fetch(modelConfig.endpoint, {

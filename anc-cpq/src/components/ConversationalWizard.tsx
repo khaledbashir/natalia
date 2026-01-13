@@ -160,15 +160,25 @@ export function ConversationalWizard({
         const trimmed = value.trim();
         if (!trimmed) return false;
 
+        // If it has 3+ comma-separated parts, it's likely a full address
+        const parts = trimmed.split(',').filter(p => p.trim());
+        if (parts.length >= 3) return true;
+
         const hasNumber = /\b\d{1,6}\b/.test(trimmed);
         const hasStreetType =
-            /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy|plaza)\b/i.test(
+            /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy|plaza|circle|square|al|district|governorate|faisal)\b/i.test(
                 trimmed,
             );
-        const hasCityStateZip =
-            /,\s*[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/.test(trimmed);
+        // International postal codes: US ZIP, Canada A1A 1A1, UK, Jordan 5-digit, etc.
+        const hasPostalCode =
+            /\b\d{4,6}\b/.test(trimmed) || // Generic numeric postal (Jordan, Egypt, etc.)
+            /,\s*[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/.test(trimmed) || // US ZIP
+            /\b[A-Z]\d[A-Z]\s*\d[A-Z]\d\b/i.test(trimmed); // Canada
 
-        return (hasNumber && hasStreetType) || hasCityStateZip;
+        // Also check for country names at the end
+        const hasCountry = /\b(jordan|egypt|usa|uk|uae|canada|australia|germany|france|italy|spain|japan|china)\b/i.test(trimmed);
+
+        return (hasNumber && hasStreetType) || hasPostalCode || hasCountry || parts.length >= 2;
     }, []);
 
     // Hydrate model selection from localStorage on mount
@@ -455,47 +465,6 @@ export function ConversationalWizard({
         }
     };
 
-    const performAutoAddressLookup = async (query: string, silent = false) => {
-        setIsSearchingAddress(true);
-        try {
-            console.log("🕵️ Auto-searching for:", query);
-            const res = await fetch(`/api/search-places?query=${encodeURIComponent(query)}`);
-            const data = await res.json();
-
-            if (data.results && data.results.length > 0) {
-                // Populate suggestions - the UI will show them automatically
-                setAddressSuggestions(data.results);
-                
-                // Only add a message if not silent (e.g., user explicitly clicked Search)
-                if (!silent) {
-                    const bestMatch = data.results[0];
-                    const address = bestMatch.display_name || bestMatch.address;
-                    const title = bestMatch.title;
-
-                    const autoMsg: Message = {
-                        role: 'assistant',
-                        content: `I found **${title}** at:\n${address}\n\nIs this correct?`,
-                        suggestedOptions: [
-                            { value: address, label: "Use this address" },
-                            { value: "No", label: "No, search again" }
-                        ]
-                    };
-                    setMessages(prev => [...prev, autoMsg]);
-                }
-            } else if (!silent) {
-                // Only show "not found" message if user explicitly searched
-                setMessages(prev => [...prev, {
-                    role: 'assistant',
-                    content: "I couldn't find that venue. Try typing the full address or a different search term.",
-                }]);
-            }
-        } catch (e) {
-            console.error("Auto-search failed", e);
-        } finally {
-            setIsSearchingAddress(false);
-        }
-    };
-
     const handleSend = async (text: string, isAddressSelection = false) => {
         if (!text.trim()) return;
 
@@ -577,19 +546,6 @@ export function ConversationalWizard({
                     }
                 }
             }
-        }
-
-        setAddressSuggestions([]);
-
-        // Address step can accept either:
-        // 1) a full address (send to AI), OR
-        // 2) a venue/search query (run address search locally, then user selects a result)
-        if (widgetDef?.id === "address" && !isAddressSelection && !looksLikeAddressInput(updatedText)) {
-            const userMsg: Message = { role: "user", content: updatedText };
-            setMessages((prev) => [...prev, userMsg]);
-            setInput("");
-            await performAutoAddressLookup(updatedText);
-            return;
         }
 
         const userMsg: Message = { role: "user", content: updatedText };
@@ -702,14 +658,6 @@ export function ConversationalWizard({
                     suggestedOptions: finalOptions,
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
-
-                // AUTO-SEARCH: When we just set clientName and next step is address, auto-search immediately
-                const justSetClientName = data.updatedParams?.clientName || mergedState.clientName;
-                if (validatedNextStep === 'address' && justSetClientName && !mergedState.address) {
-                    // Trigger address search using the venue name they just gave (CLIENT REQUEST: Make this visible/verbose, no silent mode)
-                    console.log('🔍 Auto-searching address for:', justSetClientName);
-                    setTimeout(() => performAutoAddressLookup(justSetClientName, false), 100);
-                }
 
                 // Save Assistant Message to DB
                 if (projectId) {
