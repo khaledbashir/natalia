@@ -62,12 +62,12 @@ const INITIAL_CPQ_STATE: CPQInput = {
 
 const getInitialMessage = (): Message => ({
     role: "assistant",
-    content: "ANC Project Assistant initialized. Ready to audit project requirements and generate technical proposals. Shall we begin setup?",
+    content: "Hey! Ready to configure a new display project. Just tell me the venue and I'll handle the rest — takes about 3 minutes. Let's go?",
     thinking: SHOW_REASONING
-        ? "System initialized. Waiting for user to trigger the config audit."
+        ? "System initialized. Waiting for user to start the wizard flow."
         : undefined,
     suggestedOptions: [
-        { value: "Proceed", label: "Begin Audit & Setup" }
+        { value: "Proceed", label: "Start New Quote" }
     ]
 });
 
@@ -659,7 +659,7 @@ export function ConversationalWizard({
                 {
                     role: "assistant",
                     content:
-                        "I'm having trouble connecting to the ANC brain. Please check your connection.",
+                        "Hmm, something went wrong on my end. Try sending that again, or refresh if it keeps happening.",
                 },
             ]);
         }
@@ -753,13 +753,13 @@ export function ConversationalWizard({
                         "text-[10px] font-black uppercase tracking-[0.15em] transition-colors duration-500",
                         progress === 100 ? "text-emerald-400" : "text-slate-500"
                     )}>
-                        {progress === 100 ? "PROPOSAL READY" : `Configuration Phase: ${filledFields} / ${totalFields}`}
+                        {progress === 100 ? "✓ READY TO GENERATE" : "Configuring..."}
                     </span>
                     <span className={clsx(
                         "text-[10px] font-black transition-colors duration-500",
                         progress === 100 ? "text-emerald-400" : "text-slate-400"
                     )}>
-                        {progress === 100 ? "COMPLETE" : `${totalFields - filledFields} QUESTIONS REMAINING • ${progress}%`}
+                        {progress === 100 ? "ALL FIELDS COMPLETE" : `${totalFields - filledFields} left`}
                     </span>
                 </div>
 
@@ -880,13 +880,13 @@ export function ConversationalWizard({
                                         />
                                     </div>
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                        ANC Engineer
+                                        ANC Assistant
                                     </span>
                                 </>
                             ) : (
                                 <>
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                        Executive
+                                        You
                                     </span>
                                     <div className="w-6 h-6 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">
                                         <User
@@ -1039,37 +1039,43 @@ export function ConversationalWizard({
                                             (!msg.suggestedOptions ||
                                                 msg.suggestedOptions.length ===
                                                 0) && (
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="number"
-                                                        placeholder="0"
-                                                        autoFocus
-                                                        onKeyDown={(e) => {
-                                                            if (
-                                                                e.key ===
-                                                                "Enter"
-                                                            ) {
-                                                                handleSend(
+                                                <div className="flex gap-2 items-center">
+                                                    <div className="relative">
+                                                        <input
+                                                            type="number"
+                                                            placeholder="0"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (
+                                                                    e.key ===
+                                                                    "Enter"
+                                                                ) {
+                                                                    handleSend(
+                                                                        (
+                                                                            e.target as HTMLInputElement
+                                                                        ).value,
+                                                                    );
                                                                     (
                                                                         e.target as HTMLInputElement
-                                                                    ).value,
-                                                                );
-                                                                (
-                                                                    e.target as HTMLInputElement
-                                                                ).value = "";
-                                                            }
-                                                        }}
-                                                        className="w-24 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-700 font-bold"
-                                                    />
+                                                                    ).value = "";
+                                                                }
+                                                            }}
+                                                            className="w-24 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 pr-8 text-xs focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-700 font-bold"
+                                                        />
+                                                        {(widgetDef.id === "widthFt" || widgetDef.id === "heightFt") && (
+                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">ft</span>
+                                                        )}
+                                                    </div>
                                                     <button
                                                         onClick={(e) => {
-                                                            const input = e
+                                                            const wrapper = e
                                                                 .currentTarget
-                                                                .previousElementSibling as HTMLInputElement;
-                                                            handleSend(
-                                                                input.value,
-                                                            );
-                                                            input.value = "";
+                                                                .previousElementSibling as HTMLDivElement;
+                                                            const input = wrapper?.querySelector('input') as HTMLInputElement;
+                                                            if (input) {
+                                                                handleSend(input.value);
+                                                                input.value = "";
+                                                            }
                                                         }}
                                                         className="px-4 py-2 bg-[#003D82] hover:bg-[#002a5c] text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors"
                                                     >
@@ -1094,11 +1100,11 @@ export function ConversationalWizard({
                                                             placeholder={
                                                                 widgetDef.id ===
                                                                     "clientName"
-                                                                    ? "Enter venue name..."
+                                                                    ? "e.g. Madison Square Garden"
                                                                     : widgetDef.id ===
                                                                           "address"
-                                                                          ? "Type a full address OR type a venue name and click Search..."
-                                                                    : "Enter details..."
+                                                                          ? "Search venue or paste address..."
+                                                                    : "Type here..."
                                                             }
                                                             autoFocus
                                                             onKeyDown={(e) => {
@@ -1329,8 +1335,8 @@ export function ConversationalWizard({
                             </div>
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">
                                 {isUploading
-                                    ? "Analyzing Brief..."
-                                    : "Expert Estimator Thinking"}
+                                    ? "Reading document..."
+                                    : "Processing..."}
                             </span>
                         </div>
                     </div>
@@ -1368,7 +1374,7 @@ export function ConversationalWizard({
                                 placeholder={
                                     isUploading
                                         ? "Extracting project data..."
-                                        : "Reply to the ANC Engineer..."
+                                        : "Type your answer or ask a question..."
                                 }
                                 disabled={isLoading || isUploading}
                                 className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl px-5 py-3 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none disabled:opacity-50 placeholder:text-slate-600 font-medium shadow-inner"
@@ -1386,8 +1392,8 @@ export function ConversationalWizard({
                     </div>
                 </div>
                 <div className="flex justify-center">
-                    <p className="text-[9px] text-slate-600 font-black uppercase tracking-[0.2em]">
-                        ANC Proposal Engine v4.8
+                    <p className="text-[9px] text-slate-600 font-medium">
+                        {projectId ? "✓ Auto-saving" : "Starting session..."}
                     </p>
                 </div>
             </div>

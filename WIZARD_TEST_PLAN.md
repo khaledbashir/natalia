@@ -28,7 +28,7 @@ This is a conversational AI wizard for ANC (a LED display company) that guides s
 **Expected behavior:** Clean, linear progression through all questions
 
 ```
-1. Click "Begin Audit & Setup"
+1. Click "Start New Quote"
 2. Type: "Madison Square Garden"
    ✅ Should auto-search and find address
    ✅ Select the suggested address
