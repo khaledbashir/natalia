@@ -138,8 +138,8 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Right Panel: Preview (65% width) */}
-            <div className="w-[65%] h-full">
+            {/* Right Panel: Preview (60% width) */}
+            <div className="w-[60%] h-full flex-1">
                 <Preview
                     projectId={activeProjectId}
                     input={input}

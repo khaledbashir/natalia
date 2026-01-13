@@ -926,21 +926,6 @@ export function ConversationalWizard({
             </div>
 
             {/* History Overlay */}
-                                            ? "text-slate-300"
-                                            : status === "active"
-                                                ? "text-blue-400"
-                                                : "text-slate-600",
-                                    )}
-                                >
-                                    {step.label}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* History Overlay */}
             {showHistory && (
                 <div className="absolute inset-0 bg-slate-900/95 z-30 p-6 backdrop-blur-sm overflow-y-auto">
                     <div className="flex justify-between items-center mb-8">
@@ -989,54 +974,55 @@ export function ConversationalWizard({
             {/* Messages Area */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scroll-smooth"
+                className="flex-1 overflow-y-auto px-8 py-10 space-y-12 scroll-smooth bg-[#03060a]"
             >
-                {messages.map((msg, i) => (
-                    <div
-                        key={i}
-                        className={clsx(
-                            "flex flex-col gap-1.5",
-                            msg.role === "user" ? "items-end" : "items-start",
-                        )}
-                    >
-                        <div className="flex items-center gap-2 mb-0.5 px-1.5 opacity-60">
-                            {msg.role === "assistant" ? (
-                                <>
-                                    <div className="w-5 h-5 bg-blue-600/10 rounded-md flex items-center justify-center border border-blue-500/20">
-                                        <Bot
-                                            size={12}
-                                            className="text-blue-400"
-                                        />
-                                    </div>
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                        ANC System
-                                    </span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                        Estimator
-                                    </span>
-                                    <div className="w-5 h-5 bg-slate-800 rounded-md flex items-center justify-center border border-slate-700">
-                                        <User
-                                            size={12}
-                                            className="text-slate-400"
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                <div className="max-w-4xl mx-auto space-y-12">
+                    {messages.map((msg, i) => (
                         <div
+                            key={i}
                             className={clsx(
-                                "max-w-[92%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-lg transition-all",
-                                msg.role === "user"
-                                    ? "bg-[#0047AB] text-white border border-blue-400/20 rounded-tr-sm"
-                                    : "bg-slate-900/80 backdrop-blur-sm text-slate-100 border border-slate-800 rounded-tl-sm",
+                                "flex flex-col gap-3",
+                                msg.role === "user" ? "items-end" : "items-start",
                             )}
                         >
-                            <div className="whitespace-pre-wrap font-medium tracking-tight">
-                                {msg.content}
+                            <div className="flex items-center gap-2 mb-0.5 px-2 opacity-80">
+                                {msg.role === "assistant" ? (
+                                    <>
+                                        <div className="w-6 h-6 bg-blue-600/10 rounded-md flex items-center justify-center border border-blue-500/20">
+                                            <Bot
+                                                size={14}
+                                                className="text-blue-400"
+                                            />
+                                        </div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            ANC LOGIC ENGINE
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            SPEC AUDITOR
+                                        </span>
+                                        <div className="w-6 h-6 bg-slate-800 rounded-md flex items-center justify-center border border-slate-700">
+                                            <User
+                                                size={14}
+                                                className="text-slate-400"
+                                            />
+                                        </div>
+                                    </>
+                                )}
                             </div>
+                            <div
+                                className={clsx(
+                                    "max-w-[96%] w-full rounded-2xl px-6 py-4.5 text-[15px] leading-[1.6] shadow-2xl transition-all",
+                                    msg.role === "user"
+                                        ? "bg-[#0047AB] text-white border border-blue-400/20 rounded-tr-sm"
+                                        : "bg-[#0a0f16] backdrop-blur-md text-slate-100 border border-slate-800/50 rounded-tl-sm",
+                                )}
+                            >
+                                <div className="whitespace-pre-wrap font-medium tracking-tight">
+                                    {msg.content}
+                                </div>
 
                             {/* VENUE VERIFIED CARD - Show only for the message that actually CAPTURED the address */}
                             {msg.role === "assistant" &&
@@ -1376,33 +1362,36 @@ export function ConversationalWizard({
                                 )}
                         </div>
                         {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
-                            <div className="px-5 mt-2">
-                                <details className="group/thinking" open={false}>
-                                    <summary className="cursor-pointer flex items-center gap-2 text-[9px] text-slate-600 font-bold uppercase tracking-[0.2em] hover:text-blue-500 transition-colors list-none select-none">
-                                        <div className="w-1 h-1 bg-slate-700 group-open/thinking:animate-ping rounded-full transition-colors"></div>
-                                        <span>Logic Audit</span>
-                                        <span className="ml-auto text-[7px] text-slate-800">▼</span>
+                            <div className="px-2 mt-2">
+                                <details className="group/thinking" open={i === messages.length - 1}>
+                                    <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-[#0047AB] font-black uppercase tracking-[0.2em] hover:text-blue-400 transition-colors list-none select-none py-2">
+                                        <div className="w-2 h-[1px] bg-blue-600/50 group-open/thinking:w-4 transition-all"></div>
+                                        <span>Logic Engine Trace</span>
+                                        <ChevronDown size={10} className="ml-auto opacity-40 group-open/thinking:rotate-180 transition-transform" />
                                     </summary>
-                                    <div className="mt-1.5 text-[10px] text-slate-400 font-mono leading-relaxed bg-[#05080f] p-3 rounded-lg border border-slate-800/50 max-w-[98%] shadow-inner">
-                                        {msg.thinking}
+                                    <div className="mt-1 pl-4 border-l border-white/5">
+                                        <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-[#05080f]/50 p-4 rounded-lg border border-white/5 max-w-[98%] shadow-inner whitespace-pre-wrap">
+                                            {msg.thinking}
+                                        </div>
                                     </div>
                                 </details>
                             </div>
                         )}
                         
                         {/* Streaming thinking display */}
-                        {isStreaming && streamingThinking && (
-                            <div className="px-5 mt-2">
-                                <details className="group/thinking" open={true}>
-                                    <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest hover:text-blue-400 transition-colors list-none select-none">
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                        <span>Thinking...</span>
-                                        <span className="ml-auto text-[8px] text-slate-600">▼</span>
-                                    </summary>
-                                    <div className="mt-2 text-[10px] text-slate-400 font-mono whitespace-pre-wrap bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 max-w-[95%]">
+                        {isStreaming && streamingThinking && i === messages.length - 1 && (
+                            <div className="px-2 mt-2">
+                                <div className="flex items-center gap-3 py-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                                    <span className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em]">
+                                        Executing Logic Audit...
+                                    </span>
+                                </div>
+                                <div className="mt-1 pl-4 border-l border-blue-500/20">
+                                    <div className="text-[10px] text-blue-300/60 font-mono whitespace-pre-wrap bg-blue-500/5 p-4 rounded-lg border border-blue-500/10 max-w-[95%]">
                                         {streamingThinking}
                                     </div>
-                                </details>
+                                </div>
                             </div>
                         )}
                     </div>
