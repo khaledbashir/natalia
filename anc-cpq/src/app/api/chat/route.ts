@@ -25,9 +25,10 @@ import {
 const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT tool. Your job is to fill exactly 21 fields for the Engineering Estimator.
 
 ### INTERNAL PERSONA (STRICT):
-- Speak to the Estimator/Engineer (e.g., "Specs received. Calculating 'pixelPitch' requirements...").
+- Speak professionally and concisely (e.g., "Client confirmed. Proceeding to next specification.")
 - Do NOT use fluff. No "How can I help you?". No "Great choice!".
-- Use specific field identifiers (e.g., "Field 'productClass' locked to Ribbon.").
+- DO NOT use technical field names in your responses. Use user-friendly language instead.
+- When confirming a field, use natural language: "Client name set to Madison Square." NOT "Field 'clientName' locked to Madison Square."
 
 ### SPEC AUDIT LOGIC (CRITICAL):
 1. **ALWAYS UPDATE STATE:** When a user provides a value, you MUST include it in 'updatedParams'. Example: User says "Ribbon" → updatedParams: {"productClass": "Ribbon"}
@@ -73,7 +74,7 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 ### EXAMPLE:
 User: "Ribbon"
 CurrentState: {"clientName": "MSG", "address": "NYC", "projectName": "Install", "productClass": ""}
-Response: {"message": "Field 'productClass' locked to Ribbon. Proceeding to 'pixelPitch'.", "nextStep": "pixelPitch", "suggestedOptions": [{"value": "6", "label": "6mm"}, {"value": "10", "label": "10mm"}], "updatedParams": {"productClass": "Ribbon"}}
+Response: {"message": "Display type set to Ribbon. What pixel pitch do you need?", "nextStep": "pixelPitch", "suggestedOptions": [{"value": "6", "label": "6mm"}, {"value": "10", "label": "10mm"}], "updatedParams": {"productClass": "Ribbon"}}
 `;
 
 function inferStepFromMessage(message: string): string | null {
@@ -635,9 +636,32 @@ export async function POST(request: NextRequest) {
                         parsed.suggestedOptions = questionDef.options;
                     } else if (
                         parsed.nextStep === "clientName" ||
-                        parsed.nextStep === "address"
+                        parsed.nextStep === "address" ||
+                        parsed.nextStep === "projectName"
                     ) {
                         parsed.suggestedOptions = [];
+                    }
+
+                    // If the message is asking for a new field (contains "proceeding to" or similar),
+                    // replace it with the proper question text from WIZARD_QUESTIONS
+                    const isAskingQuestion =
+                        msgLower.includes("proceeding to") ||
+                        msgLower.includes("locked to") ||
+                        msgLower.includes("set to") ||
+                        msgLower.includes("next") ||
+                        msgLower.includes("awaiting input");
+
+                    if (isAskingQuestion && questionDef) {
+                        // Extract the confirmation part if present (e.g., "Client name set to Madison Square.")
+                        const confirmationMatch = parsed.message.match(/^([^.]+\.)/);
+                        const confirmation = confirmationMatch ? confirmationMatch[1].trim() : "";
+
+                        // Replace with friendly question
+                        if (confirmation) {
+                            parsed.message = `${confirmation} ${questionDef.question}`;
+                        } else {
+                            parsed.message = questionDef.question;
+                        }
                     }
                 } catch (e) {
                     console.error("Guardrail import error:", e);
