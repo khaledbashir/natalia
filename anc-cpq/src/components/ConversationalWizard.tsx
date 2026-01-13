@@ -40,6 +40,7 @@ interface SavedProposal {
     timestamp: number;
     messages: Message[];
     state: Partial<CPQInput>;
+    askedQuestions?: Set<string>;
 }
 
 const STORAGE_KEY = "anc_cpq_session";
@@ -125,84 +126,12 @@ export function ConversationalWizard({
     const [savedProposals, setSavedProposals] = useState<SavedProposal[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
-    const [isSearchingAddress, setIsSearchingAddress] = useState(false);
-    const [searchStep, setSearchStep] = useState(0);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Track recently updated fields to avoid showing verification cards too late
-    const [lastFieldUpdated, setLastFieldUpdated] = useState<string | null>(null);
-
-    // Model selection
-    const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
-
-    // Transition search steps for the visual agent
-    useEffect(() => {
-        let t1: NodeJS.Timeout, t2: NodeJS.Timeout, t3: NodeJS.Timeout;
-        if (isSearchingAddress) {
-            setSearchStep(1);
-            t1 = setTimeout(() => setSearchStep(2), 700);
-            t2 = setTimeout(() => setSearchStep(3), 1400);
-            t3 = setTimeout(() => setSearchStep(4), 2100);
-        } else {
-            setSearchStep(0);
-        }
-        return () => {
-            clearTimeout(t1);
-            clearTimeout(t2);
-            clearTimeout(t3);
-        };
-    }, [isSearchingAddress]);
-
-    // Hydrate model selection from localStorage on mount
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const saved = localStorage.getItem("selectedAIModel");
-            if (saved) setSelectedModel(saved);
-        }
-    }, []);
-
-    // Save model selection to localStorage
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            localStorage.setItem("selectedAIModel", selectedModel);
-        }
-    }, [selectedModel]);
-
-    // Calculate Progress Dynamically
-    const totalFields = WIZARD_QUESTIONS.length;
-    const filledFields = WIZARD_QUESTIONS.filter(q => {
-        const val = cpqState[q.id as keyof CPQInput];
-        // For required fields, check if value exists and is not a "null/empty" placeholder
-        if (q.required) {
-            return val !== undefined && val !== null && val !== "" && val !== 0;
-        }
-        // For optional fields, only count if explicitly set
-        return val !== undefined && val !== null && val !== "";
-    }).length;
-
-    const progress = Math.min(
-        100,
-        Math.round((filledFields / totalFields) * 100),
-    );
-
-    const getStepStatus = (step: (typeof PROGRESS_STEPS)[0]) => {
-        const filled = step.fields.filter((f) => {
-            const val = cpqState[f as keyof CPQInput];
-            // Check if value is set - 0 is valid for numeric fields
-            return val !== undefined && val !== null && val !== "";
-        });
-        if (filled.length === step.fields.length) return "complete";
-        if (filled.length > 0) return "active";
-        return "pending";
-    };
-
+    const [showAddressInput, setShowAddressInput] = useState(false);
     const [expandedThinking, setExpandedThinking] = useState<number | null>(
         null,
     );
     const [projectId, setProjectId] = useState<number | null>(null);
+    const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
 
     // Fetch All Projects (History)
     const fetchHistory = useCallback(async () => {
@@ -386,6 +315,11 @@ export function ConversationalWizard({
             const data = await res.json();
             setIsUploading(false);
             if (data.message) {
+                // Track the question that was asked to prevent duplicates
+                if (data.nextStep) {
+                    setAskedQuestions(prev => new Set([...prev, data.nextStep]));
+                }
+                
                 setMessages((prev) => [
                     ...prev,
                     {
@@ -551,9 +485,9 @@ export function ConversationalWizard({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    message: updatedText, // Use updatedText which contains clean address
-                    history: [...messages, userMsg],
-                    currentState: currentStateToSend,
+                    message: updatedText,
+                    history: messages,
+                    currentState: { ...currentStateToSend, askedQuestions: Array.from(askedQuestions) },
                     selectedModel,
                 }),
             });

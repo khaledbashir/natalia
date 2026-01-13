@@ -4,6 +4,7 @@ import {
     validateAddress,
     formatAddressForConfirmation,
     validateNumericInput,
+    validateTechnicalConstraints,
     parseNumericInput,
     normalizePermitAnswer,
     MessageType
@@ -191,6 +192,9 @@ function isLikelyStreetAddress(address: unknown): boolean {
 async function computeNextStepFromState(state: any): Promise<string> {
     const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
 
+    // Track which questions have been asked to prevent duplicates
+    const askedQuestions = state?.askedQuestions || new Set();
+    
     for (const q of WIZARD_QUESTIONS) {
         const value = state?.[q.id];
 
@@ -207,6 +211,13 @@ async function computeNextStepFromState(state: any): Promise<string> {
 
         // 0 is a valid value for numeric fields (do not treat it as missing).
         if (value === undefined || value === null || value === "") {
+            // If this question hasn't been asked yet, return it
+            if (!askedQuestions.has(q.id)) {
+                return q.id;
+            }
+            // If it has been asked but still empty, we might have a validation issue
+            // Still return it but log a warning
+            console.warn(`Question ${q.id} was asked but still empty, returning again`);
             return q.id;
         }
     }
@@ -244,8 +255,14 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - DO NOT ask about fields that already have values.
 - ALWAYS skip to the FIRST empty/missing field.
 
-**NEXT LOGIC:**
-- Always point 'nextStep' to the FIRST null or empty field in the sequence AFTER your bulk extractions.
+**NEXT LOGIC (CRITICAL - NEVER VIOLATE):**
+- You MUST return a 'nextStep' field ID from the valid list until ALL 20 fields are filled.
+- **ABSOLUTELY NEVER return null, undefined, or "confirm" for 'nextStep' while ANY of the 20 fields remain empty or invalid.**
+- **VIOLATION CONSEQUENCE:** Returning null/undefined while fields are missing will cause system failure and infinite loops.
+- **MANDATORY CHECK:** Before returning any 'nextStep', verify ALL 20 fields are present by asking yourself: "Do I have clientName? Do I have address? Do I have productClass? Do I have pixelPitch? Do I have widthFt? Do I have heightFt? Do I have environment? Do I have shape? Do I have mountingType? Do I have access? Do I have structureCondition? Do I have laborType? Do I have powerDistance? Do I have permits? Do I have controlSystem? Do I have bondRequired? Do I have complexity? Do I have serviceLevel?"
+- **If EVEN ONE field is missing or empty, 'nextStep' MUST be that missing field ID - NO EXCEPTIONS.**
+- **Do NOT assume defaults for missing fields unless explicitly instructed.**
+- **When in doubt, ALWAYS continue to the next missing field - NEVER signal completion prematurely.**
 
 ### THE ONLY 20 VALID FIELDS (IN ORDER):
 1. clientName
@@ -281,11 +298,12 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - "existing", "new steel", "new structure" → structureCondition
 - "union", "non-union", "nonunion", "prevailing", "prevailing wage" → laborType
 - "power", "distance", "termination" → powerDistance
-- "permit" → permits
-- "control", "processor", "sending box" → controlSystem
+- "permit", "Client handles", "ANC handles" → permits
+- "control", "processor", "sending box", "Include", "No controls", "None" → controlSystem
 - "bond", "performance bond", "payment bond" → bondRequired
 - "curved", "radius" → shape = Curved
 - "flat", "standard" → shape = Flat
+- "bronze", "silver", "gold" → serviceLevel
 
 ### CRITICAL WARNING:
 - DO NOT invent fields that are not in this list.
@@ -771,24 +789,54 @@ export async function POST(request: NextRequest) {
 
                     // 2. Validate & Filter
                     if (validFieldIds.has(targetKey)) {
-                        // Type coercion
                         const questionDef = WIZARD_QUESTIONS.find(q => q.id === targetKey);
+                        let finalValue: any = value;
+
+                        // Numeric Coercion & Validation
                         if (questionDef?.type === 'number') {
-                             if (typeof value === 'string') {
-                                const numValue = parseFloat(value.replace(/[^0-9.]/g, ''));
-                                if (!isNaN(numValue)) {
-                                    normalizedParams[targetKey] = numValue;
-                                }
-                            } else if (typeof value === 'number') {
-                                normalizedParams[targetKey] = value;
-                            }
-                        } else {
-                            normalizedParams[targetKey] = value;
+                             let numValue = (typeof value === 'number') ? value : parseFloat(String(value).replace(/[^0-9.]/g, ''));
+                             
+                             if (isNaN(numValue)) {
+                                 finalValue = undefined;
+                             } else {
+                                 // VALIDATE NUMERIC RANGES
+                                 const numCheck = validateNumericInput(targetKey, numValue);
+                                 if (!numCheck.valid) {
+                                     console.warn(`Validation failed for ${targetKey}: ${numCheck.error}`);
+                                     finalValue = undefined; 
+                                 } else {
+                                     finalValue = numValue;
+                                 }
+                             }
+                        }
+
+                        if (finalValue !== undefined) {
+                            normalizedParams[targetKey] = finalValue;
                         }
                     } else {
                         rejectedFields.push(String(key));
                     }
                 }
+                
+                // 3. Technical Constraints & Cross-Field Validation
+                const proposalState = { ...(currentState || {}), ...normalizedParams };
+                let constraintError: string | null = null;
+                
+                for (const [key, val] of Object.entries(normalizedParams)) {
+                    const err = validateTechnicalConstraints(key, val, proposalState);
+                    if (err) {
+                        constraintError = err;
+                        delete normalizedParams[key]; // Reject this update
+                        // If we reject a key, we should also revert it in proposalState for subsequent checks?
+                        // Actually, just flagging one major error is enough for now.
+                    }
+                }
+
+                if (constraintError) {
+                    parsed.message = `⚠️ ${constraintError} Please provide a valid value.`;
+                    thinkingNotes.push(`REJECTED update due to constraint: ${constraintError}`);
+                }
+                
                 parsed.updatedParams = normalizedParams;
 
                 // Backup Numeric Extraction (if AI missed it but it was a simple number response)

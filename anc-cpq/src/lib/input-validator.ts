@@ -57,16 +57,16 @@ export const NUMERIC_FIELD_RULES: Record<string, NumericFieldRule> = {
     description: 'Pixel pitch must be between 2-20mm'
   },
   widthFt: {
-    min: 0,
+    min: 5,
     max: 500,
     unit: 'ft',
-    description: 'Width must be between 0-500 feet'
+    description: 'Width must be between 5-500 feet'
   },
   heightFt: {
-    min: 0,
+    min: 3, // Scoreboards usually taller than 1ft - reject 1ft nonsense
     max: 500,
     unit: 'ft',
-    description: 'Height must be between 0-500 feet'
+    description: 'Height must be between 3-500 feet (1ft displays are not realistic)'
   },
   unitCost: {
     min: 100,
@@ -346,7 +346,82 @@ export function normalizePermitAnswer(input: string): string | null {
 /**
  * Format address for confirmation display
  */
-export function formatAddressForConfirmation(address: ValidatedAddress): string {
+/**
+ * Validate outdoor display requirements
+ * Returns validation result and any warnings
+ */
+export function validateOutdoorRequirements(
+  environment: string, 
+  widthFt: number, 
+  heightFt: number,
+  productClass: string
+): { valid: boolean; warnings?: string[]; errors?: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (environment !== 'Outdoor') {
+    return { valid: true };
+  }
+
+  // IP rating requirement for outdoor displays
+  warnings.push('Outdoor displays require IP65+ rating for weather protection');
+
+  // Basic structural validation
+  const area = widthFt * heightFt;
+  
+  // Weight estimation (rough calculation based on LED display technology)
+  const weightLbs = area * 15; // Approx 15 lbs per sq ft for outdoor LED
+  
+  if (weightLbs > 2000) {
+    warnings.push(`Estimated weight: ${Math.round(weightLbs)} lbs - structural engineering review required`);
+  }
+
+  if (weightLbs > 5000) {
+    errors.push(`Estimated weight (${Math.round(weightLbs)} lbs) exceeds typical mounting limits - specialized structural support required`);
+  }
+
+  // Wind load consideration for large outdoor displays
+  if (widthFt > 50 || heightFt > 30) {
+    warnings.push('Large outdoor display - wind load engineering analysis recommended');
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings: warnings.length > 0 ? warnings : undefined,
+    errors: errors.length > 0 ? errors : undefined
+  };
+}
+
+/**
+ * Validate mounting compatibility
+ */
+export function validateMountingCompatibility(
+  mountingType: string,
+  productClass: string,
+  shape: string
+): { valid: boolean; errors?: string[] } {
+  const errors: string[] = [];
+
+  // Physical impossibility checks
+  if (productClass === 'CenterHung' && mountingType !== 'Ceiling') {
+    errors.push('Center-hung displays must use ceiling mounting - physical requirement');
+  }
+
+  if (productClass === 'Vomitory' && mountingType === 'Wall') {
+    errors.push('Vomitory displays cannot be wall-mounted - incompatible configuration');
+  }
+
+  // Shape compatibility
+  if (shape === 'Curved' && mountingType === 'Wall') {
+    errors.push('Curved displays require specialized wall mounting hardware');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: errors.length > 0 ? errors : undefined
+  };
+}
+
   if (!address.isValid) {
     return 'Invalid address. Please provide a complete address with street, city, and country.';
   }
@@ -362,4 +437,37 @@ export function formatAddressForConfirmation(address: ValidatedAddress): string 
 
 Type "Confirmed" to proceed, or provide corrections.
   `.trim();
+}
+/**
+ * Validate technical constraints between fields
+ */
+export function validateTechnicalConstraints(
+  field: string,
+  value: any,
+  currentState: any
+): string | null {
+  // CenterHung must be Rigging/Ceiling
+  if (field === 'mountingType' && value === 'Wall') {
+    const product = currentState.productClass;
+    if (product === 'CenterHung') {
+      return "Critical Error: Center-hung displays cannot be wall-mounted. They must be suspended (Rigging) or verified.";
+    }
+  }
+
+  // Outdoor displays checks
+  if (field === 'environment' && value === 'Outdoor') {
+    // We can't strictly enforce IP rating here as it's not a field, 
+    // but we can warn if other fields match indoor specs.
+    // For now, no specific contradiction with existing fields.
+  }
+  
+  if (field === 'widthFt' || field === 'heightFt') {
+      // Scoreboard dimension check (Issue 6)
+      // Check if productClass is Scoreboard and dims are weird
+      if (currentState.productClass === 'Scoreboard') {
+         if (value < 5) return "Warning: Scoreboards are typically larger than 5ft.";
+      }
+  }
+
+  return null; // No violation
 }
