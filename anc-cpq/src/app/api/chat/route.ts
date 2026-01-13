@@ -739,6 +739,24 @@ export async function POST(request: NextRequest) {
                 }
             }
 
+            // CRITITAL FALLBACK: If we are stuck on clientName and AI didn't catch it, assume message IS the name
+            if (!parsed.updatedParams.clientName && !currentState?.clientName) {
+                const currentStepCheck = await computeNextStepFromState(currentState || {});
+                if (currentStepCheck === 'clientName' && message && typeof message === 'string') {
+                     // Check if message is a confirmation or irrelevant
+                     const isGeneric = /^(proceed|start|go|hello|hi|hey)$/i.test(message.trim());
+                     const isQuestion = message.includes('?');
+                     
+                     if (!isGeneric && !isQuestion) {
+                         const name = titleCaseLoose(message);
+                         console.log(`Fallback: Extracted clientName='${name}' from raw message`);
+                         parsed.updatedParams.clientName = name;
+                         parsed.updatedParams.projectName = name;
+                         thinkingNotes.push(`Fallback: Forced clientName extraction from raw message: "${name}"`);
+                     }
+                }
+            }
+
             // Check if pricing should be recalculated
             if (parsed.updatedParams) {
                 const changedFields = Object.keys(parsed.updatedParams);
