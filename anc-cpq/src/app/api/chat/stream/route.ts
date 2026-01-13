@@ -164,8 +164,22 @@ function extractJSON(text: string) {
     .replace(/```json/gi, "```")
     .replace(/```/g, "");
 
-  const normalizeCandidate = (candidate: string) =>
-    candidate.replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+  const normalizeCandidate = (candidate: string) => {
+    let fixed = candidate.trim().replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+    
+    // Repair truncated JSON: handle open quotes and braces
+    let openQuotes = (fixed.match(/"/g) || []).length;
+    if (openQuotes % 2 !== 0) {
+      fixed += '"';
+    }
+    
+    let openBraces = (fixed.match(/\{/g) || []).length;
+    let closedBraces = (fixed.match(/\}/g) || []).length;
+    if (openBraces > closedBraces) {
+      fixed += '}'.repeat(openBraces - closedBraces);
+    }
+    return fixed;
+  };
 
   const isValidPayload = (obj: any) => {
     if (!obj || typeof obj !== "object") return false;
@@ -311,6 +325,7 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         let fullText = '';
         let reasoningContent = '';
+        let buffer = '';
 
         // Stream the model's raw reasoning_content (GLM thinking). This is NOT modified.
 
@@ -318,12 +333,16 @@ export async function POST(request: NextRequest) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(line => line.trim());
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
+            const trimmedLine = line.trim();
+            if (!trimmedLine) continue;
+            
+            if (trimmedLine.startsWith('data: ')) {
+              const data = trimmedLine.slice(6);
               if (data === '[DONE]') continue;
 
               try {
