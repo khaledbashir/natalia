@@ -121,7 +121,7 @@ const PricingTable = ({ result, showFooter = true, titleSuffix = "" }: { result:
 
 // --- Main Preview Component ---
 
-export function Preview({ input, result, onUpdateField }: PreviewProps) {
+export function Preview({ input, result, projectId, onUpdateField }: PreviewProps) {
     const [today, setToday] = React.useState('');
     const [referenceNum, setReferenceNum] = React.useState('');
     const [showPricing, setShowPricing] = React.useState(true);
