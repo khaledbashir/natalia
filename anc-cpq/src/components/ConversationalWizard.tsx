@@ -580,7 +580,126 @@ export function ConversationalWizard({
             return;
         }
 
-        // Client-side extraction for number fields to prevent loops
+        // Deterministic wizard progression (NO MODEL):
+        // If the last assistant prompt expects a specific wizard field, treat the user's input as the answer
+        // and immediately advance to the next required question from the authoritative schema.
+        if (widgetDef && currentNextStep && widgetDef.id === currentNextStep) {
+            // Address is handled via search-places UX. For manual address entries, we keep the user on the
+            // address step and show suggestions rather than calling the model.
+            if (widgetDef.id === "address" && !isAddressSelection) {
+                debouncedSearch(updatedText);
+                setIsLoading(false);
+                setIsStreaming(false);
+                setStreamingThinking("");
+                return;
+            }
+
+            const updatedParams: Record<string, any> = {};
+
+            if (widgetDef.type === "number") {
+                const numValue = parseFloat(updatedText);
+                if (isNaN(numValue)) {
+                    const assistantMsg: Message = {
+                        role: "assistant",
+                        content: "Please enter a valid number.",
+                        nextStep: widgetDef.id,
+                        suggestedOptions: [],
+                        thinking: SHOW_REASONING
+                            ? `LOGIC TRACE: Invalid numeric input. Next: ${widgetDef.id}.`
+                            : undefined,
+                    };
+
+                    setIsLoading(false);
+                    setIsStreaming(false);
+                    setStreamingThinking("");
+                    setMessages((prev) => [...prev, assistantMsg]);
+
+                    if (projectId) {
+                        fetch(`/api/projects/${projectId}/message`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(assistantMsg),
+                        }).catch((e) =>
+                            console.error("Failed to log assistant message", e),
+                        );
+                    }
+                    return;
+                }
+                updatedParams[widgetDef.id] = numValue;
+            } else if (widgetDef.type === "select") {
+                const raw = updatedText.trim();
+                const options = widgetDef.options || [];
+                const matched = options.find(
+                    (opt) =>
+                        opt.value.toLowerCase() === raw.toLowerCase() ||
+                        opt.label.toLowerCase() === raw.toLowerCase(),
+                );
+                updatedParams[widgetDef.id] = matched ? matched.value : raw;
+            } else {
+                updatedParams[widgetDef.id] = updatedText.trim();
+            }
+
+            const normalized = normalizeParams(updatedParams);
+            const newState: any = { ...currentStateToSend, ...normalized };
+
+            // Sync projectName when clientName or productClass changes
+            if (normalized.clientName || normalized.productClass) {
+                const clientName = normalized.clientName || currentStateToSend.clientName || "Unknown";
+                const productClass = normalized.productClass || currentStateToSend.productClass || "Display";
+                newState.projectName = `${clientName} - ${productClass}`;
+            }
+
+            // Track last updated field for UI signals
+            setLastFieldUpdated(widgetDef.id);
+
+            setCpqState(newState);
+            onUpdate(newState);
+
+            // If we just captured the venue name, auto-run the location search to populate suggestions.
+            if (widgetDef.id === "clientName") {
+                debouncedSearch(String(updatedParams.clientName || ""));
+            }
+
+            const nextRequired = WIZARD_QUESTIONS.find((q) => {
+                if (!q.required) return false;
+                const val = newState[q.id as keyof CPQInput];
+                return val === undefined || val === null || val === "";
+            });
+            const nextStep = nextRequired?.id || "confirm";
+
+            const assistantMsg: Message = {
+                role: "assistant",
+                content:
+                    nextStep === "confirm"
+                        ? "All required specifications are captured. Please confirm the configuration below."
+                        : nextRequired?.question || "What is the next required specification?",
+                nextStep,
+                suggestedOptions: nextStep === "confirm" ? [] : nextRequired?.options || [],
+                thinking: SHOW_REASONING
+                    ? `LOGIC TRACE: Captured ${widgetDef.id}. Next: ${nextStep}.`
+                    : undefined,
+            };
+
+            setIsLoading(false);
+            setIsStreaming(false);
+            setStreamingThinking("");
+            setAskedQuestions((prev) => new Set([...prev, nextStep]));
+            setMessages((prev) => [...prev, assistantMsg]);
+
+            if (projectId) {
+                fetch(`/api/projects/${projectId}/message`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(assistantMsg),
+                }).catch((e) =>
+                    console.error("Failed to log assistant message", e),
+                );
+            }
+
+            return;
+        }
+
+        // Client-side extraction for number fields (non-wizard/freeform fallback)
         let extractedValue: any = null;
         if (widgetDef && widgetDef.type === "number") {
             const numValue = parseFloat(updatedText);
@@ -1418,8 +1537,8 @@ export function ConversationalWizard({
                                                                                 .previousElementSibling as HTMLInputElement;
                                                                         const val = inputEl?.value || "";
                                                                         if (!val.trim()) return;
-                                                                        handleSend(val);
-                                                                        inputEl.value = "";
+                                                                        // Address lookup should use the search-places engine, not the LLM.
+                                                                        debouncedSearch(val);
                                                                     }}
                                                                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-slate-700"
                                                                 >

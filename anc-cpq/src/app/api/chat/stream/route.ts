@@ -225,10 +225,6 @@ export async function POST(request: NextRequest) {
         messages,
         temperature: 0.1,
         stream: true,
-        thinking: {
-          type: "enabled",
-          clear_thinking: false,
-        },
       }),
     });
 
@@ -247,7 +243,6 @@ export async function POST(request: NextRequest) {
 
     const stream = new ReadableStream({
       async start(controller) {
-        let reasoningContent = '';
         let fullText = '';
 
         while (true) {
@@ -266,17 +261,10 @@ export async function POST(request: NextRequest) {
                 const parsedChunk = JSON.parse(data);
                 const delta = parsedChunk.choices?.[0]?.delta;
 
-                if (delta?.reasoning_content) {
-                  reasoningContent += delta.reasoning_content;
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'thinking', content: reasoningContent })}\n\n`));
-                }
-
+                // Accumulate model output, but do not stream it back to the UI.
+                // This prevents the assistant bubble from ever displaying audit steps / partial JSON.
                 if (delta?.content) {
                   fullText += delta.content;
-                  // Only stream content if it's NOT part of the JSON block yet (to avoid visual mess)
-                  if (!fullText.includes('{')) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: fullText })}\n\n`));
-                  }
                 }
               } catch (e) {
                 // Silently skip parse errors
@@ -297,6 +285,9 @@ export async function POST(request: NextRequest) {
         const questionDef = WIZARD_QUESTIONS.find((q) => q.id === nextStep);
         const suggestedOptions = questionDef?.options || [];
 
+        const safeReasoning =
+          (parsed?.reasoning && typeof parsed.reasoning === "string" ? parsed.reasoning : "").trim();
+
         if (parsed) {
           const safeMessage = sanitizePlainMessage(parsed.message) || questionDef?.question || "What is the next required specification?";
           controller.enqueue(
@@ -307,7 +298,7 @@ export async function POST(request: NextRequest) {
                 nextStep,
                 suggestedOptions,
                 updatedParams: parsed.updatedParams || {},
-                reasoning: reasoningContent,
+                reasoning: safeReasoning,
               })}\n\n`,
             ),
           );
@@ -321,7 +312,7 @@ export async function POST(request: NextRequest) {
                 nextStep,
                 suggestedOptions,
                 updatedParams: {},
-                reasoning: reasoningContent,
+                reasoning: "",
               })}\n\n`,
             ),
           );
@@ -333,7 +324,7 @@ export async function POST(request: NextRequest) {
 
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Type': 'text/event-stream; charset=utf-8',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },
