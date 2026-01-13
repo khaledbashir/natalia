@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { CPQInput, CalculationResult, ScreenConfig } from '../lib/types';
-import { Download, Layers, ShieldCheck, Clock, Zap, FileText, Table2, Share2, Check, Copy } from 'lucide-react';
+import { Download, Layers, ShieldCheck, Clock, Zap, FileText, Table2, Share2, Check, Copy, ExternalLink, X } from 'lucide-react';
 import { ANCLogo } from './ANCLogo';
 import { calculateScreen } from '../lib/calculator';
 import { ExcelPreview } from './ExcelPreview';
@@ -128,6 +128,7 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
     const [shareUrl, setShareUrl] = React.useState<string | null>(null);
     const [isSharing, setIsSharing] = React.useState(false);
     const [copied, setCopied] = React.useState(false);
+    const [showShareModal, setShowShareModal] = React.useState(false);
 
     React.useEffect(() => {
         setToday(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
@@ -235,10 +236,7 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
             if (res.ok) {
                 const data = await res.json();
                 setShareUrl(data.shareUrl);
-                // Auto-copy to clipboard
-                await navigator.clipboard.writeText(data.shareUrl);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 3000);
+                setShowShareModal(true);
             } else {
                 alert('Failed to create share link');
             }
@@ -314,8 +312,8 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         <Layers size={14} /> EXPORT EXCEL
                     </button>
                     {shareUrl ? (
-                        <button onClick={copyShareUrl} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-emerald-500/20 text-[11px] transition-all flex items-center gap-2">
-                            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'COPIED!' : 'COPY LINK'}
+                        <button onClick={() => setShowShareModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-emerald-500/20 text-[11px] transition-all flex items-center gap-2">
+                             <Share2 size={14} /> SHARE LINK
                         </button>
                     ) : (
                         <button onClick={handleShare} disabled={isSharing} className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-slate-700/20 text-[11px] transition-all flex items-center gap-2 disabled:opacity-50">
@@ -504,6 +502,64 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         <div className="mt-auto pt-10 border-t border-slate-100 flex justify-between items-center text-[9px] text-slate-400 font-bold">
                             <div>NY 914.696.2100 | TX 940.464.2320</div>
                             <div className="tracking-widest uppercase">WWW.ANC.COM</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Share Modal */}
+            {showShareModal && shareUrl && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
+                            <h3 className="font-bold text-slate-900 uppercase tracking-widest text-sm">
+                                Shareable Proposal Link
+                            </h3>
+                            <button 
+                                onClick={() => setShowShareModal(false)}
+                                className="p-2 hover:bg-slate-50 rounded text-slate-400 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-8">
+                            <p className="text-sm text-slate-500 mb-6 font-medium leading-relaxed">
+                                A private link has been generated. Anyone with this URL can view the live proposal and technical specifications.
+                            </p>
+                            
+                            <div className="relative mb-8">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Proposal URL</div>
+                                <div className="flex gap-2">
+                                    <input 
+                                        readOnly 
+                                        value={shareUrl}
+                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 font-mono select-all focus:outline-none focus:border-[#003D82] transition-colors"
+                                    />
+                                    <button 
+                                        onClick={copyShareUrl}
+                                        className="px-6 bg-[#003D82] hover:bg-black text-white rounded-lg font-bold text-[11px] uppercase tracking-widest shadow-sm transition-all"
+                                    >
+                                        {copied ? 'COPIED' : 'COPY'}
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col gap-3">
+                                <a 
+                                    href={shareUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="w-full border-2 border-[#003D82] text-[#003D82] hover:bg-slate-50 py-3 rounded-lg font-bold text-[11px] uppercase tracking-widest text-center transition-all"
+                                >
+                                    Open Preview Site
+                                </a>
+                                <button 
+                                    onClick={() => setShowShareModal(false)}
+                                    className="w-full py-3 text-slate-400 hover:text-slate-600 font-bold text-[11px] uppercase tracking-widest transition-all"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
