@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { CPQInput } from "../lib/types";
 import { calculateCPQ } from "../lib/calculator";
 import { Wizard } from "../components/Wizard";
@@ -32,22 +32,22 @@ export default function Home() {
     const result = useMemo(() => calculateCPQ(input), [input]);
 
     // 4. Handlers
-    const handleInputChange = (field: keyof CPQInput, value: any) => {
+    const handleInputChange = useCallback((field: keyof CPQInput, value: any) => {
         setInput((prev) => ({ ...prev, [field]: value }));
-    };
+    }, []);
 
-    const handleWizardUpdate = (params: Partial<CPQInput>) => {
+    const handleWizardUpdate = useCallback((params: Partial<CPQInput>) => {
         // If it looks like a full state reset or replacement, replace instead of merge
         if (params.clientName === "" && params.widthFt === 0) {
             setInput(params as CPQInput);
         } else {
             setInput((prev) => ({ ...prev, ...params }));
         }
-    };
+    }, []);
 
-    const handleWizardComplete = (params: Partial<CPQInput>) => {
+    const handleWizardComplete = useCallback((params: Partial<CPQInput>) => {
         setInput((prev) => ({ ...prev, ...params }));
-    };
+    }, []);
 
     return (
         <main className="flex h-screen w-full overflow-hidden font-sans">

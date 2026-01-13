@@ -248,48 +248,48 @@ export function ConversationalWizard({
     }, []);
 
     // Load session from Server (DB) or Create New
-    useEffect(() => {
-        const initSession = async () => {
-            const savedId = localStorage.getItem("anc_project_id");
-            if (savedId) {
-                try {
-                    // Resume existing session
-                    const res = await fetch(`/api/projects/${savedId}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        setProjectId(data.id);
-                        if (onProjectInit) onProjectInit(data.id);
-                        if (data.messages && data.messages.length > 0) {
-                            setMessages(data.messages);
-                        }
-                        if (data.state) {
-                            setCpqState(data.state);
-                            onUpdate(data.state);
-                        }
-                        return;
-                    }
-                } catch (e) {
-                    console.error("Failed to resume session:", e);
-                }
-            }
-
-            // Create New Session if resume failed or no ID
+    const initSession = useCallback(async () => {
+        const savedId = localStorage.getItem("anc_project_id");
+        if (savedId) {
             try {
-                const res = await fetch("/api/projects", { method: "POST" });
+                // Resume existing session
+                const res = await fetch(`/api/projects/${savedId}`);
                 if (res.ok) {
                     const data = await res.json();
                     setProjectId(data.id);
                     if (onProjectInit) onProjectInit(data.id);
-                    localStorage.setItem("anc_project_id", data.id.toString());
+                    if (data.messages && data.messages.length > 0) {
+                        setMessages(data.messages);
+                    }
+                    if (data.state) {
+                        setCpqState(data.state);
+                        onUpdate(data.state);
+                    }
+                    return;
                 }
             } catch (e) {
-                console.error("Failed to create project:", e);
+                console.error("Failed to resume session:", e);
             }
-        };
+        }
 
+        // Create New Session if resume failed or no ID
+        try {
+            const res = await fetch("/api/projects", { method: "POST" });
+            if (res.ok) {
+                const data = await res.json();
+                setProjectId(data.id);
+                if (onProjectInit) onProjectInit(data.id);
+                localStorage.setItem("anc_project_id", data.id.toString());
+            }
+        } catch (e) {
+            console.error("Failed to create project:", e);
+        }
+    }, [onUpdate, onProjectInit]);
+
+    useEffect(() => {
         initSession();
         fetchHistory();
-    }, [onUpdate, onProjectInit, fetchHistory]);
+    }, [initSession, fetchHistory]);
 
     // Handle history toggle
     useEffect(() => {
@@ -737,42 +737,29 @@ export function ConversationalWizard({
         }
     };
 
-    const handleNewProposal = () => {
-        // Save current proposal to history before clearing
-        if (messages.length > 1) {
-            const newProposal: SavedProposal = {
-                id: Math.random().toString(36).substr(2, 9),
-                name:
-                    cpqState.clientName ||
-                    cpqState.projectName ||
-                    "Untitled Proposal",
-                timestamp: Date.now(),
-                messages,
-                state: cpqState,
-            };
-            const updatedHistory = [newProposal, ...savedProposals];
-            setSavedProposals(updatedHistory);
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
-        }
+    const handleNewProposal = async () => {
+        // Clear local project ID so initSession creates a new one
+        localStorage.removeItem("anc_project_id");
+        localStorage.removeItem(STORAGE_KEY);
 
         setMessages([getInitialMessage()]);
-        setCpqState({});
+        setCpqState(INITIAL_CPQ_STATE);
 
         // Force full reset in parent component
-        onUpdate({
-            clientName: "",
-            address: "",
-            projectName: "",
-            productClass: "Scoreboard",
-            widthFt: 0,
-            heightFt: 0,
-            pixelPitch: 10,
-            environment: "Indoor",
-            shape: "Flat",
-            access: "Front",
-            complexity: "Standard",
-        });
-        localStorage.removeItem(STORAGE_KEY);
+        onUpdate(INITIAL_CPQ_STATE);
+
+        // Initialize a totally new session on the server
+        try {
+            const res = await fetch("/api/projects", { method: "POST" });
+            if (res.ok) {
+                const data = await res.json();
+                setProjectId(data.id);
+                if (onProjectInit) onProjectInit(data.id);
+                localStorage.setItem("anc_project_id", data.id.toString());
+            }
+        } catch (e) {
+            console.error("Failed to create new project:", e);
+        }
     };
 
     const handleLoadProposal = async (prop: SavedProposal) => {
