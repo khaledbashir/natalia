@@ -1929,10 +1929,14 @@ export function ConversationalWizard({
                         />
                         <button
                             onClick={() => handleSend(input)}
-                            disabled={!input.trim() || isLoading || isUploading}
+                            disabled={!input.trim() || isLoading || isUploading || isStreaming}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-500 hover:text-blue-400 disabled:text-slate-700 transition-colors"
                         >
-                            <Send size={18} />
+                            {(isLoading || isUploading || isStreaming) ? (
+                                <Loader2 size={18} className="animate-spin text-blue-400" />
+                            ) : (
+                                <Send size={18} />
+                            )}
                         </button>
                     </div>
                 </div>
