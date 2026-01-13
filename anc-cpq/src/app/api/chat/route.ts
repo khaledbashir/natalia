@@ -657,8 +657,8 @@ export async function POST(request: NextRequest) {
             temperature: 0.1,
         };
 
-        // Add web search tool for GLM-4.7
-        if (modelConfig.id === "glm-4.7" || modelConfig.id === "glm-4.6") {
+        // Add web search tool for all ZhipuAI models (GLM-4.x series)
+        if (modelConfig.provider === "zhipu" || modelConfig.id.startsWith("glm-")) {
             requestBody.tools = [
                 {
                     type: "web_search",
