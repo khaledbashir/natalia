@@ -409,7 +409,7 @@ export function ConversationalWizard({
         }
     };
 
-    const performAutoAddressLookup = async (query: string) => {
+    const performAutoAddressLookup = async (query: string, silent = false) => {
         setIsSearchingAddress(true);
         try {
             console.log("🕵️ Auto-searching for:", query);
@@ -417,25 +417,31 @@ export function ConversationalWizard({
             const data = await res.json();
 
             if (data.results && data.results.length > 0) {
-                const bestMatch = data.results[0];
-                // Prefer display_name because it is typically the most complete (often includes street + country).
-                const address = bestMatch.display_name || bestMatch.address;
-                const title = bestMatch.title;
-
-                // Auto-inject the result as a suggestion
-                const autoMsg: Message = {
-                    role: 'assistant',
-                    content: `I found **${title}** at:\n${address}\n\nIs this correct?`,
-                    suggestedOptions: [
-                        { value: address, label: "Use this address" },
-                        { value: "No", label: "No, search again" }
-                    ]
-                };
-
-                setMessages(prev => [...prev, autoMsg]);
-
-                // Also populate suggestions for the dropdown in case they want to pick another
+                // Populate suggestions - the UI will show them automatically
                 setAddressSuggestions(data.results);
+                
+                // Only add a message if not silent (e.g., user explicitly clicked Search)
+                if (!silent) {
+                    const bestMatch = data.results[0];
+                    const address = bestMatch.display_name || bestMatch.address;
+                    const title = bestMatch.title;
+
+                    const autoMsg: Message = {
+                        role: 'assistant',
+                        content: `I found **${title}** at:\n${address}\n\nIs this correct?`,
+                        suggestedOptions: [
+                            { value: address, label: "Use this address" },
+                            { value: "No", label: "No, search again" }
+                        ]
+                    };
+                    setMessages(prev => [...prev, autoMsg]);
+                }
+            } else if (!silent) {
+                // Only show "not found" message if user explicitly searched
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: "I couldn't find that venue. Try typing the full address or a different search term.",
+                }]);
             }
         } catch (e) {
             console.error("Auto-search failed", e);
@@ -637,8 +643,13 @@ export function ConversationalWizard({
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
 
-                // IMPORTANT: No automatic address searches.
-                // Address lookup should be explicit (user can type a query and press Enter, or click the Search button).
+                // AUTO-SEARCH: When we just set clientName and next step is address, auto-search immediately
+                const justSetClientName = data.updatedParams?.clientName || normalized?.clientName;
+                if (validatedNextStep === 'address' && justSetClientName && !mergedState.address) {
+                    // Trigger address search using the venue name they just gave (silent mode - no extra message)
+                    console.log('🔍 Auto-searching address for:', justSetClientName);
+                    performAutoAddressLookup(justSetClientName, true);
+                }
 
                 // Save Assistant Message to DB
                 if (projectId) {
@@ -1087,210 +1098,140 @@ export function ConversationalWizard({
                                             widgetDef.type === "text" &&
                                             (!msg.suggestedOptions ||
                                                 msg.suggestedOptions.length ===
-                                                0) &&
-                                            !isSearchingAddress &&
-                                            !(
-                                                addressSuggestions.length > 0 &&
-                                                cpqState.clientName
-                                            ) && (
+                                                0) && (
                                                 <div className="flex flex-col gap-2 w-full">
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="text"
-                                                            placeholder={
-                                                                widgetDef.id ===
-                                                                    "clientName"
-                                                                    ? "e.g. Madison Square Garden"
-                                                                    : widgetDef.id ===
-                                                                          "address"
-                                                                          ? "Search venue or paste address..."
-                                                                    : "Type here..."
-                                                            }
-                                                            autoFocus
-                                                            onKeyDown={(e) => {
-                                                                if (
-                                                                    e.key ===
-                                                                    "Enter"
-                                                                ) {
-                                                                    const inputEl =
-                                                                        e.currentTarget as HTMLInputElement;
-                                                                    const val =
-                                                                        inputEl.value;
-                                                                    // Address step: Enter acts like Search if it doesn't look like an address.
-                                                                    if (widgetDef.id === "address" && val.trim() && !looksLikeAddressInput(val)) {
+                                                    {/* Show address suggestions if we have them (from auto-search) */}
+                                                    {widgetDef.id === "address" && addressSuggestions.length > 0 && !isSearchingAddress && (
+                                                        <div className="animate-in fade-in slide-in-from-top-2">
+                                                            <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                                                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                                                {addressSuggestions.length} locations found for "{cpqState.clientName}"
+                                                            </p>
+                                                            <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl">
+                                                                {addressSuggestions.slice(0, 5).map((item, idx) => (
+                                                                    <button
+                                                                        key={idx}
+                                                                        onClick={() => {
+                                                                            handleSend(item.display_name, true);
+                                                                            setAddressSuggestions([]);
+                                                                        }}
+                                                                        className="w-full text-left p-4 hover:bg-slate-800 transition-all border-b border-slate-800 last:border-0 group"
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+                                                                                <MapPin className="w-4 h-4 text-blue-400" />
+                                                                            </div>
+                                                                            <div className="flex-1">
+                                                                                <p className="text-xs text-white font-bold group-hover:text-blue-300 transition-colors">
+                                                                                    {item.display_name?.split(",")?.[0]?.trim() || "N/A"}
+                                                                                </p>
+                                                                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                                                                    {item.display_name?.split(",")?.slice(1)?.join(",")?.trim() || ""}
+                                                                                </p>
+                                                                            </div>
+                                                                            <ChevronRight size={14} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setAddressSuggestions([])}
+                                                                className="mt-2 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                                                            >
+                                                                None of these? Type address manually below ↓
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Show searching spinner */}
+                                                    {widgetDef.id === "address" && isSearchingAddress && (
+                                                        <div className="bg-[#0f1420] border border-blue-500/30 rounded-xl p-4 flex items-center gap-4 animate-in fade-in">
+                                                            <div className="relative">
+                                                                <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                                                                    Searching for {cpqState.clientName || "venue"}...
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Show text input only when NOT showing auto-suggestions OR for non-address fields */}
+                                                    {(widgetDef.id !== "address" || (addressSuggestions.length === 0 && !isSearchingAddress)) && (
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                placeholder={
+                                                                    widgetDef.id ===
+                                                                        "clientName"
+                                                                        ? "e.g. Madison Square Garden"
+                                                                        : widgetDef.id ===
+                                                                              "address"
+                                                                              ? "Paste full address or search again..."
+                                                                        : "Type here..."
+                                                                }
+                                                                autoFocus
+                                                                onKeyDown={(e) => {
+                                                                    if (
+                                                                        e.key ===
+                                                                        "Enter"
+                                                                    ) {
+                                                                        const inputEl =
+                                                                            e.currentTarget as HTMLInputElement;
+                                                                        const val =
+                                                                            inputEl.value;
+                                                                        // Address step: Enter acts like Search if it doesn't look like an address.
+                                                                        if (widgetDef.id === "address" && val.trim() && !looksLikeAddressInput(val)) {
+                                                                            performAutoAddressLookup(val);
+                                                                            inputEl.value = "";
+                                                                            return;
+                                                                        }
+
+                                                                        handleSend(val);
+                                                                        inputEl.value = "";
+                                                                    }
+                                                                }}
+                                                                className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-700 font-bold"
+                                                            />
+
+                                                            {widgetDef.id === "address" && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        const inputEl =
+                                                                            e.currentTarget
+                                                                                .previousElementSibling as HTMLInputElement;
+                                                                        const val = inputEl?.value || "";
+                                                                        if (!val.trim()) return;
                                                                         performAutoAddressLookup(val);
                                                                         inputEl.value = "";
-                                                                        setAddressSuggestions([]);
-                                                                        return;
-                                                                    }
-
-                                                                    handleSend(val);
-                                                                    inputEl.value =
-                                                                        "";
-                                                                    setAddressSuggestions(
-                                                                        [],
-                                                                    );
-                                                                }
-                                                            }}
-                                                            className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-700 font-bold"
-                                                        />
-
-                                                        {widgetDef.id === "address" && (
+                                                                    }}
+                                                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-slate-700"
+                                                                >
+                                                                    Search
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={(e) => {
-                                                                    const inputEl =
-                                                                        e.currentTarget
-                                                                            .previousElementSibling as HTMLInputElement;
-                                                                    const val = inputEl?.value || "";
-                                                                    if (!val.trim()) return;
-                                                                    performAutoAddressLookup(val);
-                                                                    inputEl.value = "";
-                                                                    setAddressSuggestions([]);
-                                                                }}
-                                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-slate-700"
-                                                            >
-                                                                Search
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={(e) => {
-                                                                const input = e
-                                                                    .currentTarget
-                                                                    .previousElementSibling as HTMLInputElement;
-                                                                // For address: Next submits only if it looks like an address; otherwise Search.
-                                                                if (widgetDef.id === "address" && input?.value?.trim() && !looksLikeAddressInput(input.value)) {
-                                                                    performAutoAddressLookup(input.value);
-                                                                    setAddressSuggestions([]);
+                                                                    const input = widgetDef.id === "address" 
+                                                                        ? e.currentTarget.previousElementSibling?.previousElementSibling as HTMLInputElement
+                                                                        : e.currentTarget.previousElementSibling as HTMLInputElement;
+                                                                    if (!input?.value) return;
+                                                                    // For address: Next submits only if it looks like an address; otherwise Search.
+                                                                    if (widgetDef.id === "address" && input?.value?.trim() && !looksLikeAddressInput(input.value)) {
+                                                                        performAutoAddressLookup(input.value);
+                                                                        input.value = "";
+                                                                        return;
+                                                                    }
+                                                                    handleSend(input.value);
                                                                     input.value = "";
-                                                                    return;
-                                                                }
-                                                                handleSend(
-                                                                    input.value,
-                                                                );
-                                                                setAddressSuggestions(
-                                                                    [],
-                                                                );
-                                                                input.value =
-                                                                    "";
-                                                            }}
-                                                            className="px-5 py-2 bg-[#003D82] hover:bg-[#002a5c] text-white rounded-lg text-[10px] font-black hover:bg-blue-500 transition-colors uppercase tracking-widest shadow-lg"
-                                                        >
-                                                            Next
-                                                        </button>
-                                                    </div>
-
-                                                    {/* AUTO-SEARCH RESULTS CARD */}
-                                                    {(isSearchingAddress ||
-                                                        (addressSuggestions.length >
-                                                            0 &&
-                                                            cpqState.clientName)) && (
-                                                            <div className="mt-2 animate-in fade-in slide-in-from-top-2">
-                                                                {isSearchingAddress && (
-                                                                    <div className="bg-[#0f1420] border border-blue-500/30 rounded-xl p-4 flex items-center gap-4">
-                                                                        <div className="relative">
-                                                                            <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
-                                                                            <div className="absolute inset-0 w-8 h-8 border-2 border-transparent border-t-blue-300/50 rounded-full animate-spin [animation-duration:1.5s]"></div>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                                                                                Searching
-                                                                                Address...
-                                                                            </p>
-                                                                            <p className="text-[10px] text-slate-500">
-                                                                                Looking
-                                                                                up{" "}
-                                                                                {cpqState.clientName ||
-                                                                                    "venue"}{" "}
-                                                                                in
-                                                                                our
-                                                                                database
-                                                                            </p>
-                                                                        </div>
-                                                                        <div className="ml-auto flex gap-1">
-                                                                            <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0s]"></div>
-                                                                            <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]"></div>
-                                                                            <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-
-                                                                {addressSuggestions.length >
-                                                                    0 &&
-                                                                    !isSearchingAddress && (
-                                                                        <div className="space-y-2">
-                                                                            <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
-                                                                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                                                                                {
-                                                                                    addressSuggestions.length
-                                                                                }{" "}
-                                                                                verified
-                                                                                addresses
-                                                                                found
-                                                                            </p>
-                                                                            <div className="bg-slate-900 border border-slate-600 rounded-xl overflow-hidden shadow-2xl">
-                                                                                {addressSuggestions.map(
-                                                                                    (
-                                                                                        item,
-                                                                                        idx,
-                                                                                    ) => (
-                                                                                        <button
-                                                                                            key={
-                                                                                                idx
-                                                                                            }
-                                                                                            onClick={() => {
-                                                                                                handleSend(
-                                                                                                    item.display_name,
-                                                                                                    true,
-                                                                                                );
-                                                                                                setAddressSuggestions(
-                                                                                                    [],
-                                                                                                );
-                                                                                            }}
-                                                                                            className="w-full text-left p-4 hover:bg-slate-800 transition-all border-b border-slate-800 last:border-0 group"
-                                                                                        >
-                                                                                            <div className="flex items-start gap-3">
-                                                                                                <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
-                                                                                                    <MapPin className="w-4 h-4 text-blue-400" />
-                                                                                                </div>
-                                                                                                <div className="flex-1">
-                                                                                                    <p className="text-xs text-white font-bold group-hover:text-blue-300 transition-colors">
-                                                                                                        {item.display_name
-                                                                                                            ?.split(
-                                                                                                                ",",
-                                                                                                            )?.[0]
-                                                                                                            ?.trim() ||
-                                                                                                            "N/A"}
-                                                                                                    </p>
-                                                                                                    <p className="text-[10px] text-slate-500 mt-0.5">
-                                                                                                        {item.display_name
-                                                                                                            ?.split(
-                                                                                                                ",",
-                                                                                                            )
-                                                                                                            ?.slice(
-                                                                                                                1,
-                                                                                                            )
-                                                                                                            ?.join(
-                                                                                                                ",",
-                                                                                                            )
-                                                                                                            ?.trim() ||
-                                                                                                            ""}
-                                                                                                    </p>
-                                                                                                </div>
-                                                                                                <ChevronRight
-                                                                                                    size={
-                                                                                                        14
-                                                                                                    }
-                                                                                                    className="text-slate-600 group-hover:text-blue-400 transition-colors"
-                                                                                                />
-                                                                                            </div>
-                                                                                        </button>
-                                                                                    ),
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                            </div>
-                                                        )}
+                                                                }}
+                                                                className="px-5 py-2 bg-[#003D82] hover:bg-[#002a5c] text-white rounded-lg text-[10px] font-black hover:bg-blue-500 transition-colors uppercase tracking-widest shadow-lg"
+                                                            >
+                                                                Next
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                     </div>
