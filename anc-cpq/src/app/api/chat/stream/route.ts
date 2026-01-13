@@ -63,6 +63,48 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - **DO NOT EXPLAIN YOUR REASONING IN THE message FIELD. ONLY IN THE reasoning FIELD.**
 - STOP immediately after the closing brace of the JSON. DO NOT EXPLAIN.`;
 
+const VALID_FIELD_IDS_IN_ORDER = [
+  "clientName",
+  "address",
+  "productClass",
+  "pixelPitch",
+  "widthFt",
+  "heightFt",
+  "environment",
+  "shape",
+  "mountingType",
+  "access",
+  "structureCondition",
+  "laborType",
+  "powerDistance",
+  "permits",
+  "controlSystem",
+  "bondRequired",
+  "complexity",
+  "unitCost",
+  "targetMargin",
+  "serviceLevel",
+] as const;
+
+function computeNextStepFromState(state: any): string {
+  for (const field of VALID_FIELD_IDS_IN_ORDER) {
+    const val = state?.[field];
+    if (val === undefined || val === null || val === "") return field;
+  }
+  return "confirm";
+}
+
+function sanitizePlainMessage(input: unknown): string {
+  const text = String(input ?? "").trim();
+  if (!text) return "";
+  // Never allow markdown fenced blocks or JSON blobs to be shown in chat bubbles.
+  return text
+    .replace(/```json[\s\S]*?```/gi, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/\{[\s\S]*\}/g, "")
+    .trim();
+}
+
 function cleanHistory(history: any[]): any[] {
   return history.map((h) => {
     let content = h.content || "";
@@ -243,12 +285,46 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Final extraction
+        // Final extraction (ABSOLUTE: never send raw model JSON to the client as message)
         const parsed = extractJSON(fullText);
+        const { WIZARD_QUESTIONS } = await import("../../../../lib/wizard-questions");
+
+        const nextStep =
+          (parsed?.nextStep && typeof parsed.nextStep === "string" && VALID_FIELD_IDS_IN_ORDER.includes(parsed.nextStep as any))
+            ? parsed.nextStep
+            : computeNextStepFromState(currentState);
+
+        const questionDef = WIZARD_QUESTIONS.find((q) => q.id === nextStep);
+        const suggestedOptions = questionDef?.options || [];
+
         if (parsed) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', ...parsed, reasoning: reasoningContent })}\n\n`));
+          const safeMessage = sanitizePlainMessage(parsed.message) || questionDef?.question || "What is the next required specification?";
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "complete",
+                message: safeMessage,
+                nextStep,
+                suggestedOptions,
+                updatedParams: parsed.updatedParams || {},
+                reasoning: reasoningContent,
+              })}\n\n`,
+            ),
+          );
         } else {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', message: fullText, reasoning: reasoningContent })}\n\n`));
+          // Hard fallback: keep the wizard moving, but never leak the model's raw output.
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "complete",
+                message: questionDef?.question || "What is the next required specification?",
+                nextStep,
+                suggestedOptions,
+                updatedParams: {},
+                reasoning: reasoningContent,
+              })}\n\n`,
+            ),
+          );
         }
 
         controller.close();
