@@ -1124,11 +1124,6 @@ export function ConversationalWizard({
                 }
             }
             
-            // Process the final response
-            setStreamingThinking('');
-            setIsStreaming(false);
-            setIsLoading(false);
-
             if (Object.keys(finalUpdatedParams).length > 0) {
                 const normalized = normalizeParams(finalUpdatedParams);
                 const newState = { ...currentStateToSend, ...normalized };
@@ -1163,6 +1158,11 @@ export function ConversationalWizard({
                     console.error("Failed to log assistant message", e),
                 );
             }
+
+            // Final state cleanup: Only clear flags AFTER UI is updated
+            setStreamingThinking('');
+            setIsStreaming(false);
+            setIsLoading(false);
             
         } catch (error) {
             setIsLoading(false);
@@ -1921,10 +1921,12 @@ export function ConversationalWizard({
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === "Enter" && !isLoading) handleSend(input);
+                                if (e.key === "Enter" && !isLoading && !isStreaming && !isUploading) {
+                                    handleSend(input);
+                                }
                             }}
-                            disabled={isLoading || isUploading}
-                            placeholder={isUploading ? "Analyzing Brief..." : "Respond or ask a question..."}
+                            disabled={isLoading || isUploading || isStreaming}
+                            placeholder={(isUploading || isLoading || isStreaming) ? "Processing..." : "Respond or ask a question..."}
                             className="w-full bg-slate-900/50 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none placeholder:text-slate-600 font-medium transition-all group-hover:bg-slate-900"
                         />
                         <button

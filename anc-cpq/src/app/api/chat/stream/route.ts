@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
                   reasoningContent += delta.reasoning_content;
                   controller.enqueue(
                     encoder.encode(
-                      `data: ${JSON.stringify({ type: "thinking", content: delta.reasoning_content })}\n\n`,
+                      `data: ${JSON.stringify({ type: "thinking", content: reasoningContent })}\n\n`,
                     ),
                   );
                 }
