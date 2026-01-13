@@ -166,12 +166,12 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                         shape: s.shape,
                         access: s.access,
                         complexity: s.complexity,
-                        structure_condition: s.structure_condition || 'Existing',
-                        labor_type: s.labor_type || 'NonUnion',
-                        power_distance: s.power_distance || 'Close',
+                        structure_condition: s.structureCondition || 'Existing',
+                        labor_type: s.laborType || 'NonUnion',
+                        power_distance: s.powerDistance || 'Close',
                         permits: s.permits || 'Client',
-                        control_system: s.control_system || 'Include',
-                        bond_required: !!s.bond_required
+                        control_system: s.controlSystem || 'Include',
+                        bond_required: !!s.bondRequired
                     })) : [{
                         product_class: input.productClass,
                         pixel_pitch: input.pixelPitch,
