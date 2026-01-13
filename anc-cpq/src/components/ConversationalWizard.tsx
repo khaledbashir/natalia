@@ -506,8 +506,8 @@ export function ConversationalWizard({
         }
 
         try {
-            // Try streaming first if available
-            if (process.env.NEXT_PUBLIC_ENABLE_STREAMING === "true") {
+            // Try streaming first as default professional behavior
+            if (process.env.NEXT_PUBLIC_ENABLE_STREAMING !== "false") {
                 await handleStreamingChat(updatedText, currentStateToSend);
                 return;
             }
@@ -1417,24 +1417,39 @@ export function ConversationalWizard({
                     </div>
                 ))}
                 {(isLoading || isUploading) && (
-                    <div className="flex items-start gap-3 mt-4">
-                        <div className="w-8 h-8 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
-                            <Bot size={16} className="text-blue-400" />
-                        </div>
-                        <div className="bg-slate-800/40 rounded-2xl px-5 py-3 border border-slate-700/30 flex items-center gap-4">
-                            <div className="flex gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
+                    <div className="flex flex-col gap-3 mt-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+                                <Bot size={16} className="text-blue-400" />
                             </div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">
-                                {isUploading
-                                    ? "Reading document..."
-                                    : isStreaming
-                                    ? "Thinking..."
-                                    : "Processing..."}
-                            </span>
+                            <div className="bg-slate-800/40 rounded-2xl px-5 py-3 border border-slate-700/30 flex items-center gap-4">
+                                <div className="flex gap-1.5">
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
+                                </div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">
+                                    {isUploading
+                                        ? "Reading document..."
+                                        : (isStreaming || streamingThinking)
+                                        ? "Logic Engine Analysis..."
+                                        : "Processing..."}
+                                </span>
+                            </div>
                         </div>
+                        
+                        {streamingThinking && (
+                            <div className="ml-11 bg-slate-800/30 rounded-xl p-4 border border-blue-500/10 max-w-[90%] animate-in fade-in slide-in-from-top-1 duration-300">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                                    <span className="text-[10px] font-black text-blue-400/80 uppercase tracking-widest">Live Reasoning Stream</span>
+                                </div>
+                                <div className="text-[11px] text-slate-400 font-mono leading-relaxed whitespace-pre-wrap">
+                                    {streamingThinking}
+                                    <span className="inline-block w-1.5 h-3 bg-blue-500/50 animate-pulse ml-1 align-middle"></span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
