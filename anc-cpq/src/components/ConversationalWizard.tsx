@@ -542,6 +542,44 @@ export function ConversationalWizard({
         setInput("");
         setIsLoading(true);
 
+        // If the user is simply confirming to start (e.g., clicked "Proceed"), do NOT call the model.
+        // Immediately move the wizard forward with the next required question.
+        const isProceedIntent = /^(proceed|start|start new quote|go|continue)$/i.test(
+            updatedText.trim(),
+        );
+        if (isProceedIntent) {
+            const nextRequired = WIZARD_QUESTIONS.find((q) => {
+                const val = currentStateToSend[q.id as keyof CPQInput];
+                return val === undefined || val === null || val === "";
+            });
+            const nextStep = nextRequired?.id || "clientName";
+
+            const assistantMsg: Message = {
+                role: "assistant",
+                content: nextRequired?.question || "What's the venue name?",
+                nextStep,
+                suggestedOptions: nextRequired?.options || [],
+            };
+
+            setIsLoading(false);
+            setIsStreaming(false);
+            setStreamingThinking("");
+            setAskedQuestions((prev) => new Set([...prev, nextStep]));
+            setMessages((prev) => [...prev, assistantMsg]);
+
+            if (projectId) {
+                fetch(`/api/projects/${projectId}/message`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(assistantMsg),
+                }).catch((e) =>
+                    console.error("Failed to log assistant message", e),
+                );
+            }
+
+            return;
+        }
+
         // Client-side extraction for number fields to prevent loops
         let extractedValue: any = null;
         if (widgetDef && widgetDef.type === "number") {
