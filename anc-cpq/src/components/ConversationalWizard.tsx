@@ -203,6 +203,9 @@ export function ConversationalWizard({
         | null
     >(null);
 
+    const activeStreamAbortRef = useRef<AbortController | null>(null);
+    const narrationPlaceholderIndexRef = useRef<number | null>(null);
+
     // Refs
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -609,10 +612,65 @@ export function ConversationalWizard({
             // Address is handled via search-places UX. For manual address entries, we keep the user on the
             // address step and show suggestions rather than calling the model.
             if (widgetDef.id === "address" && !isAddressSelection) {
-                debouncedSearch(updatedText);
+                const textVal = updatedText.trim();
+                const looksLikeFullAddress =
+                    /\b\d{5}(?:-\d{4})?\b/.test(textVal) ||
+                    /\b[A-Z]{2}\b/.test(textVal) ||
+                    textVal.split(",").length >= 2;
+
+                if (!looksLikeFullAddress) {
+                    debouncedSearch(textVal);
+                    setIsLoading(false);
+                    setIsStreaming(false);
+                    setStreamingThinking("");
+                    return;
+                }
+
+                // Accept manual address as final and move forward.
+                const updatedParams: Record<string, any> = { address: textVal };
+                const normalized = normalizeParams(updatedParams);
+                const newState: any = { ...currentStateToSend, ...normalized };
+                setLastFieldUpdated("address");
+                setCpqState(newState);
+                onUpdate(newState);
+
+                const nextRequired = WIZARD_QUESTIONS.find((q) => {
+                    if (!q.required) return false;
+                    const val = newState[q.id as keyof CPQInput];
+                    return val === undefined || val === null || val === "";
+                });
+                const nextStep = nextRequired?.id || "confirm";
+
+                const nextQuestionText =
+                    nextStep === "confirm"
+                        ? "All required specifications are captured. Please confirm the configuration below."
+                        : nextRequired?.question || "What is the next required specification?";
+
+                const assistantMsg: Message = {
+                    role: "assistant",
+                    content: nextQuestionText,
+                    nextStep,
+                    suggestedOptions: nextStep === "confirm" ? [] : nextRequired?.options || [],
+                    thinking: SHOW_REASONING
+                        ? `LOGIC TRACE: Captured address. Next: ${nextStep}.`
+                        : undefined,
+                };
+
                 setIsLoading(false);
                 setIsStreaming(false);
                 setStreamingThinking("");
+                setAskedQuestions((prev) => new Set([...prev, nextStep]));
+                setMessages((prev) => [...prev, assistantMsg]);
+
+                if (projectId) {
+                    fetch(`/api/projects/${projectId}/message`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(assistantMsg),
+                    }).catch((e) =>
+                        console.error("Failed to log assistant message", e),
+                    );
+                }
                 return;
             }
 
@@ -927,28 +985,40 @@ export function ConversationalWizard({
             narration?: any;
         },
     ) => {
+        // Cancel any in-flight stream so we never have overlapping readers fighting UI state.
+        if (activeStreamAbortRef.current) {
+            activeStreamAbortRef.current.abort();
+        }
+        const abortController = new AbortController();
+        activeStreamAbortRef.current = abortController;
+
         setIsStreaming(true);
         setStreamingThinking('');
 
         const isNarrationMode = opts?.mode === "narrate";
-        const placeholderIndex: number | null = isNarrationMode ? messages.length : null;
+        narrationPlaceholderIndexRef.current = null;
 
-        if (isNarrationMode && placeholderIndex !== null) {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    role: "assistant",
-                    content: "",
-                    nextStep: opts?.narration?.nextStep || "",
-                    suggestedOptions: opts?.narration?.suggestedOptions || [],
-                },
-            ]);
+        if (isNarrationMode) {
+            setMessages((prev) => {
+                const idx = prev.length;
+                narrationPlaceholderIndexRef.current = idx;
+                return [
+                    ...prev,
+                    {
+                        role: "assistant",
+                        content: "",
+                        nextStep: opts?.narration?.nextStep || "",
+                        suggestedOptions: opts?.narration?.suggestedOptions || [],
+                    },
+                ];
+            });
         }
         
         try {
             const response = await fetch("/api/chat/stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                signal: abortController.signal,
                 body: JSON.stringify({
                     message: text,
                     history: messages,
@@ -994,10 +1064,11 @@ export function ConversationalWizard({
                                     finalContent = parsed.content;
 
                                     // In narration mode, stream the assistant message live.
+                                    const placeholderIndex = narrationPlaceholderIndexRef.current;
                                     if (isNarrationMode && placeholderIndex !== null) {
                                         const safe = sanitizeAssistantText(finalContent);
                                         setMessages((prev) => {
-                                            if (placeholderIndex === null || placeholderIndex >= prev.length) return prev;
+                                            if (placeholderIndex >= prev.length) return prev;
                                             const next = [...prev];
                                             const existing = next[placeholderIndex];
                                             next[placeholderIndex] = {
@@ -1020,10 +1091,11 @@ export function ConversationalWizard({
                                     finalSuggestedOptions = parsed.suggestedOptions || [];
                                     finalUpdatedParams = parsed.updatedParams || {};
 
+                                    const placeholderIndex = narrationPlaceholderIndexRef.current;
                                     if (isNarrationMode && placeholderIndex !== null) {
                                         const safe = sanitizeAssistantText(finalContent);
                                         setMessages((prev) => {
-                                            if (placeholderIndex === null || placeholderIndex >= prev.length) return prev;
+                                            if (placeholderIndex >= prev.length) return prev;
                                             const next = [...prev];
                                             const existing = next[placeholderIndex];
                                             next[placeholderIndex] = {
@@ -1104,6 +1176,7 @@ export function ConversationalWizard({
             };
 
             // If narration mode placeholder exists, replace it; otherwise append.
+            const placeholderIndex = narrationPlaceholderIndexRef.current;
             if (isNarrationMode && placeholderIndex !== null) {
                 setMessages((prev) => {
                     if (placeholderIndex >= prev.length) return [...prev, assistantMsg];
@@ -1127,6 +1200,10 @@ export function ConversationalWizard({
         } finally {
             setIsStreaming(false);
             setStreamingThinking('');
+            // Clear abort ref if this stream is the active one.
+            if (activeStreamAbortRef.current === abortController) {
+                activeStreamAbortRef.current = null;
+            }
         }
     };
 
@@ -1514,6 +1591,7 @@ export function ConversationalWizard({
                                                                     ),
                                                                 )
                                                             }
+                                                            disabled={isLoading || isUploading || isStreaming}
                                                             className="px-5 py-2.5 bg-[#03060a] hover:bg-[#0047AB] text-slate-200 hover:text-white border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 group"
                                                         >
                                                             {opt.label}{" "}
