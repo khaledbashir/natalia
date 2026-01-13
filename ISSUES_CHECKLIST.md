@@ -142,11 +142,11 @@ No content management, spare parts, or maintenance upsells.
 - [x] Add Upsell step/questions
 
 ### Issue 14: Confusing Question Terminology
-**Status**: ✅ FOUND
+**Status**: ✅ FIXED
 **Description**:
 "Gold/Silver thing" confusion.
 **Action**:
-- [ ] Clarify question text
+- [x] Clarify question text
 
 ---
 

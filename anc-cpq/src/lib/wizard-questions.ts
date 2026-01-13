@@ -230,14 +230,15 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
     {
         id: 'serviceLevel',
         category: 'project',
-        question: "What level of ongoing service is required?",
+        question: "What level of technical support & warranty coverage is needed?",
         type: 'select',
         options: [
-            { value: 'bronze', label: 'Bronze' },
-            { value: 'silver', label: 'Silver' },
-            { value: 'gold', label: 'Gold' }
+            { value: 'bronze', label: 'Bronze (Standard Support - 8x5 M-F)' },
+            { value: 'silver', label: 'Silver (Priority Support - 24/7 + Extended Warranty)' },
+            { value: 'gold', label: 'Gold (On-Site + Dedicated Engineer)' }
         ],
-        required: true
+        required: true,
+        formulaImpact: 'Higher service levels increase recurring service revenue'
     },
     // Upsells - Revenue Impact
     {
