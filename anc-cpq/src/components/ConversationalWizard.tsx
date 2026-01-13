@@ -1229,13 +1229,6 @@ export function ConversationalWizard({
                                                                             e.currentTarget as HTMLInputElement;
                                                                         const val =
                                                                             inputEl.value;
-                                                                        // Address step: Enter acts like Search if it doesn't look like an address.
-                                                                        if (widgetDef.id === "address" && val.trim() && !looksLikeAddressInput(val)) {
-                                                                            performAutoAddressLookup(val);
-                                                                            inputEl.value = "";
-                                                                            return;
-                                                                        }
-
                                                                         handleSend(val);
                                                                         inputEl.value = "";
                                                                     }
@@ -1251,7 +1244,7 @@ export function ConversationalWizard({
                                                                                 .previousElementSibling as HTMLInputElement;
                                                                         const val = inputEl?.value || "";
                                                                         if (!val.trim()) return;
-                                                                        performAutoAddressLookup(val);
+                                                                        handleSend(val);
                                                                         inputEl.value = "";
                                                                     }}
                                                                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-slate-700"
@@ -1265,12 +1258,6 @@ export function ConversationalWizard({
                                                                         ? e.currentTarget.previousElementSibling?.previousElementSibling as HTMLInputElement
                                                                         : e.currentTarget.previousElementSibling as HTMLInputElement;
                                                                     if (!input?.value) return;
-                                                                    // For address: Next submits only if it looks like an address; otherwise Search.
-                                                                    if (widgetDef.id === "address" && input?.value?.trim() && !looksLikeAddressInput(input.value)) {
-                                                                        performAutoAddressLookup(input.value);
-                                                                        input.value = "";
-                                                                        return;
-                                                                    }
                                                                     handleSend(input.value);
                                                                     input.value = "";
                                                                 }}
