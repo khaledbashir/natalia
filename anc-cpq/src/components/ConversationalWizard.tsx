@@ -1006,9 +1006,11 @@ export function ConversationalWizard({
                     ...prev,
                     {
                         role: "assistant",
-                        content: "",
-                        nextStep: opts?.narration?.nextStep || "",
-                        suggestedOptions: opts?.narration?.suggestedOptions || [],
+                        // Placeholder content to keep the bubble visually attached to the incoming stream.
+                        content: "…",
+                        // Delay widgets/options until we have real text (prevents options appearing before the question).
+                        nextStep: "",
+                        suggestedOptions: [],
                     },
                 ];
             });
@@ -1569,7 +1571,8 @@ export function ConversationalWizard({
                             {/* EXPERT WIDGETS */}
                             {msg.role === "assistant" &&
                                 i === messages.length - 1 &&
-                                (msg.suggestedOptions || widgetDef) && (
+                                (msg.suggestedOptions || widgetDef) &&
+                                sanitizeAssistantText(msg.content).length > 0 && (
                                     <div className="mt-4 pt-4 border-t border-slate-700/30">
                                         {((msg.suggestedOptions &&
                                             msg.suggestedOptions.length > 0) ||
