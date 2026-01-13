@@ -96,11 +96,11 @@ AI asks "Control System" and "Permits" questions twice.
 ## 🟡 MEDIUM PRIORITY (UX & Polish)
 
 ### Issue 8: No `<details>` Accordion
-**Status**: ✅ FOUND
+**Status**: ✅ FIXED
 **Description**:
 Thinking content visible as raw HTML or hidden, not a nice accordion.
 **Action**:
-- [ ] Implement proper rendering for `msg.thinking` in frontend
+- [x] Implement proper rendering for `msg.thinking` in frontend
 
 ### Issue 9: Progress Bar Mismatch
 **Status**: ✅ FOUND

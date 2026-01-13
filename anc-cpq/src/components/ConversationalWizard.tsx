@@ -1273,25 +1273,32 @@ ${finalThinking}
                         </div>
                         {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
                             <div className="px-5 mt-2">
-                                <div 
-                                    className="text-xs text-slate-400 leading-relaxed max-w-[95%] bg-slate-800/30 p-3 rounded-lg border border-slate-700/30 animate-in fade-in slide-in-from-top-1"
-                                    dangerouslySetInnerHTML={{ __html: msg.thinking }}
-                                />
+                                <details className="group/thinking" open={false}>
+                                    <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest hover:text-blue-400 transition-colors list-none select-none">
+                                        <span className="text-slate-400 group-open/thinking:text-blue-400 transition-colors">🤔</span>
+                                        <span>AI Reasoning Process</span>
+                                        <span className="ml-auto text-[8px] text-slate-600 group-open/thinking:text-blue-500">▼</span>
+                                    </summary>
+                                    <div className="mt-2 text-[10px] text-slate-400 font-mono whitespace-pre-wrap bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 max-w-[95%] animate-in fade-in slide-in-from-top-1">
+                                        <div dangerouslySetInnerHTML={{ __html: msg.thinking }} />
+                                    </div>
+                                </details>
                             </div>
                         )}
                         
                         {/* Streaming thinking display */}
                         {isStreaming && streamingThinking && (
                             <div className="px-5 mt-2">
-                                <div className="text-xs text-slate-400 leading-relaxed max-w-[95%] bg-slate-800/30 p-3 rounded-lg border border-slate-700/30">
-                                    <div className="flex items-center gap-2 mb-2">
+                                <details className="group/thinking" open={true}>
+                                    <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest hover:text-blue-400 transition-colors list-none select-none">
                                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                        <span className="text-[10px] text-slate-500 font-medium">Thinking...</span>
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap">
+                                        <span>Thinking...</span>
+                                        <span className="ml-auto text-[8px] text-slate-600">▼</span>
+                                    </summary>
+                                    <div className="mt-2 text-[10px] text-slate-400 font-mono whitespace-pre-wrap bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 max-w-[95%]">
                                         {streamingThinking}
                                     </div>
-                                </div>
+                                </details>
                             </div>
                         )}
                     </div>
