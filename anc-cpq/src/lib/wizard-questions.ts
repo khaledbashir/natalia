@@ -103,7 +103,8 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         options: [
             { value: 'Wall', label: 'Wall Mount', impact: 'Standard' },
             { value: 'Ground', label: 'Ground Stack', impact: '+5%' },
-            { value: 'Rigging', label: 'Rigged/Flown', impact: '+25%' }
+            { value: 'Rigging', label: 'Rigged/Flown', impact: '+25%' },
+            { value: 'Pole', label: 'Pole Mount', impact: '+15%' }
         ],
         required: true,
         formulaImpact: 'Affects structural engineering requirements'
@@ -170,7 +171,8 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         type: 'select',
         options: [
             { value: 'Client', label: 'Client Handles Permits', impact: 'Excluded' },
-            { value: 'ANC', label: 'ANC Handles Permits', impact: '+$2,500-10,000' }
+            { value: 'ANC', label: 'ANC Handles Permits', impact: '+$2,500-10,000' },
+            { value: 'Existing', label: 'Existing Permits In Place', impact: 'No change' }
         ],
         required: true,
         formulaImpact: 'Permit handling adds administrative costs'
