@@ -155,6 +155,8 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', message: fullText, reasoning: reasoningContent })}\n\n`));
         }
 
+        controller.close();
+      }
     });
 
     return new Response(stream, {
