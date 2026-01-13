@@ -401,25 +401,27 @@ function inferStepFromMessage(message: string): string | null {
 
     // 4. Field-specific detection (ordered to avoid false positives)
     // We only infer if the message EXPLICITLY asks the question
+    // EXPANDED patterns to catch more variations the AI might use
     const fieldPatterns = [
-        { step: "productClass", patterns: ["type of display", "what type of display", "kind of display"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "widthFt", patterns: ["width in feet", "how wide"], exclude: ["locked", "set to", "confirmed", "capturing", "captured", "height"] },
-        { step: "heightFt", patterns: ["height in feet", "how high", "how tall"], exclude: ["locked", "set to", "confirmed", "capturing", "captured", "width"] },
-        { step: "pixelPitch", patterns: ["pixel pitch", "what pitch"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "shape", patterns: ["shape", "curved or flat", "flat or curved"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "environment", patterns: ["indoor or outdoor", "indoor/outdoor", "environment"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "structureCondition", patterns: ["existing structure", "new steel", "mounting to existing"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "mountingType", patterns: ["mounting type", "how will it be mounted", "rigged or flown"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "access", patterns: ["front or rear access", "service access"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "permits", patterns: ["permits", "handle the city"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "laborType", patterns: ["labor requirements", "union labor"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "powerDistance", patterns: ["distance to power", "power/data termination"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "controlSystem", patterns: ["control system", "processors"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "bondRequired", patterns: ["performance bond", "bond required"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "complexity", patterns: ["install complexity"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "unitCost", patterns: ["unit cost", "cost per square"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "targetMargin", patterns: ["target margin", "profit margin"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
-        { step: "serviceLevel", patterns: ["service level", "ongoing maintenance"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "clientName", patterns: ["venue name", "client name", "what's the venue", "what is the venue", "client's name"], exclude: ["set to", "confirmed", "captured"] },
+        { step: "productClass", patterns: ["type of display", "what type of display", "kind of display", "display type", "what display"], exclude: ["locked", "set to", "confirmed", "capturing", "captured", "width", "height", "pitch"] },
+        { step: "pixelPitch", patterns: ["pixel pitch", "what pitch", "pitch do you need", "what mm", "how fine"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "widthFt", patterns: ["width in feet", "how wide", "display width", "what's the width", "what is the width"], exclude: ["locked", "set to", "confirmed", "capturing", "captured", "height"] },
+        { step: "heightFt", patterns: ["height in feet", "how high", "how tall", "display height", "what's the height", "what is the height"], exclude: ["locked", "set to", "confirmed", "capturing", "captured", "width"] },
+        { step: "environment", patterns: ["indoor or outdoor", "indoor/outdoor", "environment", "indoor outdoor", "inside or outside"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "shape", patterns: ["shape", "curved or flat", "flat or curved", "flat curved", "curved flat"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "mountingType", patterns: ["mounting type", "how will it be mounted", "rigged or flown", "wall or ground", "how is it mounted", "mounting method"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "access", patterns: ["front or rear access", "service access", "front rear", "access type", "serviceable from"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "structureCondition", patterns: ["existing structure", "new steel", "mounting to existing", "structure condition", "existing or new"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "laborType", patterns: ["labor requirements", "union labor", "labor type", "union or non", "prevailing wage"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "powerDistance", patterns: ["distance to power", "power/data termination", "power distance", "how far is power", "power termination"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "permits", patterns: ["permits", "handle the city", "who handles permit", "permit responsibility"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "controlSystem", patterns: ["control system", "processors", "include control", "need control", "control processor"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "bondRequired", patterns: ["performance bond", "bond required", "require a bond", "bonding requirement"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "complexity", patterns: ["install complexity", "complexity level", "standard or high", "high complexity"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "unitCost", patterns: ["unit cost", "cost per square", "price per sqft", "cost per sqft"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "targetMargin", patterns: ["target margin", "profit margin", "margin percentage", "what margin"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "serviceLevel", patterns: ["service level", "ongoing maintenance", "bronze silver gold", "service tier"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
     ];
 
     for (const { step, patterns, exclude } of fieldPatterns) {
@@ -781,8 +783,22 @@ export async function POST(request: NextRequest) {
                         ...(parsed.updatedParams || {}),
                     };
 
+                    // DEBUG: Log merged state to understand what's happening
+                    console.log("🔍 GUARDRAIL DEBUG:");
+                    console.log("   currentState:", JSON.stringify(currentState || {}, null, 2));
+                    console.log("   updatedParams:", JSON.stringify(parsed.updatedParams || {}, null, 2));
+                    console.log("   mergedState:", JSON.stringify(mergedState, null, 2));
+                    console.log("   AI said nextStep:", parsed.nextStep);
+
                     // Compute the authoritative next step from the merged state.
                     const computedNextStep = await computeNextStepFromState(mergedState);
+                    
+                    console.log("   COMPUTED nextStep:", computedNextStep);
+                    
+                    // BULLETPROOF: ALWAYS use the computed step, NEVER trust AI
+                    if (parsed.nextStep !== computedNextStep) {
+                        console.log(`   ⚠️ OVERRIDE: AI said '${parsed.nextStep}' but state says '${computedNextStep}'`);
+                    }
                     parsed.nextStep = computedNextStep;
                     thinkingNotes.push(`Authoritative nextStep computed from merged state: ${computedNextStep}`);
 
@@ -834,14 +850,24 @@ export async function POST(request: NextRequest) {
                     }
 
                     // --- FORCE MESSAGE SYNC WITH STEP ---
-                    // If the step has advanced (e.g. from clientName -> address due to fallback),
-                    // but the message still asks the OLD question (e.g. "What's the venue name?"),
-                    // we MUST replace the message.
+                    // BULLETPROOF: The message MUST match the computed step.
+                    // If AI is asking a question for a DIFFERENT field, REPLACE IT.
 
                     const questionDef = WIZARD_QUESTIONS.find(
                         (q) => q.id === parsed.nextStep,
                     );
 
+                    // Check what field the AI's message is asking about
+                    const messageInferredStep = inferStepFromMessage(parsed.message || "");
+                    
+                    // If AI is asking about the WRONG field, force the correct question
+                    if (questionDef && messageInferredStep && messageInferredStep !== parsed.nextStep) {
+                        console.log(`🚨 MESSAGE DESYNC: AI asks about '${messageInferredStep}' but computed step is '${parsed.nextStep}'. FORCING correct question.`);
+                        parsed.message = questionDef.question;
+                        thinkingNotes.push(`Forced message because AI asked about '${messageInferredStep}' instead of '${parsed.nextStep}'.`);
+                    }
+                    
+                    // Also check for generic stale messages (legacy check)
                     const currentStepBeforeThisTurn = currentState?.nextStep || 'clientName';
                     const stepAdvanced = parsed.nextStep !== currentStepBeforeThisTurn;
                     const messageStillMatchesOldStep = currentStepBeforeThisTurn === 'clientName' && 
