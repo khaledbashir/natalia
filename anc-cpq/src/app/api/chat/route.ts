@@ -527,8 +527,8 @@ export async function POST(request: NextRequest) {
         const messageType = classifyUserMessage(message);
 
         // SIMPLE: If current step is address and user gives venue name, auto-search for it
-        const currentStep = await computeNextStepFromState(currentState || {});
-        const isAddressStep = currentStep === "address";
+        const currentStepId = await computeNextStepFromState(currentState || {});
+        const isAddressStep = currentStepId === "address";
 
         // When user provides a venue name (short text, not full address), search for it
         if (isAddressStep && messageType === MessageType.VENUE_NAME_ONLY) {
@@ -602,22 +602,23 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate numeric inputs
-        const currentStep = STEPS.find((s: any) => s.id === currentState.nextStep);
-        if (currentStep && ['pixelPitch', 'widthFt', 'heightFt', 'unitCost', 'targetMargin'].includes(currentStep.id)) {
-            const numericValidation = parseNumericInput(currentStep.id, message);
+        const numericStep = STEPS.find((s: any) => s.id === currentState.nextStep);
+        if (numericStep && ['pixelPitch', 'widthFt', 'heightFt', 'unitCost', 'targetMargin'].includes(numericStep.id)) {
+            const numericValidation = parseNumericInput(numericStep.id, message);
 
             if (!numericValidation.valid) {
                 return NextResponse.json({
                     message: numericValidation.error || "Please enter a valid number.",
-                    nextStep: currentStep.id,
-                    suggestedOptions: currentStep.allowedValues || [],
+                    nextStep: numericStep.id,
+                    suggestedOptions: numericStep.allowedValues || [],
                     updatedParams: {},
                 });
             }
         }
 
         // Validate permit answers
-        if (currentStep && currentStep.id === 'permits') {
+        const permitStep = STEPS.find((s: any) => s.id === 'permits');
+        if (permitStep && currentState.nextStep === 'permits') {
             const normalizedPermit = normalizePermitAnswer(message);
 
             if (!normalizedPermit) {
