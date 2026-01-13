@@ -655,11 +655,8 @@ export async function POST(request: NextRequest) {
             model: modelConfig.id,
             messages: contextMessages,
             temperature: 0.1,
-        };
-
-        // Add web search tool for all ZhipuAI models (GLM-4.x series)
-        if (modelConfig.provider === "zhipu" || modelConfig.id.startsWith("glm-")) {
-            requestBody.tools = [
+            // Web search tool - added to all requests (provider will ignore if unsupported)
+            tools: [
                 {
                     type: "web_search",
                     web_search: {
@@ -667,8 +664,8 @@ export async function POST(request: NextRequest) {
                         search_result: true
                     }
                 }
-            ];
-        }
+            ]
+        };
 
         // Add thinking support for ZhipuAI
         if (modelConfig.supportsThinking) {
