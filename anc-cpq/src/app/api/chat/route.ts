@@ -242,35 +242,36 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - DO NOT ask about fields that already have values.
 - ALWAYS skip to the FIRST empty/missing field.
 
-**CONFIRMATION FLOW:**
-- If user confirms an address selection, set both 'clientName' AND 'address' and MOVE TO THE NEXT STEP (e.g., 'projectName').
+**CONFIRM AREA LOGIC:**
+- If user confirms an address selection, set both 'clientName' AND 'address' and MOVE TO THE NEXT STEP (e.g., 'productClass').
 - NEVER ask for 'address' again after a valid confirmation.
 
 **NEXT LOGIC:**
 - Always point 'nextStep' to the FIRST null or empty field in the sequence AFTER your bulk extractions.
 
-### THE ONLY 21 VALID FIELDS (IN ORDER):
+### THE ONLY 20 VALID FIELDS (IN ORDER):
 1. clientName
 2. address
-3. projectName
-4. productClass (Scoreboard, Ribbon, CenterHung, Vomitory)
-5. pixelPitch (4, 6, 10, 16)
-6. widthFt (number)
-7. heightFt (number) <-- NOTE: There is NO 'depth' field. LED displays are 2D only.
-8. environment (Indoor, Outdoor)
-9. shape (Flat, Curved)
-10. mountingType (Wall, Ground, Rigging, Pole)
-11. access (Front, Rear)
-12. structureCondition (Existing, NewSteel)
-13. laborType (NonUnion, Union, Prevailing)
-14. powerDistance (Close, Medium, Far)
-15. permits (Client, ANC)
-16. controlSystem (Include, None)
-17. bondRequired (Yes, No)
-18. complexity (Standard, High)
-19. unitCost (number, optional)
-20. targetMargin (number, optional)
-21. serviceLevel (bronze, silver, gold)
+3. productClass (Scoreboard, Ribbon, CenterHung, Vomitory)
+4. pixelPitch (4, 6, 10, 16)
+5. widthFt (number)
+6. heightFt (number)
+7. environment (Indoor, Outdoor)
+8. shape (Flat, Curved)
+9. mountingType (Wall, Ground, Rigging, Pole)
+10. access (Front, Rear)
+11. structureCondition (Existing, NewSteel)
+12. laborType (NonUnion, Union, Prevailing)
+13. powerDistance (Close, Medium, Far)
+14. permits (Client, ANC)
+15. controlSystem (Include, None)
+16. bondRequired (Yes, No)
+17. complexity (Standard, High)
+18. unitCost (number, optional)
+19. targetMargin (number, optional)
+20. serviceLevel (bronze, silver, gold)
+
+**(projectName is automatically synced to clientName, do NOT ask for it)**
 
 ### FIELD RECOGNITION CHEAT SHEET:
 - "mm", "pitch", "pixel" → pixelPitch
@@ -675,14 +676,9 @@ export async function POST(request: NextRequest) {
                 thinkingNotes.push("Field validation threw; see server logs.");
             }
 
-            // Derive projectName from clientName (avoid redundant question)
-            if (
-                (parsed.updatedParams.clientName || currentState?.clientName) &&
-                !parsed.updatedParams.projectName &&
-                !currentState?.projectName
-            ) {
-                const derivedProjectName = parsed.updatedParams.clientName || currentState.clientName;
-                parsed.updatedParams.projectName = derivedProjectName;
+            // Sync projectName with clientName (user doesn't want separate prompt)
+            if (parsed.updatedParams.clientName || currentState?.clientName) {
+                parsed.updatedParams.projectName = parsed.updatedParams.clientName || currentState.clientName;
             }
 
             // Reject partial addresses (e.g., "New York, NY 10001")
@@ -848,7 +844,13 @@ export async function POST(request: NextRequest) {
             // Minimal extraction: if we're missing clientName, treat a plain user message as venue name.
             const stateNext = await computeNextStepFromState(currentState || {});
             if (stateNext === "clientName" && !currentState?.clientName && typeof message === "string") {
-                fallbackUpdatedParams.clientName = titleCaseLoose(message);
+                const name = titleCaseLoose(message);
+                fallbackUpdatedParams.clientName = name;
+                fallbackUpdatedParams.projectName = name;
+            }
+            // Ensure projectName is always synced in fallback too
+            if (fallbackUpdatedParams.clientName || currentState?.clientName) {
+                fallbackUpdatedParams.projectName = fallbackUpdatedParams.clientName || currentState.clientName;
             }
 
             const mergedState = {

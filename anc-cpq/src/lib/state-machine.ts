@@ -54,15 +54,6 @@ export const STEPS: Step[] = [
     targetField: 'address'
   },
   {
-    id: 'projectName',
-    category: 'metadata',
-    requiredFields: [],
-    validate: () => true,
-    isComplete: () => true,
-    prompt: "Do you want a project nickname? (Optional)",
-    targetField: 'projectName'
-  },
-  {
     id: 'productClass',
     category: 'display',
     requiredFields: ['productClass'],

@@ -25,13 +25,7 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         type: 'text',
         required: true
     },
-    {
-        id: 'projectName',
-        category: 'metadata',
-        question: "Do you want a project nickname? (Optional)",
-        type: 'text',
-        required: false
-    },
+
     // Display
     {
         id: 'productClass',
