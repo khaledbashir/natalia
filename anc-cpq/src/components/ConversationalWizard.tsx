@@ -204,7 +204,7 @@ export function ConversationalWizard({
     >(null);
 
     const activeStreamAbortRef = useRef<AbortController | null>(null);
-    const narrationPlaceholderIndexRef = useRef<number | null>(null);
+    const assistantPlaceholderIndexRef = useRef<number | null>(null);
 
     // Refs
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -996,25 +996,24 @@ export function ConversationalWizard({
         setStreamingThinking('');
 
         const isNarrationMode = opts?.mode === "narrate";
-        narrationPlaceholderIndexRef.current = null;
+        assistantPlaceholderIndexRef.current = null;
 
-        if (isNarrationMode) {
-            setMessages((prev) => {
-                const idx = prev.length;
-                narrationPlaceholderIndexRef.current = idx;
-                return [
-                    ...prev,
-                    {
-                        role: "assistant",
-                        // Placeholder content to keep the bubble visually attached to the incoming stream.
-                        content: "…",
-                        // Delay widgets/options until we have real text (prevents options appearing before the question).
-                        nextStep: "",
-                        suggestedOptions: [],
-                    },
-                ];
-            });
-        }
+        // Always append a placeholder for the assistant message to provide a target for thinking/narration stream.
+        setMessages((prev) => {
+            const idx = prev.length;
+            assistantPlaceholderIndexRef.current = idx;
+            return [
+                ...prev,
+                {
+                    role: "assistant",
+                    // Placeholder content to keep the bubble visually attached to the incoming stream.
+                    content: "…",
+                    // Delay widgets/options until we have real text (prevents options appearing before the question).
+                    nextStep: "",
+                    suggestedOptions: [],
+                },
+            ];
+        });
         
         try {
             const response = await fetch("/api/chat/stream", {
@@ -1070,9 +1069,9 @@ export function ConversationalWizard({
                                 } else if (parsed.type === 'content') {
                                     finalContent = parsed.content;
 
-                                    // In narration mode, stream the assistant message live.
-                                    const placeholderIndex = narrationPlaceholderIndexRef.current;
-                                    if (isNarrationMode && placeholderIndex !== null) {
+                                    // Stream the assistant message live into the placeholder.
+                                    const placeholderIndex = assistantPlaceholderIndexRef.current;
+                                    if (placeholderIndex !== null) {
                                         const safe = sanitizeAssistantText(finalContent);
                                         setMessages((prev) => {
                                             if (placeholderIndex >= prev.length) return prev;
@@ -1098,8 +1097,8 @@ export function ConversationalWizard({
                                     finalSuggestedOptions = parsed.suggestedOptions || [];
                                     finalUpdatedParams = parsed.updatedParams || {};
 
-                                    const placeholderIndex = narrationPlaceholderIndexRef.current;
-                                    if (isNarrationMode && placeholderIndex !== null) {
+                                    const placeholderIndex = assistantPlaceholderIndexRef.current;
+                                    if (placeholderIndex !== null) {
                                         const safe = sanitizeAssistantText(finalContent);
                                         setMessages((prev) => {
                                             if (placeholderIndex >= prev.length) return prev;
@@ -1136,18 +1135,8 @@ export function ConversationalWizard({
                 onUpdate(newState);
             }
             
-            const finalMessage: Message = {
-                role: "assistant",
-                content: finalContent,
-                nextStep: finalNextStep,
-                suggestedOptions: finalSuggestedOptions,
-                thinking: SHOW_REASONING ? finalThinking : undefined,
-            };
-
-            // If narration mode already streamed into a placeholder bubble, don't append a second message.
-            if (!isNarrationMode) {
-                setMessages(prev => [...prev, finalMessage]);
-            }
+            // The placeholder bubble in the messages array is already updated with finalContent, finalNextStep, etc.
+            // No need to append a new message.
 
             if (finalNextStep) {
                 setAskedQuestions((prev) => new Set([...prev, finalNextStep]));
@@ -1158,7 +1147,13 @@ export function ConversationalWizard({
                 fetch(`/api/projects/${projectId}/message`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(finalMessage),
+                    body: JSON.stringify({
+                        role: "assistant",
+                        content: finalContent,
+                        nextStep: finalNextStep,
+                        suggestedOptions: finalSuggestedOptions,
+                        thinking: finalThinking,
+                    }),
                 }).catch((e) =>
                     console.error("Failed to log assistant message", e),
                 );
@@ -1183,7 +1178,7 @@ export function ConversationalWizard({
             };
 
             // If narration mode placeholder exists, replace it; otherwise append.
-            const placeholderIndex = narrationPlaceholderIndexRef.current;
+            const placeholderIndex = assistantPlaceholderIndexRef.current;
             if (isNarrationMode && placeholderIndex !== null) {
                 setMessages((prev) => {
                     if (placeholderIndex >= prev.length) return [...prev, assistantMsg];
@@ -1491,7 +1486,7 @@ export function ConversationalWizard({
                             )}
                             
                             {/* Streaming Thinking Display - TOP POSITION */}
-                            {isStreaming && streamingThinking && i === messages.length - 1 && (
+                            {isStreaming && streamingThinking && !msg.thinking && msg.role === "assistant" && i === messages.length - 1 && (
                                 <div className="px-1 w-full max-w-[96%] animate-in fade-in slide-in-from-top-1">
                                     <div className="flex items-center gap-2 py-1.5 opacity-90">
                                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
@@ -1883,19 +1878,6 @@ export function ConversationalWizard({
                                 </div>
                             )}
                             </div>
-                        
-                        {streamingThinking && (
-                            <div className="ml-11 bg-slate-800/30 rounded-xl p-4 border border-blue-500/10 max-w-[90%] animate-in fade-in slide-in-from-top-1 duration-300">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                                    <span className="text-[10px] font-black text-blue-400/80 uppercase tracking-widest">Live Reasoning Stream</span>
-                                </div>
-                                <div className="text-[11px] text-slate-400 font-mono leading-relaxed whitespace-pre-wrap">
-                                    {streamingThinking}
-                                    <span className="inline-block w-1.5 h-3 bg-blue-500/50 animate-pulse ml-1 align-middle"></span>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
                 </div>
