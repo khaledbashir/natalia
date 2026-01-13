@@ -646,30 +646,66 @@ export async function POST(request: NextRequest) {
             const rejectedFields: string[] = [];
             const thinkingNotes: string[] = [];
 
-            // SERVER-SIDE VALIDATION: Reject unknown fields completely
+            // SERVER-SIDE VALIDATION & NORMALIZATION
             try {
                 const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
                 const validFieldIds = new Set(WIZARD_QUESTIONS.map(q => q.id));
 
-                // Filter out any fields the AI hallucinated
-                const cleanedParams: Record<string, any> = {};
+                // 1. Normalize Keys (Handle common AI hallucinations/aliases)
+                const normalizedParams: Record<string, any> = {};
+                const aliasMap: Record<string, string> = {
+                    'class': 'productClass',
+                    'product': 'productClass',
+                    'displayType': 'productClass',
+                    'display_type': 'productClass',
+                    'type': 'productClass',
+                    'pitch': 'pixelPitch',
+                    'width': 'widthFt',
+                    'height': 'heightFt',
+                    'labor': 'laborType',
+                    'bond': 'bondRequired',
+                    'controls': 'controlSystem',
+                    'structure': 'structureCondition',
+                    'mounting': 'mountingType',
+                    'power': 'powerDistance',
+                    'permit': 'permits',
+                    'cost': 'unitCost',
+                    'margin': 'targetMargin',
+                    'service': 'serviceLevel'
+                };
+
                 for (const [key, value] of Object.entries(parsed.updatedParams)) {
-                    if (validFieldIds.has(key)) {
-                        // Type coercion: ensure numeric fields are numbers
-                        const questionDef = WIZARD_QUESTIONS.find(q => q.id === key);
-                        if (questionDef?.type === 'number' && typeof value === 'string') {
-                            const numValue = parseFloat(value.replace(/[^0-9.]/g, ''));
-                            if (!isNaN(numValue)) {
-                                cleanedParams[key] = numValue;
+                    let targetKey = key;
+                    
+                    // Convert snake_case to camelCase first
+                    targetKey = targetKey.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                    
+                    // Check aliases
+                    if (aliasMap[targetKey.toLowerCase()]) {
+                        targetKey = aliasMap[targetKey.toLowerCase()];
+                    }
+
+                    // 2. Validate & Filter
+                    if (validFieldIds.has(targetKey)) {
+                        // Type coercion
+                        const questionDef = WIZARD_QUESTIONS.find(q => q.id === targetKey);
+                        if (questionDef?.type === 'number') {
+                             if (typeof value === 'string') {
+                                const numValue = parseFloat(value.replace(/[^0-9.]/g, ''));
+                                if (!isNaN(numValue)) {
+                                    normalizedParams[targetKey] = numValue;
+                                }
+                            } else if (typeof value === 'number') {
+                                normalizedParams[targetKey] = value;
                             }
                         } else {
-                            cleanedParams[key] = value;
+                            normalizedParams[targetKey] = value;
                         }
                     } else {
                         rejectedFields.push(String(key));
                     }
                 }
-                parsed.updatedParams = cleanedParams;
+                parsed.updatedParams = normalizedParams;
 
                 // Backup Numeric Extraction (if AI missed it but it was a simple number response)
                 const currentStepId = await computeNextStepFromState(currentState || {});

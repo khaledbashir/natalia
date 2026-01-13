@@ -687,12 +687,19 @@ export function ConversationalWizard({
                     validatedNextStep = nextIncomplete?.id || 'confirm';
                 }
 
+                // Defensive: If next step is numeric, FORCE clear options
+                let finalOptions = data.suggestedOptions;
+                const nextStepDef = WIZARD_QUESTIONS.find(q => q.id === validatedNextStep);
+                if (nextStepDef && nextStepDef.type === 'number') {
+                    finalOptions = [];
+                }
+
                 const assistantMsg = {
                     role: "assistant" as const,
                     content: data.message,
                     nextStep: validatedNextStep,
                     thinking: SHOW_REASONING ? data.thinking : undefined,
-                    suggestedOptions: data.suggestedOptions,
+                    suggestedOptions: finalOptions,
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
 
