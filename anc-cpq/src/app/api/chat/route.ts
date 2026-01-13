@@ -193,7 +193,10 @@ async function computeNextStepFromState(state: any): Promise<string> {
     const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
 
     // Track which questions have been asked to prevent duplicates
-    const askedQuestions = state?.askedQuestions || new Set();
+    // askedQuestions may come from frontend as an array, convert to Set
+    const askedQuestions = Array.isArray(state?.askedQuestions) 
+        ? new Set(state.askedQuestions)
+        : (state?.askedQuestions instanceof Set ? state.askedQuestions : new Set());
     
     for (const q of WIZARD_QUESTIONS) {
         const value = state?.[q.id];
