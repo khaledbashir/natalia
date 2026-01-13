@@ -151,20 +151,20 @@ function buildEstimatorThinking(params: {
         : "";
 
     return [
-        "**Estimator Reasoning (Debug)**",
+        "LOGIC ENGINE ANALYSIS",
+        "---------------------",
+        `Input: ${truncateText(params.input, 200)}`,
+        `Classification: ${params.messageType}`,
+        `Target Field: ${params.nextStep ?? "(none)"}`,
         "",
-        `1. **Input:** ${truncateText(params.input, 200)}`,
-        `2. **MessageType:** ${params.messageType}`,
-        `3. **Next Step:** ${params.nextStep ?? "(none)"}`,
+        "STATE SNAPSHOT",
+        statePreview || "(empty)",
         "",
-        "**State Snapshot**",
-        statePreview,
-        "",
-        "**Proposed Updates**",
-        updatedPreview,
-        rejected.length ? "\n**Rejected Fields**\n" + rejected.map((f) => `- ${f}`).join("\n") : "",
-        notes.length ? "\n**Notes**\n" + notes.map((n) => `- ${n}`).join("\n") : "",
-        rawExcerpt ? "\n**Raw Model Excerpt**\n" + rawExcerpt : "",
+        "PROPOSED UPDATES",
+        updatedPreview || "(none)",
+        rejected.length ? "\nREJECTED FIELDS\n" + rejected.map((f) => `- ${f}`).join("\n") : "",
+        notes.length ? "\nENGINE NOTES\n" + notes.map((n) => `- ${n}`).join("\n") : "",
+        rawExcerpt ? "\nMODEL RAW DATA\n" + rawExcerpt : "",
     ]
         .filter((line) => line !== "")
         .join("\n");

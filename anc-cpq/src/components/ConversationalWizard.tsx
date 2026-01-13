@@ -1388,11 +1388,11 @@ export function ConversationalWizard({
                             <div className="px-5 mt-2">
                                 <details className="group/thinking" open={false}>
                                     <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest hover:text-blue-400 transition-colors list-none select-none">
-                                        <span className="text-slate-400 group-open/thinking:text-blue-400 transition-colors">🤔</span>
-                                        <span>AI Reasoning Process</span>
+                                        <div className="w-1 h-1 bg-slate-500 group-open/thinking:bg-blue-400 rounded-full transition-colors"></div>
+                                        <span>System Logic Analysis</span>
                                         <span className="ml-auto text-[8px] text-slate-600 group-open/thinking:text-blue-500">▼</span>
                                     </summary>
-                                    <div className="mt-2 text-[10px] text-slate-400 font-mono whitespace-pre-wrap bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 max-w-[95%] animate-in fade-in slide-in-from-top-1">
+                                    <div className="mt-2 text-[10px] text-slate-400 font-mono whitespace-pre-wrap bg-slate-900/80 p-3 rounded-lg border border-slate-700/50 max-w-[95%] animate-in fade-in slide-in-from-top-1 shadow-2xl">
                                         {msg.thinking}
                                     </div>
                                 </details>
