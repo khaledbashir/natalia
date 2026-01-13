@@ -501,62 +501,90 @@ function cleanHistory(history: any[]): any[] {
 }
 
 function extractJSON(text: string) {
-    try {
-        // First, normalize the text by removing markdown fences if they wrap the entire thing
-        let cleanText = text.trim();
-        if (cleanText.startsWith("```json")) {
-            cleanText = cleanText.replace(/^```json/, "").replace(/```$/, "").trim();
-        } else if (cleanText.startsWith("```")) {
-            cleanText = cleanText.replace(/^```/, "").replace(/```$/, "").trim();
-        }
+    const cleaned = (text || "")
+        .trim()
+        .replace(/```json/gi, "```")
+        .replace(/```/g, "");
 
-        // 1. Try to find the EXACT JSON block (greedy match)
-        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            let potentialJson = jsonMatch[0];
-            try {
-                // Pre-validation cleanup: Fix common AI typos e.g. missing quotes on keys
-                potentialJson = potentialJson.replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
-                
-                const parsed = JSON.parse(potentialJson);
-                // SUCCESS: Now ensure the 'message' field doesn't contain a copy of the JSON itself
-                if (parsed.message && typeof parsed.message === 'string') {
-                    parsed.message = parsed.message.replace(/```json[\s\S]*?```/g, "").replace(/\{[\s\S]*\}/g, "").trim();
-                }
-                return parsed;
-            } catch (e) {
-                // 2. If parsing failed, try it again with more cleanup
-                const cleaned = potentialJson.replace(
-                    /[\u0000-\u001F\u007F-\u009F]/g,
-                    "",
-                );
-                try {
-                    return JSON.parse(cleaned);
-                } catch (e2) {
-                    console.error("JSON Parse Error:", e2);
-                }
+    const normalizeCandidate = (candidate: string) =>
+        candidate.replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+
+    const isValidPayload = (obj: any) => {
+        if (!obj || typeof obj !== "object") return false;
+        if (typeof obj.message !== "string" || !obj.message.trim()) return false;
+        if (typeof obj.nextStep !== "string" || !obj.nextStep.trim()) return false;
+        if (obj.updatedParams === undefined) return false;
+        if (typeof obj.updatedParams !== "object" || obj.updatedParams === null) return false;
+        return true;
+    };
+
+    // Extract balanced JSON candidates (prevents greedy {..} across multiple blocks).
+    const candidates: string[] = [];
+    let start = -1;
+    let depth = 0;
+
+    for (let i = 0; i < cleaned.length; i++) {
+        const ch = cleaned[i];
+        if (ch === "{") {
+            if (depth === 0) start = i;
+            depth++;
+        } else if (ch === "}") {
+            if (depth > 0) depth--;
+            if (depth === 0 && start !== -1) {
+                candidates.push(cleaned.slice(start, i + 1));
+                start = -1;
             }
         }
-
-        // 3. Last ditch: If text is just a string, return a fallback message.
-        if (cleanText && !cleanText.includes("{")) {
-            if (/\b(analysis|reasoning|state analysis|input analysis)\b/i.test(cleanText)) {
-                return null;
-            }
-            const inferredStep = inferStepFromMessage(cleanText);
-
-            return {
-                message: cleanText.trim(),
-                updatedParams: {},
-                nextStep: inferredStep,
-                suggestedOptions: undefined,
-            };
-        }
-
-        return null;
-    } catch (e) {
-        return null;
     }
+
+    let lastValid: any = null;
+    for (const candidate of candidates) {
+        try {
+            const obj = JSON.parse(normalizeCandidate(candidate));
+            if (isValidPayload(obj)) lastValid = obj;
+        } catch {
+            // ignore
+        }
+    }
+
+    // Fallback: try widest brace span.
+    if (!lastValid) {
+        try {
+            const firstBrace = cleaned.indexOf("{");
+            const lastBrace = cleaned.lastIndexOf("}");
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                const obj = JSON.parse(normalizeCandidate(cleaned.substring(firstBrace, lastBrace + 1)));
+                if (isValidPayload(obj)) lastValid = obj;
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    // Last-ditch: if it's plain text (no JSON), return it as message.
+    if (!lastValid && cleaned && !cleaned.includes("{")) {
+        if (/\b(analysis|reasoning|state analysis|input analysis)\b/i.test(cleaned)) {
+            return null;
+        }
+        const inferredStep = inferStepFromMessage(cleaned);
+        return {
+            message: cleaned.trim(),
+            updatedParams: {},
+            nextStep: inferredStep,
+            suggestedOptions: undefined,
+        };
+    }
+
+    // Ensure we never return a payload whose message contains JSON/code fences.
+    if (lastValid?.message && typeof lastValid.message === "string") {
+        lastValid.message = lastValid.message
+            .replace(/```json[\s\S]*?```/gi, "")
+            .replace(/```[\s\S]*?```/g, "")
+            .replace(/\{[\s\S]*\}/g, "")
+            .trim();
+    }
+
+    return lastValid;
 }
 
 export async function POST(request: NextRequest) {
