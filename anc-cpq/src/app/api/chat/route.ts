@@ -110,10 +110,16 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - When confirming a field, use natural language: "Client name set to Madison Square." NOT "Field 'clientName' locked to Madison Square."
 
 ### SPEC AUDIT LOGIC (CRITICAL):
-1. **ALWAYS UPDATE STATE:** When a user provides a value, you MUST include it in 'updatedParams'. Example: User says "Ribbon" → updatedParams: {"productClass": "Ribbon"}
-2. **Never Backtrack:** If a field has a value in 'currentState', NEVER ask for it again.
-3. **Extraction:** If user provides multiple values (e.g., "10mm Ribbon"), update BOTH in updatedParams.
-4. **Next Logic:** Always point 'nextStep' to the FIRST null or empty field in the sequence.
+1. **EXTRACT EVERYTHING:** When user provides a long message with multiple specs, extract ALL recognizable values at once.
+   - Example: "I need a 10mm ribbon board, 40ft wide, outdoor use, wall mounted"
+   - Response: updatedParams: {"productClass": "Ribbon", "pixelPitch": 10, "widthFt": 40, "environment": "Outdoor", "mountingType": "Wall"}
+   - Then point nextStep to the FIRST empty field (e.g., heightFt)
+
+2. **NEVER BACKTRACK:** If a field has a value in 'currentState', NEVER ask for it again. Skip to the next empty field.
+
+3. **Be Aggressive:** If you see ANY of the 21 fields mentioned in the user's message, extract them. Don't wait to be asked explicitly.
+
+4. **Next Logic:** Always point 'nextStep' to the FIRST null or empty field in the sequence AFTER your extractions.
 
 ### THE ONLY 21 VALID FIELDS (IN ORDER):
 1. clientName
@@ -138,6 +144,22 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 20. targetMargin (number, optional)
 21. serviceLevel (bronze, silver, gold)
 
+### FIELD RECOGNITION CHEAT SHEET:
+- "mm", "pitch", "pixel" → pixelPitch
+- "wide", "width", "ft wide" → widthFt
+- "high", "height", "tall", "ft high" → heightFt
+- "indoor", "outdoor" → environment
+- "wall", "ground", "rig", "rigging", "flown", "pole" → mountingType
+- "front access", "rear access", "service front", "service rear" → access
+- "existing", "new steel", "new structure" → structureCondition
+- "union", "non-union", "nonunion", "prevailing", "prevailing wage" → laborType
+- "power", "distance", "termination" → powerDistance
+- "permit" → permits
+- "control", "processor", "sending box" → controlSystem
+- "bond", "performance bond", "payment bond" → bondRequired
+- "curved", "radius" → shape = Curved
+- "flat", "standard" → shape = Flat
+
 ### CRITICAL WARNING:
 - DO NOT invent fields that are not in this list.
 - There is NO 'depth', 'depthFt', 'resolution', 'brightness', or any other field.
@@ -150,10 +172,33 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - suggestedOptions is MANDATORY for selects and numbers.
 - 'nextStep' MUST be one of the 21 valid field IDs above.
 
-### EXAMPLE:
+### EXAMPLES:
+
+**Example 1: Single value**
 User: "Ribbon"
 CurrentState: {"clientName": "MSG", "address": "NYC", "projectName": "Install", "productClass": ""}
 Response: {"message": "Display type set to Ribbon. What pixel pitch do you need?", "nextStep": "pixelPitch", "suggestedOptions": [{"value": "6", "label": "6mm"}, {"value": "10", "label": "10mm"}], "updatedParams": {"productClass": "Ribbon"}}
+
+**Example 2: MASS EXTRACTION (Do this every time)**
+User: "I need a scoreboard for MSG, 10mm pitch, 80ft wide by 25ft high, outdoor installation, wall mounted with rear access, existing structure, non-union labor"
+CurrentState: {}
+Response: {
+  "message": "Got it. I've captured: Scoreboard, 10mm, 80x25ft, outdoor, wall mount, rear access, existing structure, non-union. What's the address?",
+  "nextStep": "address",
+  "suggestedOptions": [],
+  "updatedParams": {
+    "clientName": "MSG",
+    "productClass": "Scoreboard",
+    "pixelPitch": 10,
+    "widthFt": 80,
+    "heightFt": 25,
+    "environment": "Outdoor",
+    "mountingType": "Wall",
+    "access": "Rear",
+    "structureCondition": "Existing",
+    "laborType": "NonUnion"
+  }
+}
 `;
 
 /**
@@ -599,8 +644,18 @@ export async function POST(request: NextRequest) {
         }
     } catch (error) {
         console.error("Chat API Error:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Error details:", errorMessage, error instanceof Error ? error.stack : "no stack");
+
+        // Return structured error so client can decide how to handle it
         return NextResponse.json(
-            { error: "Internal Server Error" },
+            {
+                message: "I'm having trouble connecting to the ANC brain. Please check your connection and try again.",
+                updatedParams: {},
+                nextStep: null,
+                thinking: `Error: ${errorMessage}`,
+                error: errorMessage,
+            },
             { status: 500 },
         );
     }

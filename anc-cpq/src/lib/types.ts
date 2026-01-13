@@ -8,6 +8,7 @@ export type LaborType = 'NonUnion' | 'Union' | 'Prevailing';
 export type PowerDistance = 'Close' | 'Medium' | 'Far';
 export type PermitType = 'Client' | 'ANC' | 'Existing';
 export type ControlSystem = 'Include' | 'None';
+export type ServiceLevel = 'bronze' | 'silver' | 'gold';
 
 export interface ScreenConfig {
     id: string;
@@ -33,6 +34,7 @@ export interface CPQInput {
     address: string;
     projectName: string;
     addressConfirmed?: boolean;
+    serviceLevel?: ServiceLevel;
 
     // 2. Class (Main screen or aggregate)
     productClass: ProductClass;

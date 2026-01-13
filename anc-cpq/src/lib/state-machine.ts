@@ -41,7 +41,7 @@ export const STEPS: Step[] = [
     requiredFields: ['clientName'],
     validate: (state) => !!state.clientName && state.clientName.trim().length > 0,
     isComplete: (state) => !!state.clientName && state.clientName.trim().length > 0,
-    prompt: "What's the client or venue name?",
+    prompt: "What's the venue name?",
     targetField: 'clientName'
   },
   {
@@ -56,10 +56,10 @@ export const STEPS: Step[] = [
   {
     id: 'projectName',
     category: 'metadata',
-    requiredFields: ['projectName'],
-    validate: (state) => !!state.projectName && state.projectName.trim().length > 0,
-    isComplete: (state) => !!state.projectName && state.projectName.trim().length > 0,
-    prompt: "What's the project name or location?",
+    requiredFields: [],
+    validate: () => true,
+    isComplete: () => true,
+    prompt: "Do you want a project nickname? (Optional)",
     targetField: 'projectName'
   },
   {
@@ -194,11 +194,21 @@ export const STEPS: Step[] = [
     id: 'bondRequired',
     category: 'project',
     requiredFields: ['bondRequired'],
-    validate: (state) => state.bondRequired !== undefined,
-    isComplete: (state) => state.bondRequired !== undefined,
+    validate: (state) => state.bondRequired === true || state.bondRequired === false,
+    isComplete: (state) => state.bondRequired === true || state.bondRequired === false,
     prompt: "Is a Payment or Performance Bond required for this project?",
     allowedValues: ['Yes', 'No'],
     targetField: 'bondRequired'
+  },
+  {
+    id: 'complexity',
+    category: 'project',
+    requiredFields: ['complexity'],
+    validate: (state) => !!state.complexity && ['Standard', 'High'].includes(state.complexity),
+    isComplete: (state) => !!state.complexity && ['Standard', 'High'].includes(state.complexity),
+    prompt: "What is the overall install complexity?",
+    allowedValues: ['Standard', 'High'],
+    targetField: 'complexity'
   },
   {
     id: 'unitCost',
@@ -206,7 +216,7 @@ export const STEPS: Step[] = [
     requiredFields: ['unitCost'],
     validate: (state) => !!state.unitCost && state.unitCost > 0,
     isComplete: (state) => !!state.unitCost && state.unitCost > 0,
-    prompt: "What is the cost per square foot for the display hardware?",
+    prompt: "Do you have a target dollar per sq ft for the hardware?",
     targetField: 'unitCost'
   },
   {
@@ -215,8 +225,18 @@ export const STEPS: Step[] = [
     requiredFields: ['targetMargin'],
     validate: (state) => state.targetMargin !== undefined && state.targetMargin >= 0,
     isComplete: (state) => state.targetMargin !== undefined && state.targetMargin >= 0,
-    prompt: "What is your desired profit margin percentage?",
+    prompt: "What is the target gross margin percentage?",
     targetField: 'targetMargin'
+  },
+  {
+    id: 'serviceLevel',
+    category: 'project',
+    requiredFields: ['serviceLevel'],
+    validate: (state) => !!state.serviceLevel && ['bronze', 'silver', 'gold'].includes(state.serviceLevel),
+    isComplete: (state) => !!state.serviceLevel && ['bronze', 'silver', 'gold'].includes(state.serviceLevel),
+    prompt: "What level of ongoing service is required?",
+    allowedValues: ['bronze', 'silver', 'gold'],
+    targetField: 'serviceLevel'
   }
 ];
 
