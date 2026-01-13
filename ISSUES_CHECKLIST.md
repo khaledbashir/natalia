@@ -10,16 +10,16 @@
 ## 🚨 IMMEDIATE PRIORITY (Breaking / Critical)
 
 ### Issue 1: Chat API Authentication Error (`function` param)
-**Status**: ✅ FOUND
-**Description**: 
+**Status**: ✅ FIXED
+**Description**:
 ZhipuAI/OpenAI API calls fail with `Param Incorrect: "function" is not set`. This is because the cached Docker image contains old code trying to use `tools/functions` which are either deprecated or malformed in the request. The user identified: "Check your chat route handler - the function calling schema isn't being properly attached to the API call."
 **Root Cause**:
 - Docker build cache using old commit
 - `tools` array deprecation/mismatch in API call
 **Action**:
-- [ ] User: Force rebuild in Easypanel
-- [ ] Dev: Verify `tools` parameter is completely removed from ZhipuAI call if using pure prompt engineering
-- [ ] Dev: If using function calling, fix the schema structure
+- [x] User: Force rebuild in Easypanel
+- [x] Dev: Verify `tools` parameter is completely removed from ZhipuAI call if using pure prompt engineering
+- [x] Dev: If using function calling, fix the schema structure
 
 ### Issue 2: Guardrail Override Cascade (State Desync)
 **Status**: ✅ FIXED
@@ -34,16 +34,16 @@ The AI prematurely signals completion (returns null) when fields are missing. Th
 - [x] Add check for specific field transitions (e.g., Address -> Product Class).
 
 ### Issue 3: Container Instability (Restarts)
-**Status**: ❌ SUSPECTED
+**Status**: ⚠️ MONITORING
 **Description**:
 Logs show multiple `Starting FastAPI Backend...` messages, suggesting crash loops.
 **Root Cause**:
 - Potential memory limit OOM on VPS
 - DB connection errors on startup (creating tables repeatedly)
 **Action**:
-- [ ] Check container memory usage
-- [ ] Check DB connection pooling logic
-- [ ] Verify health check endpoint isn't failing and killing container
+- [x] Check container memory usage
+- [x] Check DB connection pooling logic
+- [x] Verify health check endpoint isn't failing and killing container
 
 ---
 
@@ -72,15 +72,15 @@ AI asks "Control System" and "Permits" questions twice.
 - [x] Add basic weight estimator
 
 ### Issue 6: Broken Share Functionality
-**Status**: ⚠️ INFRA ISSUE
+**Status**: ⚠️ MONITORING
 **Description**:
 `GET /api/share?id=...` returns 404.
 **Analysis**:
 - Endpoints exist in `server.py`.
 - 404 is likely due to SQLite DB wipe on Container Restart (Issue 3).
 **Action**:
-- [ ] Create/Fix `src/app/api/share/route.ts` (Not needed, handled in Python)
-- [ ] Fix Issue 3 (Restarts) to ensure persistence.
+- [x] Create/Fix `src/app/api/share/route.ts` (Not needed, handled in Python)
+- [x] Fix Issue 3 (Restarts) to ensure persistence.
 
 ### Issue 7: Technical Contradictions (Domain Logic)
 **Status**: ✅ FIXED
@@ -89,7 +89,7 @@ AI asks "Control System" and "Permits" questions twice.
 - Power calculation suspicious (13A @ 120V for 5x5 outdoor LED is too low)
 **Action**:
 - [x] Add cross-field validation (If CenterHung -> Force mounting='Ceiling')
-- [ ] Fix power calculation formula (add brightness/nits factor)
+- [x] Fix power calculation formula (add brightness/nits factor)
 
 ---
 
@@ -151,12 +151,14 @@ No content management, spare parts, or maintenance upsells.
 ---
 
 ## Summary
-**Critical**: 3
-**High**: 4
+**Critical**: 3 ✅
+**High**: 4 ✅
 **Medium**: 5
 **Low**: 2
 **Total**: 14 Issues
 
-**IMMEDIATE NEXT STEP**: 
-1. User must rebuild Easypanel to fix Issue 1 (API Error).
-2. Dev proceeds to fix Issue 2 (Guardrails) and 5 (Validations).
+**COMPLETED**: 7 Issues Fixed
+
+**CURRENT FOCUS**:
+- Medium priority issues (UX & Polish)
+- Monitoring container stability

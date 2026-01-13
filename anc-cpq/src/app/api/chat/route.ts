@@ -704,21 +704,57 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        // Add streaming support for thinking
         const response = await fetch(modelConfig.endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${modelConfig.apiKey} `,
             },
-            body: JSON.stringify(requestBody),
+            body: JSON.stringify({...requestBody, stream: true}),
         });
 
         if (!response.ok) throw new Error(await response.text());
 
-        const data = await response.json();
-        const choice = data.choices?.[0];
-        const providerThinking: string | undefined = choice?.message?.reasoning_content;
-        let rawContent = choice?.message?.content || "";
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = "";
+        let fullThinking = "";
+        
+        if (reader) {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n').filter(line => line.trim());
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+                        
+                        try {
+                            const parsed = JSON.parse(data);
+                            const delta = parsed.choices?.[0]?.delta;
+                            
+                            if (delta?.content) {
+                                fullContent += delta.content;
+                            }
+                            if (delta?.reasoning_content) {
+                                fullThinking += delta.reasoning_content;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing streaming data:', e);
+                        }
+                    }
+                }
+            }
+        }
+
+        const providerThinking: string | undefined = fullThinking || undefined;
+        let rawContent = fullContent || "";
 
         // Extract <think> blocks (some providers include them inside content).
         const thinkTag = extractThinkTagBlock(rawContent);
@@ -856,9 +892,12 @@ export async function POST(request: NextRequest) {
                 thinkingNotes.push("Field validation threw; see server logs.");
             }
 
-            // Sync projectName with clientName (user doesn't want separate prompt)
+            // Sync projectName with clientName and productClass (format: "ClientName - ProductClass")
+            // This prevents search query text pollution and creates consistent project names
             if (parsed.updatedParams.clientName || currentState?.clientName) {
-                parsed.updatedParams.projectName = parsed.updatedParams.clientName || currentState.clientName;
+                const clientName = parsed.updatedParams.clientName || currentState.clientName;
+                const productClass = parsed.updatedParams.productClass || currentState.productClass || 'Display';
+                parsed.updatedParams.projectName = `${clientName} - ${productClass}`;
             }
 
             // Reject partial addresses (e.g., "New York, NY 10001")
@@ -883,7 +922,8 @@ export async function POST(request: NextRequest) {
                          const name = titleCaseLoose(message);
                          console.log(`Fallback: Extracted clientName='${name}' from raw message`);
                          parsed.updatedParams.clientName = name;
-                         parsed.updatedParams.projectName = name;
+                         const productClass = parsed.updatedParams.productClass || currentState.productClass || 'Display';
+                         parsed.updatedParams.projectName = `${name} - ${productClass}`;
                          thinkingNotes.push(`Fallback: Forced clientName extraction from raw message: "${name}"`);
                      }
                 }
@@ -1080,9 +1120,17 @@ export async function POST(request: NextRequest) {
                 })
                 : undefined;
 
-            // Format thinking in HTML <details> accordion pattern
+            // Format thinking in HTML <details> accordion pattern with better styling
             const thinking = thinkingRaw
-                ? `<details><summary>Thinking</summary>\n\n\`\`\`text\n${thinkingRaw}\n\`\`\`\n\n</details>`
+                ? `<details class="thinking-accordion" style="margin-top: 8px; border-left: 2px solid #3b82f6; padding-left: 12px;">
+    <summary style="cursor: pointer; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+        🤔 AI Reasoning Process
+    </summary>
+    
+    <div style="margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 10px; line-height: 1.4; color: #475569; white-space: pre-wrap;">
+${thinkingRaw}
+    </div>
+</details>`
                 : undefined;
 
             return NextResponse.json({
@@ -1100,11 +1148,14 @@ export async function POST(request: NextRequest) {
             if (stateNext === "clientName" && !currentState?.clientName && typeof message === "string") {
                 const name = titleCaseLoose(message);
                 fallbackUpdatedParams.clientName = name;
-                fallbackUpdatedParams.projectName = name;
+                const productClass = fallbackUpdatedParams.productClass || currentState.productClass || 'Display';
+                fallbackUpdatedParams.projectName = `${name} - ${productClass}`;
             }
             // Ensure projectName is always synced in fallback too
             if (fallbackUpdatedParams.clientName || currentState?.clientName) {
-                fallbackUpdatedParams.projectName = fallbackUpdatedParams.clientName || currentState.clientName;
+                const clientName = fallbackUpdatedParams.clientName || currentState.clientName;
+                const productClass = fallbackUpdatedParams.productClass || currentState.productClass || 'Display';
+                fallbackUpdatedParams.projectName = `${clientName} - ${productClass}`;
             }
 
             const mergedState = {
@@ -1132,9 +1183,17 @@ export async function POST(request: NextRequest) {
                 })
                 : undefined;
 
-            // Format thinking in HTML <details> accordion pattern
+            // Format thinking in HTML <details> accordion pattern with better styling
             const thinking = thinkingRaw
-                ? `<details><summary>Thinking</summary>\n\n\`\`\`text\n${thinkingRaw}\n\`\`\`\n\n</details>`
+                ? `<details class="thinking-accordion" style="margin-top: 8px; border-left: 2px solid #3b82f6; padding-left: 12px;">
+    <summary style="cursor: pointer; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+        🤔 AI Reasoning Process
+    </summary>
+    
+    <div style="margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 10px; line-height: 1.4; color: #475569; white-space: pre-wrap;">
+${thinkingRaw}
+    </div>
+</details>`
                 : undefined;
 
             return NextResponse.json({

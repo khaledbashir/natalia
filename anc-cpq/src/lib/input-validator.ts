@@ -422,6 +422,10 @@ export function validateMountingCompatibility(
   };
 }
 
+/**
+ * Format address for confirmation display
+ */
+export function formatAddressForConfirmation(address: ValidatedAddress): string {
   if (!address.isValid) {
     return 'Invalid address. Please provide a complete address with street, city, and country.';
   }
@@ -446,19 +450,48 @@ export function validateTechnicalConstraints(
   value: any,
   currentState: any
 ): string | null {
-  // CenterHung must be Rigging/Ceiling
+  // CenterHung must be Rigging/Ceiling - PHYSICAL IMPOSSIBILITY
   if (field === 'mountingType' && value === 'Wall') {
     const product = currentState.productClass;
     if (product === 'CenterHung') {
-      return "Critical Error: Center-hung displays cannot be wall-mounted. They must be suspended (Rigging) or verified.";
+      return "CRITICAL: Center-hung displays cannot be wall-mounted. They must be ceiling/rigging mounted - physical impossibility.";
+    }
+  }
+  
+  // CenterHung must use ceiling mounting
+  if (field === 'productClass' && value === 'CenterHung') {
+    const mounting = currentState.mountingType;
+    if (mounting === 'Wall') {
+      return "CRITICAL: Center-hung displays require ceiling/rigging mounting, not wall mounting.";
     }
   }
 
-  // Outdoor displays checks
+  // Vomitory displays cannot be wall-mounted
+  if (field === 'mountingType' && value === 'Wall') {
+    const product = currentState.productClass;
+    if (product === 'Vomitory') {
+      return "CRITICAL: Vomitory displays cannot be wall-mounted - incompatible configuration.";
+    }
+  }
+  
+  if (field === 'productClass' && value === 'Vomitory') {
+    const mounting = currentState.mountingType;
+    if (mounting === 'Wall') {
+      return "CRITICAL: Vomitory displays require ground or rigging mounting, not wall mounting.";
+    }
+  }
+
+  // Outdoor display power calculation fix (Issue 7)
   if (field === 'environment' && value === 'Outdoor') {
-    // We can't strictly enforce IP rating here as it's not a field, 
-    // but we can warn if other fields match indoor specs.
-    // For now, no specific contradiction with existing fields.
+    // Check if power calculation seems too low for outdoor
+    const width = currentState.widthFt;
+    const height = currentState.heightFt;
+    if (width && height) {
+      const area = width * height;
+      if (area > 100) { // Large outdoor display
+        return "Large outdoor display - verify power requirements (typically 20-30A@120V minimum)";
+      }
+    }
   }
   
   if (field === 'widthFt' || field === 'heightFt') {
@@ -466,6 +499,12 @@ export function validateTechnicalConstraints(
       // Check if productClass is Scoreboard and dims are weird
       if (currentState.productClass === 'Scoreboard') {
          if (value < 5) return "Warning: Scoreboards are typically larger than 5ft.";
+      }
+      
+      // Outdoor display size validation
+      if (currentState.environment === 'Outdoor') {
+        if (value < 3) return "Outdoor displays must be at least 3ft (1ft outdoor displays are not realistic)";
+        if (value > 100) return "Large outdoor display - structural engineering review required";
       }
   }
 

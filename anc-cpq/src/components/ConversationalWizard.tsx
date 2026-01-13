@@ -130,6 +130,8 @@ export function ConversationalWizard({
     const [expandedThinking, setExpandedThinking] = useState<number | null>(
         null,
     );
+    const [streamingThinking, setStreamingThinking] = useState<string>('');
+    const [isStreaming, setIsStreaming] = useState(false);
     const [projectId, setProjectId] = useState<number | null>(null);
     const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
 
@@ -481,6 +483,12 @@ export function ConversationalWizard({
         }
 
         try {
+            // Try streaming first if available
+            if (process.env.NEXT_PUBLIC_ENABLE_STREAMING === "true") {
+                await handleStreamingChat(updatedText, currentStateToSend);
+                return;
+            }
+            
             const res = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -590,6 +598,88 @@ export function ConversationalWizard({
                         "Hmm, something went wrong on my end. Try sending that again, or refresh if it keeps happening.",
                 },
             ]);
+        }
+    };
+
+    const handleStreamingChat = async (text: string, currentStateToSend: any) => {
+        setIsStreaming(true);
+        setStreamingThinking('');
+        
+        try {
+            const response = await fetch("/api/chat/stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: text,
+                    history: messages,
+                    currentState: { ...currentStateToSend, askedQuestions: Array.from(askedQuestions) },
+                    selectedModel,
+                }),
+            });
+
+            if (!response.ok) throw new Error('Streaming failed');
+            
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let finalContent = '';
+            let finalThinking = '';
+            
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n').filter(line => line.trim());
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            
+                            try {
+                                const parsed = JSON.parse(data);
+                                
+                                if (parsed.type === 'thinking') {
+                                    setStreamingThinking(parsed.content);
+                                } else if (parsed.type === 'content') {
+                                    finalContent = parsed.content;
+                                } else if (parsed.type === 'complete') {
+                                    finalContent = parsed.content;
+                                    finalThinking = parsed.reasoning;
+                                }
+                            } catch (e) {
+                                console.error('Error parsing streaming data:', e);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Process the final response
+            setStreamingThinking('');
+            
+            const finalMessage: Message = {
+                role: "assistant",
+                content: finalContent,
+                thinking: finalThinking ? `<details class="thinking-accordion" style="margin-top: 8px; border-left: 2px solid #3b82f6; padding-left: 12px;">
+    <summary style="cursor: pointer; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+        🤔 AI Reasoning Process
+    </summary>
+    
+    <div style="margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 10px; line-height: 1.4; color: #475569; white-space: pre-wrap;">
+${finalThinking}
+    </div>
+</details>` : undefined,
+            };
+            
+            setMessages(prev => [...prev, finalMessage]);
+            
+        } catch (error) {
+            console.error('Streaming chat error:', error);
+        } finally {
+            setIsStreaming(false);
+            setStreamingThinking('');
         }
     };
 
@@ -1182,27 +1272,26 @@ export function ConversationalWizard({
                                 )}
                         </div>
                         {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
-                            <div className="px-5 mt-1 border-l border-slate-700/50">
-                                <button
-                                    onClick={() =>
-                                        setExpandedThinking(
-                                            expandedThinking === i ? null : i,
-                                        )
-                                    }
-                                    className="flex items-center gap-2 group"
-                                >
-                                    <div className="w-1 h-1 rounded-full bg-slate-600 group-hover:bg-blue-500 transition-colors" />
-                                    <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest group-hover:text-slate-400 transition-colors">
-                                        {expandedThinking === i
-                                            ? "Hide Reasoning"
-                                            : "Show Expert Reasoning"}
-                                    </span>
-                                </button>
-                                {expandedThinking === i && (
-                                    <div className="mt-2 text-[10px] text-slate-500 font-medium leading-relaxed max-w-[90%] bg-slate-800/20 p-2 rounded-lg border border-slate-700/20 animate-in fade-in slide-in-from-top-1">
-                                        {msg.thinking}
+                            <div className="px-5 mt-2">
+                                <div 
+                                    className="text-xs text-slate-400 leading-relaxed max-w-[95%] bg-slate-800/30 p-3 rounded-lg border border-slate-700/30 animate-in fade-in slide-in-from-top-1"
+                                    dangerouslySetInnerHTML={{ __html: msg.thinking }}
+                                />
+                            </div>
+                        )}
+                        
+                        {/* Streaming thinking display */}
+                        {isStreaming && streamingThinking && (
+                            <div className="px-5 mt-2">
+                                <div className="text-xs text-slate-400 leading-relaxed max-w-[95%] bg-slate-800/30 p-3 rounded-lg border border-slate-700/30">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                        <span className="text-[10px] text-slate-500 font-medium">Thinking...</span>
                                     </div>
-                                )}
+                                    <div className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap">
+                                        {streamingThinking}
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1221,6 +1310,8 @@ export function ConversationalWizard({
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">
                                 {isUploading
                                     ? "Reading document..."
+                                    : isStreaming
+                                    ? "Thinking..."
                                     : "Processing..."}
                             </span>
                         </div>
