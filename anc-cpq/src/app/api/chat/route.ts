@@ -656,16 +656,6 @@ export async function POST(request: NextRequest) {
             model: modelConfig.id,
             messages: contextMessages,
             temperature: 0.1,
-            // Web search tool - added to all requests (provider will ignore if unsupported)
-            tools: [
-                {
-                    type: "web_search",
-                    web_search: {
-                        enable: true,
-                        search_result: true
-                    }
-                }
-            ]
         };
 
         // Add thinking support for ZhipuAI
@@ -724,46 +714,6 @@ export async function POST(request: NextRequest) {
         const choice = data.choices?.[0];
         const providerThinking: string | undefined = choice?.message?.reasoning_content;
         let rawContent = choice?.message?.content || "";
-
-        // Check for tool usage (web search results) - GLM-4.7 returns search_result in the message
-        const webSearchResults = choice?.message?.search_result || choice?.search_result;
-
-        // If web search returned results, inject them into context and ask AI to format
-        if (webSearchResults && Array.isArray(webSearchResults) && webSearchResults.length > 0) {
-            console.log("🌐 AI used web search. Found results:", webSearchResults.length);
-
-            // Format search results for context
-            const searchContext = webSearchResults.map(r =>
-                `- ${r.title || ''}: ${r.body || ''}\n  Link: ${r.link || ''}`
-            ).join('\n\n');
-
-            // Send results back to AI to format properly
-            const toolContextMessages = [
-                ...contextMessages,
-                { role: "assistant", content: `[Used web_search tool. Results:\n${searchContext}]` },
-                { role: "user", content: "Use these search results to provide the venue address. Format: I found [Venue] at: [Address]. Is this correct? Include yes/no options." }
-            ];
-
-            const toolRequestBody = {
-                ...requestBody,
-                messages: toolContextMessages,
-            };
-
-            const toolResponse = await fetch(modelConfig.endpoint, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${modelConfig.apiKey} `,
-                },
-                body: JSON.stringify(toolRequestBody),
-            });
-
-            if (!toolResponse.ok) throw new Error(await toolResponse.text());
-
-            const toolData = await toolResponse.json();
-            const toolChoice = toolData.choices?.[0];
-            rawContent = toolChoice?.message?.content || "";
-        }
 
         // Extract <think> blocks (some providers include them inside content).
         const thinkTag = extractThinkTagBlock(rawContent);
@@ -1082,7 +1032,7 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            const thinking = allowReasoning
+            const thinkingRaw = allowReasoning
                 ? baseThinkingParts.join("\n\n") ||
                 buildEstimatorThinking({
                     input: message,
@@ -1093,6 +1043,11 @@ export async function POST(request: NextRequest) {
                     rejectedFields,
                     notes: thinkingNotes,
                 })
+                : undefined;
+
+            // Format thinking in HTML <details> accordion pattern
+            const thinking = thinkingRaw
+                ? `<details><summary>Thinking</summary>\n\n\`\`\`text\n${thinkingRaw}\n\`\`\`\n\n</details>`
                 : undefined;
 
             return NextResponse.json({
@@ -1127,7 +1082,7 @@ export async function POST(request: NextRequest) {
             const fallbackMessage = questionDef?.question || "What's the next required specification?";
             const suggestedOptions = questionDef?.options || [];
 
-            const thinking = allowReasoning
+            const thinkingRaw = allowReasoning
                 ? baseThinkingParts.join("\n\n") ||
                 buildEstimatorThinking({
                     input: message,
@@ -1140,6 +1095,11 @@ export async function POST(request: NextRequest) {
                     ],
                     rawModelExcerpt: rawContent,
                 })
+                : undefined;
+
+            // Format thinking in HTML <details> accordion pattern
+            const thinking = thinkingRaw
+                ? `<details><summary>Thinking</summary>\n\n\`\`\`text\n${thinkingRaw}\n\`\`\`\n\n</details>`
                 : undefined;
 
             return NextResponse.json({
