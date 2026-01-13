@@ -338,6 +338,7 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - suggestedOptions is MANDATORY for selects and numbers.
 - 'nextStep' MUST be one of the 21 valid field IDs above.
 - **The "message" should ONLY contain the conversational text for the user. Do NOT include any debugging info or raw states here.**
+- **STOP immediately after the closing brace of the JSON. DO NOT EXPLAIN.**
 
 ### EXAMPLES:
 
@@ -512,8 +513,11 @@ function extractJSON(text: string) {
         // 1. Try to find the EXACT JSON block (greedy match)
         const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            const potentialJson = jsonMatch[0];
+            let potentialJson = jsonMatch[0];
             try {
+                // Pre-validation cleanup: Fix common AI typos e.g. missing quotes on keys
+                potentialJson = potentialJson.replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+                
                 const parsed = JSON.parse(potentialJson);
                 // SUCCESS: Now ensure the 'message' field doesn't contain a copy of the JSON itself
                 if (parsed.message && typeof parsed.message === 'string') {

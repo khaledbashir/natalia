@@ -42,16 +42,54 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - **updatedParams MUST contain the field value the user just provided!**
 - suggestedOptions is MANDATORY for selects and numbers.
 - 'nextStep' MUST be one of the valid field IDs above.
-- NEVER put JSON or code blocks inside the "message" field.`;
+- NEVER put JSON or code blocks inside the "message" field.
+- **DO NOT EXPLAIN YOUR REASONING IN THE OUTPUT. ONLY OUTPUT THE JSON BLOCK.**
+- STOP immediately after the closing brace of the JSON. DO NOT EXPLAIN.`;
+
+function cleanHistory(history: any[]): any[] {
+  return history.map((h) => {
+    let content = h.content || "";
+    if (h.role === "assistant") {
+      // 1. Remove JSON blocks
+      content = content.replace(/```json[\s\S]*?```/g, "");
+      // 2. Remove markdown fences
+      content = content.replace(/```[\s\S]*?```/g, "");
+      // 3. Remove thinking/details tags if they leaked into content
+      content = content.replace(/<details[\s\S]*?<\/details>/gi, "");
+      content = content.replace(/<think>[\s\S]*?<\/think>/gi, "");
+      // 4. Remove any loose JSON-like structures that might confuse the model
+      content = content.replace(/\{[\s\S]*\}/g, "");
+      
+      content = content.trim();
+      
+      // If we stripped everything, keep the original (better than empty)
+      if (!content && h.content) content = h.content;
+    }
+    return { ...h, content };
+  });
+}
 
 function extractJSON(text: string) {
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      // Try to parse the match. Check for common JSON malformations.
+      let jsonStr = jsonMatch[0];
+      // Basic fix for missing quotes around keys if AI is sloppy
+      jsonStr = jsonStr.replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+      
+      return JSON.parse(jsonStr);
     }
     return null;
   } catch (e) {
+    // Second attempt: first { until last }
+    try {
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+      }
+    } catch (e2) {}
     return null;
   }
 }
@@ -65,10 +103,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid model' }, { status: 400 });
     }
 
+    // Clean history before sending to the model to prevent logic loops
+    const cleanedHistory = cleanHistory(history);
+
     // Build messages for the AI model
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
-      ...history.map((h: any) => ({
+      ...cleanedHistory.map((h: any) => ({
         role: h.role,
         content: h.content,
       })),
