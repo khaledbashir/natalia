@@ -13,6 +13,7 @@ import {
     Trash2,
     CheckCircle2,
     ChevronRight,
+    ChevronDown,
     MapPin,
 } from "lucide-react";
 import { WIZARD_QUESTIONS } from "../lib/wizard-questions";
@@ -1396,6 +1397,7 @@ export function ConversationalWizard({
                         )}
                     </div>
                 ))}
+                </div>
                 {(isLoading || isUploading) && (
                     <div className="flex flex-col gap-3 mt-4">
                         <div className="flex items-start gap-3">
