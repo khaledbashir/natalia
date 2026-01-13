@@ -27,13 +27,29 @@ export async function POST(req: NextRequest) {
         shareStore.set(shareId, shareData);
         
         // Build the share URL
-        // In production: Set NEXT_PUBLIC_BASE_URL in Easypanel env vars
-        // Example: https://your-domain.com
-        // If not set, falls back to request origin (works for testing but share links break on prod)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
+        // 1. Try environment variable (best for production)
+        let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+        
+        // 2. Fallback: Try Host header (works great behind proxies like Traefik/Easypanel)
+        if (!baseUrl) {
+            const host = req.headers.get('host');
+            const proto = req.headers.get('x-forwarded-proto') || 'https';
+            if (host && !host.includes('localhost') && !host.includes('0.0.0.0')) {
+                baseUrl = `${proto}://${host}`;
+            }
+        }
+        
+        // 3. Fallback: Request origin (might be 0.0.0.0 in Docker, but better than nothing)
+        if (!baseUrl) {
+            baseUrl = req.nextUrl.origin;
+        }
+
+        // Remove trailing slash if present
+        baseUrl = baseUrl.replace(/\/$/, '');
+
         const shareUrl = `${baseUrl}/share/${shareId}`;
         
-        console.log('Share URL generated:', shareUrl, '(baseUrl:', baseUrl, ')');
+        console.log('Share URL:', shareUrl, '| Source:', process.env.NEXT_PUBLIC_BASE_URL ? 'ENV' : 'Headers');
         
         return NextResponse.json({
             success: true,
