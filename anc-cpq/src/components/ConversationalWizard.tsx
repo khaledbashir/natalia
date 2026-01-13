@@ -644,7 +644,7 @@ export function ConversationalWizard({
                 setMessages((prev) => [...prev, assistantMsg]);
 
                 // AUTO-SEARCH: When we just set clientName and next step is address, auto-search immediately
-                const justSetClientName = data.updatedParams?.clientName || normalized?.clientName;
+                const justSetClientName = data.updatedParams?.clientName || mergedState.clientName;
                 if (validatedNextStep === 'address' && justSetClientName && !mergedState.address) {
                     // Trigger address search using the venue name they just gave (silent mode - no extra message)
                     console.log('🔍 Auto-searching address for:', justSetClientName);
