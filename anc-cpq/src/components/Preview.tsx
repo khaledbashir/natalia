@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { CPQInput, CalculationResult, ScreenConfig } from '../lib/types';
-import { Download, Layers, ShieldCheck, Clock, Zap, FileText, Table2 } from 'lucide-react';
+import { Download, Layers, ShieldCheck, Clock, Zap, FileText, Table2, Share2, Check, Copy } from 'lucide-react';
 import { ANCLogo } from './ANCLogo';
 import { calculateScreen } from '../lib/calculator';
 import { ExcelPreview } from './ExcelPreview';
@@ -125,6 +125,9 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
     const [referenceNum, setReferenceNum] = React.useState('');
     const [showPricing, setShowPricing] = React.useState(true);
     const [activeTab, setActiveTab] = React.useState<'pdf' | 'excel'>('pdf');
+    const [shareUrl, setShareUrl] = React.useState<string | null>(null);
+    const [isSharing, setIsSharing] = React.useState(false);
+    const [copied, setCopied] = React.useState(false);
 
     React.useEffect(() => {
         setToday(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
@@ -220,6 +223,41 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
         }
     };
 
+    const handleShare = async () => {
+        setIsSharing(true);
+        try {
+            const res = await fetch('/api/share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ input, result })
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                setShareUrl(data.shareUrl);
+                // Auto-copy to clipboard
+                await navigator.clipboard.writeText(data.shareUrl);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 3000);
+            } else {
+                alert('Failed to create share link');
+            }
+        } catch (e) {
+            console.error('Share error:', e);
+            alert('Error creating share link');
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
+    const copyShareUrl = async () => {
+        if (shareUrl) {
+            await navigator.clipboard.writeText(shareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
     const isMultiScreen = input.screens && input.screens.length > 0;
 
     return (
@@ -275,6 +313,15 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
                     <button onClick={() => handleDownload('excel')} className="bg-white hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl font-bold shadow-sm border border-slate-200 text-[11px] transition-all flex items-center gap-2">
                         <Layers size={14} /> EXPORT EXCEL
                     </button>
+                    {shareUrl ? (
+                        <button onClick={copyShareUrl} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-emerald-500/20 text-[11px] transition-all flex items-center gap-2">
+                            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'COPIED!' : 'COPY LINK'}
+                        </button>
+                    ) : (
+                        <button onClick={handleShare} disabled={isSharing} className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-slate-700/20 text-[11px] transition-all flex items-center gap-2 disabled:opacity-50">
+                            <Share2 size={14} /> {isSharing ? 'CREATING...' : 'SHARE LINK'}
+                        </button>
+                    )}
                     <button onClick={() => handleDownload('pdf')} className="bg-[#003D82] hover:bg-blue-900 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-900/20 text-[11px] transition-all flex items-center gap-2">
                         <Download size={14} /> DOWNLOAD PDF
                     </button>
