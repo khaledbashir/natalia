@@ -414,13 +414,15 @@ export function ConversationalWizard({
                         .split(/[:,-]/)[0]
                         .trim();
 
-                    const newState = {
-                        ...cpqState,
-                        clientName: venueName,
-                        address: addressPart,
-                    };
-                    setCpqState(newState);
-                    onUpdate(newState);
+                        const productClass = cpqState.productClass || 'Display';
+                        const newState = {
+                            ...cpqState,
+                            clientName: venueName,
+                            address: addressPart,
+                            projectName: `${venueName} - ${productClass}`,
+                        };
+                        setCpqState(newState);
+                        onUpdate(newState);
                     updatedText = addressPart;
                     currentStateToSend = newState;
                 } else {
@@ -445,10 +447,12 @@ export function ConversationalWizard({
                     } else {
                         // Just use the whole thing but clean up
                         const venueName = displayName.split(/[|-]/)[0].trim();
+                        const productClass = cpqState.productClass || 'Display';
                         const newState = {
                             ...cpqState,
                             clientName: venueName,
                             address: displayName,
+                            projectName: `${venueName} - ${productClass}`,
                         };
                         setCpqState(newState);
                         onUpdate(newState);
@@ -529,6 +533,13 @@ export function ConversationalWizard({
                     ...currentStateToSend,
                     ...normalized,
                 };
+
+                // Sync projectName when clientName or productClass changes
+                if (normalized.clientName || normalized.productClass) {
+                    const clientName = normalized.clientName || currentStateToSend.clientName || 'Unknown';
+                    const productClass = normalized.productClass || currentStateToSend.productClass || 'Display';
+                    newState.projectName = `${clientName} - ${productClass}`;
+                }
 
                 // Special handling for screens
                 if (normalized.screens && Array.isArray(normalized.screens)) {

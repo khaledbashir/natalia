@@ -117,11 +117,11 @@ Price recalculates on every message, even properly non-impacting ones (like name
 - [x] Optimize `shouldRecalculatePrice` predicate
 
 ### Issue 11: Data Pollution (Typo Propagation)
-**Status**: ✅ FOUND
+**Status**: ✅ FIXED
 **Description**:
 `projectName` gets set to raw search query "lumen weddings venu australia" (with typo) instead of sanitized Client Name.
 **Action**:
-- [ ] Logic: `projectName` = `${clientName} - ${productClass}` (Ignore search query text after lookup)
+- [x] Logic: `projectName` = `${clientName} - ${productClass}` (Ignore search query text after lookup)
 
 ### Issue 12: CTA Confusion
 **Status**: ✅ FOUND

@@ -918,14 +918,12 @@ export async function POST(request: NextRequest) {
                      const isGeneric = /^(proceed|start|go|hello|hi|hey)$/i.test(message.trim());
                      const isQuestion = message.includes('?');
                      
-                     if (!isGeneric && !isQuestion) {
-                         const name = titleCaseLoose(message);
-                         console.log(`Fallback: Extracted clientName='${name}' from raw message`);
-                         parsed.updatedParams.clientName = name;
-                         const productClass = parsed.updatedParams.productClass || currentState.productClass || 'Display';
-                         parsed.updatedParams.projectName = `${name} - ${productClass}`;
-                         thinkingNotes.push(`Fallback: Forced clientName extraction from raw message: "${name}"`);
-                     }
+                      if (!isGeneric && !isQuestion) {
+                          const name = titleCaseLoose(message);
+                          console.log(`Fallback: Extracted clientName='${name}' from raw message`);
+                          parsed.updatedParams.clientName = name;
+                          thinkingNotes.push(`Fallback: Forced clientName extraction from raw message: "${name}"`);
+                      }
                 }
             }
 
@@ -1148,10 +1146,9 @@ ${thinkingRaw}
             if (stateNext === "clientName" && !currentState?.clientName && typeof message === "string") {
                 const name = titleCaseLoose(message);
                 fallbackUpdatedParams.clientName = name;
-                const productClass = fallbackUpdatedParams.productClass || currentState.productClass || 'Display';
-                fallbackUpdatedParams.projectName = `${name} - ${productClass}`;
             }
-            // Ensure projectName is always synced in fallback too
+            // Sync projectName with clientName and productClass (format: "ClientName - ProductClass")
+            // This ensures projectName always uses sanitized values, not raw search query text
             if (fallbackUpdatedParams.clientName || currentState?.clientName) {
                 const clientName = fallbackUpdatedParams.clientName || currentState.clientName;
                 const productClass = fallbackUpdatedParams.productClass || currentState.productClass || 'Display';
