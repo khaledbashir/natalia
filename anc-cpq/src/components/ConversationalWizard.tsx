@@ -134,6 +134,13 @@ export function ConversationalWizard({
     const [isStreaming, setIsStreaming] = useState(false);
     const [projectId, setProjectId] = useState<number | null>(null);
     const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
+    const [lastFieldUpdated, setLastFieldUpdated] = useState<string | null>(null);
+
+    // Refs
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch All Projects (History)
     const fetchHistory = useCallback(async () => {
