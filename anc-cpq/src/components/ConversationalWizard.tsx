@@ -44,6 +44,8 @@ interface SavedProposal {
 const STORAGE_KEY = "anc_cpq_session";
 const HISTORY_KEY = "anc_cpq_history";
 
+const SHOW_REASONING = process.env.NEXT_PUBLIC_SHOW_REASONING === "true";
+
 const INITIAL_CPQ_STATE: CPQInput = {
     clientName: "",
     address: "",
@@ -61,7 +63,9 @@ const INITIAL_CPQ_STATE: CPQInput = {
 const getInitialMessage = (): Message => ({
     role: "assistant",
     content: "ANC Project Assistant initialized. Ready to audit project requirements and generate technical proposals. Shall we begin setup?",
-    thinking: "System initialized. Waiting for user to trigger the config audit.",
+    thinking: SHOW_REASONING
+        ? "System initialized. Waiting for user to trigger the config audit."
+        : undefined,
     suggestedOptions: [
         { value: "Proceed", label: "Begin Audit & Setup" }
     ]
@@ -357,7 +361,7 @@ export function ConversationalWizard({
                         role: "assistant",
                         content: data.message,
                         nextStep: data.nextStep,
-                        thinking: data.thinking,
+                        thinking: SHOW_REASONING ? data.thinking : undefined,
                         suggestedOptions: data.suggestedOptions,
                     },
                 ]);
@@ -618,7 +622,8 @@ export function ConversationalWizard({
                     // Find next incomplete field using MERGED state (not stale cpqState)
                     const nextIncomplete = WIZARD_QUESTIONS.find(q => {
                         const currentVal = mergedState[q.id as keyof CPQInput];
-                        return currentVal === undefined || currentVal === null || currentVal === '' || currentVal === 0;
+                        // 0 is a valid value for numeric fields.
+                        return currentVal === undefined || currentVal === null || currentVal === '';
                     });
                     validatedNextStep = nextIncomplete?.id || 'confirm';
                 }
@@ -627,7 +632,7 @@ export function ConversationalWizard({
                     role: "assistant" as const,
                     content: data.message,
                     nextStep: validatedNextStep,
-                    thinking: data.thinking,
+                    thinking: SHOW_REASONING ? data.thinking : undefined,
                     suggestedOptions: data.suggestedOptions,
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
@@ -1285,7 +1290,7 @@ export function ConversationalWizard({
                                     </div>
                                 )}
                         </div>
-                        {msg.thinking && msg.role === "assistant" && (
+                        {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
                             <div className="px-5 mt-1 border-l border-slate-700/50">
                                 <button
                                     onClick={() =>

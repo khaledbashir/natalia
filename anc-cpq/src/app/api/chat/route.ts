@@ -67,6 +67,108 @@ function sanitizeAssistantMessage(message: string): string {
     return sanitized.trim();
 }
 
+function looksLikeInternalAnalysisText(text: string): boolean {
+    const t = (text || "").toLowerCase();
+    return (
+        t.includes("analysis of input") ||
+        t.includes("analysis of input and state") ||
+        t.includes("input analysis") ||
+        t.includes("state analysis") ||
+        t.includes("estimator reasoning") ||
+        t.includes("current state") ||
+        t.includes("updatedparams") ||
+        t.includes("nextstep")
+    );
+}
+
+function truncateText(text: string, maxChars: number): string {
+    const trimmed = (text || "").trim();
+    if (trimmed.length <= maxChars) return trimmed;
+    return `${trimmed.slice(0, maxChars).trim()}\n\n[truncated ${trimmed.length - maxChars} chars]`;
+}
+
+function titleCaseLoose(input: string): string {
+    const s = (input || "").trim();
+    if (!s) return s;
+    // Keep original casing if it looks intentionally cased (acronyms, camel case, etc.)
+    if (/[A-Z]{2,}/.test(s) || /[a-z][A-Z]/.test(s)) return s;
+    return s
+        .toLowerCase()
+        .split(/\s+/)
+        .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+        .join(" ");
+}
+
+function extractThinkTagBlock(text: string): { thinking?: string; content: string } {
+    if (!text) return { content: text };
+    const match = text.match(/<think>([\s\S]*?)<\/think>/i);
+    if (!match) return { content: text };
+    const thinking = match[1]?.trim();
+    const content = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    return { thinking, content };
+}
+
+function splitAnalysisPrefix(raw: string): { thinking?: string; content: string } {
+    const text = (raw || "").trim();
+    if (!text) return { content: text };
+
+    const firstBrace = text.indexOf("{");
+    if (firstBrace <= 0) {
+        // No JSON prefix separation possible.
+        return { content: text };
+    }
+
+    const prefix = text.slice(0, firstBrace).trim();
+    const rest = text.slice(firstBrace).trim();
+
+    // If the prefix looks like verbose analysis, move it into thinking.
+    if (/\b(analysis|reasoning|state analysis|input analysis)\b/i.test(prefix)) {
+        return { thinking: prefix, content: rest };
+    }
+
+    return { content: text };
+}
+
+function buildEstimatorThinking(params: {
+    input: string;
+    messageType: string;
+    currentState: any;
+    updatedParams?: Record<string, any>;
+    nextStep?: string | null;
+    rejectedFields?: string[];
+    notes?: string[];
+    rawModelExcerpt?: string;
+}): string {
+    const notes = (params.notes || []).filter(Boolean);
+    const rejected = (params.rejectedFields || []).filter(Boolean);
+    const updated = params.updatedParams || {};
+
+    const statePreview = truncateText(JSON.stringify(params.currentState || {}, null, 2), 1200);
+    const updatedPreview = truncateText(JSON.stringify(updated, null, 2), 800);
+    const rawExcerpt = params.rawModelExcerpt
+        ? truncateText(params.rawModelExcerpt, 800)
+        : "";
+
+    return [
+        "**Estimator Reasoning (Debug)**",
+        "",
+        `1. **Input:** ${truncateText(params.input, 200)}`,
+        `2. **MessageType:** ${params.messageType}`,
+        `3. **Next Step:** ${params.nextStep ?? "(none)"}`,
+        "",
+        "**State Snapshot**",
+        statePreview,
+        "",
+        "**Proposed Updates**",
+        updatedPreview,
+        rejected.length ? "\n**Rejected Fields**\n" + rejected.map((f) => `- ${f}`).join("\n") : "",
+        notes.length ? "\n**Notes**\n" + notes.map((n) => `- ${n}`).join("\n") : "",
+        rawExcerpt ? "\n**Raw Model Excerpt**\n" + rawExcerpt : "",
+    ]
+        .filter((line) => line !== "")
+        .join("\n");
+}
+
 function isLikelyStreetAddress(address: unknown): boolean {
     if (typeof address !== "string") return false;
     const trimmed = address.trim();
@@ -102,7 +204,8 @@ async function computeNextStepFromState(state: any): Promise<string> {
             continue;
         }
 
-        if (value === undefined || value === null || value === "" || value === 0) {
+        // 0 is a valid value for numeric fields (do not treat it as missing).
+        if (value === undefined || value === null || value === "") {
             return q.id;
         }
     }
@@ -353,9 +456,12 @@ function extractJSON(text: string) {
             }
         }
 
-        // 3. Last ditch: If text is just a string, return a fallback message
-        // Use the unified inference function for consistency
+        // 3. Last ditch: If text is just a string, return a fallback message.
+        // IMPORTANT: if it looks like internal analysis/reasoning, do NOT surface it.
         if (text && !text.includes("{")) {
+            if (/\b(analysis|reasoning|state analysis|input analysis)\b/i.test(text)) {
+                return null;
+            }
             const inferredStep = inferStepFromMessage(text);
 
             return {
@@ -418,7 +524,6 @@ export async function POST(request: NextRequest) {
                     updatedParams: {
                         clientName: validated.venueName || currentState.clientName
                     },
-                    thinking: "Detected SERP snippet. Extracted venue name and asking for address confirmation."
                 });
             } else {
                 // Ask for complete address
@@ -429,7 +534,6 @@ export async function POST(request: NextRequest) {
                     updatedParams: {
                         clientName: validated.venueName || currentState.clientName
                     },
-                    thinking: "Detected SERP snippet but address is incomplete. Asking for complete address."
                 });
             }
         }
@@ -445,7 +549,6 @@ export async function POST(request: NextRequest) {
                     nextStep: currentStep.id,
                     suggestedOptions: currentStep.allowedValues || [],
                     updatedParams: {},
-                    thinking: `Numeric validation failed for ${currentStep.id}: ${numericValidation.error} `
                 });
             }
         }
@@ -464,7 +567,6 @@ export async function POST(request: NextRequest) {
                         { value: "Existing", label: "Existing Permits" }
                     ],
                     updatedParams: {},
-                    thinking: "Permit answer validation failed. Asking for valid option."
                 });
             }
         }
@@ -510,23 +612,36 @@ export async function POST(request: NextRequest) {
 
         const data = await response.json();
         const choice = data.choices?.[0];
-        const thinking = choice?.message?.reasoning_content || "Thinking...";
-        let rawContent = choice?.message?.content || "{}";
+        const providerThinking: string | undefined = choice?.message?.reasoning_content;
+        let rawContent = choice?.message?.content || "";
 
-        // Clean markdown and thinking tags if present
-        rawContent = rawContent
-            .replace(/<think>[\s\S]*?<\/think>/gi, "") // Strip <think>...</think> blocks
-            .replace(/```json/g, "")
-            .replace(/```/g, "")
-            .trim();
+        // Extract <think> blocks (some providers include them inside content).
+        const thinkTag = extractThinkTagBlock(rawContent);
+        rawContent = thinkTag.content;
+
+        // If the model returns verbose analysis before a JSON object, split it into thinking.
+        const analysisSplit = splitAnalysisPrefix(rawContent);
+        rawContent = analysisSplit.content;
+
+        // Clean markdown fences if present
+        rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
 
         const parsed = extractJSON(rawContent);
+
+        const baseThinkingParts = [providerThinking, thinkTag.thinking, analysisSplit.thinking]
+            .filter((p) => typeof p === "string" && p.trim().length > 0)
+            .map((p) => String(p).trim());
+
+        const allowReasoning = process.env.SHOW_REASONING === "true";
 
         if (parsed) {
             // Normalize + harden model output (never trust it for UX text or step logic)
             parsed.message = sanitizeAssistantMessage(parsed.message || "");
 
             parsed.updatedParams = parsed.updatedParams || {};
+
+            const rejectedFields: string[] = [];
+            const thinkingNotes: string[] = [];
 
             // SERVER-SIDE VALIDATION: Reject unknown fields completely
             try {
@@ -551,11 +666,13 @@ export async function POST(request: NextRequest) {
                         }
                     } else {
                         console.warn(`AI attempted to set unknown field '${key}', rejecting`);
+                        rejectedFields.push(String(key));
                     }
                 }
                 parsed.updatedParams = cleanedParams;
             } catch (e) {
                 console.error("Field validation error:", e);
+                thinkingNotes.push("Field validation threw; see server logs.");
             }
 
             // Derive projectName from clientName (avoid redundant question)
@@ -605,6 +722,7 @@ export async function POST(request: NextRequest) {
                     // Compute the authoritative next step from the merged state.
                     const computedNextStep = await computeNextStepFromState(mergedState);
                     parsed.nextStep = computedNextStep;
+                    thinkingNotes.push(`Authoritative nextStep computed from merged state: ${computedNextStep}`);
 
                     // A. Infer if AI is jumping the gun on address
                     // Run the smarter inference logic to validate/correct the step
@@ -620,6 +738,7 @@ export async function POST(request: NextRequest) {
                             `Step Correction: AI said '${parsed.nextStep}' but message implies '${inferredStep}'. Overriding.`,
                         );
                         parsed.nextStep = inferredStep;
+                        thinkingNotes.push(`Step corrected from '${computedNextStep}' to '${inferredStep}' based on message context.`);
                     }
 
                     // Legacy Guardrails (Keep as fallback)
@@ -649,10 +768,16 @@ export async function POST(request: NextRequest) {
                             "Guardrail: Forcing nextStep to address based on message context.",
                         );
                         parsed.nextStep = "address";
+                        thinkingNotes.push("Guardrail forced nextStep to 'address' based on keywords.");
                     }
                     const questionDef = WIZARD_QUESTIONS.find(
                         (q) => q.id === parsed.nextStep,
                     );
+
+                    // If the model leaked analysis into the user-facing message, replace with the canonical question.
+                    if (questionDef && looksLikeInternalAnalysisText(parsed.message || "")) {
+                        parsed.message = questionDef.question;
+                    }
                     if (questionDef && questionDef.options) {
                         parsed.suggestedOptions = questionDef.options;
                     } else if (
@@ -693,18 +818,70 @@ export async function POST(request: NextRequest) {
                     }
                 } catch (e) {
                     console.error("Guardrail import error:", e);
+                    thinkingNotes.push("Guardrail import error; see server logs.");
                 }
             }
-            return NextResponse.json({ ...parsed, thinking });
-        } else {
-            const cleanMessage = rawContent.replace(/\{[\s\S]*\}/g, "").trim();
+
+            const thinking = allowReasoning
+                ? baseThinkingParts.join("\n\n") ||
+                buildEstimatorThinking({
+                    input: message,
+                    messageType: String(messageType),
+                    currentState,
+                    updatedParams: parsed.updatedParams,
+                    nextStep: parsed.nextStep,
+                    rejectedFields,
+                    notes: thinkingNotes,
+                })
+                : undefined;
+
             return NextResponse.json({
-                message:
-                    cleanMessage ||
-                    "I'm having trouble processing that, but I'm still here to help!",
-                updatedParams: {},
-                nextStep: null,
-                thinking,
+                ...parsed,
+                ...(thinking ? { thinking } : {}),
+            });
+        } else {
+            // Fallback: If the model didn't follow JSON, keep the wizard moving deterministically.
+            const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
+
+            const fallbackUpdatedParams: Record<string, any> = {};
+
+            // Minimal extraction: if we're missing clientName, treat a plain user message as venue name.
+            const stateNext = await computeNextStepFromState(currentState || {});
+            if (stateNext === "clientName" && !currentState?.clientName && typeof message === "string") {
+                fallbackUpdatedParams.clientName = titleCaseLoose(message);
+            }
+
+            const mergedState = {
+                ...(currentState || {}),
+                ...fallbackUpdatedParams,
+            };
+            const nextStep = await computeNextStepFromState(mergedState);
+            const questionDef = WIZARD_QUESTIONS.find((q) => q.id === nextStep);
+
+            const fallbackMessage = questionDef?.question || "What's the next required specification?";
+            const suggestedOptions = questionDef?.options || [];
+
+            const thinking = allowReasoning
+                ? baseThinkingParts.join("\n\n") ||
+                buildEstimatorThinking({
+                    input: message,
+                    messageType: String(messageType),
+                    currentState,
+                    updatedParams: fallbackUpdatedParams,
+                    nextStep,
+                    notes: [
+                        "Model response was not valid JSON; used deterministic fallback.",
+                    ],
+                    rawModelExcerpt: rawContent,
+                })
+                : undefined;
+
+            return NextResponse.json({
+                message: fallbackMessage,
+                updatedParams: fallbackUpdatedParams,
+                nextStep,
+                suggestedOptions,
+                ...(thinking ? { thinking } : {}),
             });
         }
     } catch (error) {
@@ -718,7 +895,6 @@ export async function POST(request: NextRequest) {
                 message: "I'm having trouble connecting to the ANC brain. Please check your connection and try again.",
                 updatedParams: {},
                 nextStep: null,
-                thinking: `Error: ${errorMessage}`,
                 error: errorMessage,
             },
             { status: 500 },
