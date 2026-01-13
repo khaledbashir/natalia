@@ -13,7 +13,13 @@ import {
   ChevronDown,
   Layout,
   RefreshCw,
-  Cpu
+  Cpu,
+  BarChart3,
+  Globe,
+  Monitor,
+  CheckCircle2,
+  TrendingUp,
+  Glasses
 } from 'lucide-react';
 
 const StrategyPage = () => {
@@ -21,8 +27,9 @@ const StrategyPage = () => {
 
   const sections = [
     { id: 'logic', title: 'Logic Architecture', icon: Cpu },
-    { id: 'security', title: 'Data Security', icon: ShieldCheck },
-    { id: 'salesforce', title: 'Salesforce Roadmap', icon: RefreshCw },
+    { id: 'capabilities', title: 'System Catalog', icon: Layout },
+    { id: 'security', title: 'Security', icon: ShieldCheck },
+    { id: 'roadmap', title: 'Evolution Roadmap', icon: TrendingUp },
     { id: 'faq', title: 'Strategy FAQ', icon: HelpCircle },
   ];
 
@@ -91,6 +98,22 @@ const StrategyPage = () => {
           </p>
         </header>
 
+        {/* Strategic Metrics Section */}
+        <section className="mb-24 grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Efficiency", value: "85%", sub: "Reduction in Proposal Lead Time" },
+            { label: "Accuracy", value: "100%", sub: "Alignment with Engineering Logic" },
+            { label: "Compliance", value: "Zero", sub: "Data Leaks to Third-Party AI" },
+            { label: "Scalability", value: "∞", sub: "Users per Centralized Logic Hub" },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-center border-b-4 border-b-[#003366]">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+              <p className="text-3xl font-black text-[#003366]">{stat.value}</p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase">{stat.sub}</p>
+            </div>
+          ))}
+        </section>
+
         {/* Logic Section */}
         <section id="logic" className="mb-24 scroll-mt-24">
           <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl shadow-slate-200 border border-slate-100">
@@ -149,23 +172,80 @@ const StrategyPage = () => {
           </div>
         </section>
 
+        {/* System Capability Catalog */}
+        <section id="capabilities" className="mb-24 scroll-mt-24">
+          <div className="flex flex-col gap-6">
+            <h2 className="text-3xl font-black text-slate-900 flex items-center gap-3 mb-4 uppercase tracking-tighter">
+              <Layout className="text-[#003366]" size={32} />
+              System Capability Catalog
+            </h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              {[
+                {
+                  title: "Intelligent Intake Wizard",
+                  exec: "Reduces proposal time from hours to minutes via a guided, adaptive interview.",
+                  tech: "A state-driven conditional logic engine that filters out irrelevant technical questions based on project type.",
+                  icon: Zap
+                },
+                {
+                  title: "Real-Time Pricing Engine",
+                  exec: "Ensures margin consistency across the entire sales team, regardless of location.",
+                  tech: "Modular multiplier injection layer that calculates raw materials, labor, and surcharges instantly.",
+                  icon: BarChart3
+                },
+                {
+                  title: "Institutional Knowledge Base",
+                  exec: "Digitizes the 'unwritten' rules of senior estimators to prevent costly errors.",
+                  tech: "Deterministic rule-set repository (Industry Templates) mapped to ANC's historical hardware standards.",
+                  icon: Database
+                },
+                {
+                  title: "Automated Artifact Generation",
+                  exec: "Instantly produces high-fidelity PDFs and internal Excel validation spreadsheets.",
+                  tech: "Server-side headless rendering engine transforming configuration state into structured documentation.",
+                  icon: FileText
+                }
+              ].map((item, i) => (
+                <div key={i} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex gap-4 items-start mb-4">
+                    <div className="bg-blue-50 p-2 rounded-lg text-[#003366]">
+                      <item.icon size={24} />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-900">{item.title}</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[10px] font-black text-[#003366] uppercase tracking-[0.2em] mb-1">Impact / Executive</p>
+                      <p className="text-sm text-slate-600 font-medium leading-relaxed">{item.exec}</p>
+                    </div>
+                    <div className="pl-4 border-l-2 border-slate-100 italic">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Architecture / Technical</p>
+                      <p className="text-sm text-slate-500 leading-relaxed font-mono">{item.tech}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Security Section */}
         <section id="security" className="mb-24 scroll-mt-24">
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { 
                 title: "IP Protection", 
-                desc: "Your formulas never leave the secure application layer. It's a black box to the AI.",
+                desc: "Your proprietary formulas never leave the secure application layer. It's a black box to the external AI.",
                 icon: Lock
               },
               { 
-                title: "Local Excellence", 
-                desc: "The system creates a 'Perfect PDF' instantly, saving days of formatting manually.",
-                icon: FileText
+                title: "Institutional Consistency", 
+                desc: "Standardizes every output. A proposal from 2026 will match the logic of 2024 perfectly.",
+                icon: CheckCircle2
               },
               { 
                 title: "Internal Audit", 
-                desc: "Every proposal creates a hidden Excel file for your team to check the math.",
+                desc: "Every proposal creates a hidden Excel validation block for your team to check the math.",
                 icon: Layout
               }
             ].map((card, i) => (
@@ -178,27 +258,62 @@ const StrategyPage = () => {
           </div>
         </section>
 
-        {/* Salesforce Roadmap */}
-        <section id="salesforce" className="mb-24 scroll-mt-24">
-          <div className="bg-blue-50 border-2 border-blue-100 rounded-3xl p-8 md:p-12 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 text-blue-100 opacity-20 pointer-events-none">
-              <RefreshCw size={120} />
+        {/* Roadmap / Future Vision */}
+        <section id="roadmap" className="mb-24 scroll-mt-24">
+          <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-12 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-12 text-blue-500 opacity-10 pointer-events-none">
+              <TrendingUp size={180} />
             </div>
-            <h2 className="text-3xl font-black text-[#003366] mb-8">Salesforce Integration Roadmap</h2>
-            <div className="relative">
-              <div className="absolute left-4 top-0 bottom-0 w-1 bg-blue-200"></div>
-              <div className="space-y-12 pl-12">
+            
+            <div className="relative z-10 flex flex-col md:flex-row gap-12">
+              <div className="md:w-1/3">
+                <h2 className="text-4xl font-black mb-6 tracking-tight leading-none uppercase">Project <span className="text-blue-400 block">Evolution</span> Roadmap</h2>
+                <p className="text-slate-400 font-medium text-sm leading-relaxed mb-8">
+                  From a precision estimation tool to an organization-wide intelligence engine.
+                </p>
+                <div className="bg-blue-600/20 border border-blue-500/30 rounded-xl p-6">
+                  <p className="text-xs font-black text-blue-400 uppercase tracking-widest mb-2">Current Status</p>
+                  <p className="text-lg font-bold">Phase 1: Validation</p>
+                  <p className="text-sm text-blue-100">Logic testing and structural framework established.</p>
+                </div>
+              </div>
+
+              <div className="md:w-2/3 space-y-8">
                 {[
-                  { step: "Phase 1: Direct Entry", detail: "Estimator fills out the 5-minute wizard based on sales notes." },
-                  { step: "Phase 2: One-Way Connector", detail: "Salesforce triggers the system with Client Name and Venue details." },
-                  { step: "Phase 3: Automated Proposal", detail: "AI reads the Salesforce opportunity brief and auto-fills 80% of the wizard." }
+                  {
+                    phase: "Phase 2: Ecosystem Integration",
+                    title: "Salesforce & Procurement Bridge",
+                    details: "Direct synchronization with CRM opportunities and real-time vendor lead times to flag supply-chain risks during the pitch.",
+                    icon: RefreshCw
+                  },
+                  {
+                    phase: "Phase 3: Visual Intelligence",
+                    title: "Digital Twin & AR Preview",
+                    details: "Auto-generating 3D-accurate scoreboard renderings and AR-based 'overlay' previews directly from configuration data.",
+                    icon: Glasses
+                  },
+                  {
+                    phase: "Phase 4: Revenue Intelligence",
+                    title: "Predictive Margin Optimization",
+                    details: "Utilizing historical win/loss data to suggest the 'Sweet Spot' pricing based on venue type and competitive landscape.",
+                    icon: Cpu
+                  },
+                  {
+                    phase: "Phase 5: Self-Service Terminal",
+                    title: "Client-Facing Configuration",
+                    details: "A secure external portal where trusted partners can 'tweak' their own configurations within ANC-defined engineering guardrails.",
+                    icon: Globe
+                  }
                 ].map((item, i) => (
-                  <div key={i} className="relative">
-                    <div className="absolute -left-[3.5rem] mt-1 bg-[#003366] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-lg">
-                      {i + 1}
+                  <div key={i} className="flex gap-6 border-b border-white/10 pb-8 last:border-0 last:pb-0 group">
+                    <div className="shrink-0 mt-1 bg-white/5 p-3 rounded-xl text-blue-400 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                      <item.icon size={24} />
                     </div>
-                    <h4 className="font-bold text-slate-900 text-lg">{item.step}</h4>
-                    <p className="text-slate-600">{item.detail}</p>
+                    <div>
+                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1">{item.phase}</p>
+                      <h4 className="text-xl font-bold mb-2">{item.title}</h4>
+                      <p className="text-sm text-slate-400 leading-relaxed max-w-lg">{item.details}</p>
+                    </div>
                   </div>
                 ))}
               </div>
