@@ -155,7 +155,12 @@ export function ConversationalWizard({
     const totalFields = WIZARD_QUESTIONS.length;
     const filledFields = WIZARD_QUESTIONS.filter(q => {
         const val = cpqState[q.id as keyof CPQInput];
-        return val !== undefined && val !== null && val !== "" && val !== 0;
+        // For required fields, check if value exists
+        if (q.required) {
+            return val !== undefined && val !== null && val !== "";
+        }
+        // For optional fields, only count if explicitly set (not empty string)
+        return val !== undefined && val !== null && val !== "";
     }).length;
 
     const progress = Math.min(
@@ -166,7 +171,8 @@ export function ConversationalWizard({
     const getStepStatus = (step: (typeof PROGRESS_STEPS)[0]) => {
         const filled = step.fields.filter((f) => {
             const val = cpqState[f as keyof CPQInput];
-            return val !== undefined && val !== null && val !== "" && val !== 0;
+            // Check if value is set - 0 is valid for numeric fields
+            return val !== undefined && val !== null && val !== "";
         });
         if (filled.length === step.fields.length) return "complete";
         if (filled.length > 0) return "active";
@@ -421,6 +427,10 @@ export function ConversationalWizard({
 
     const handleSend = async (text: string, isAddressSelection = false) => {
         if (!text.trim()) return;
+
+        // Get current widget definition BEFORE using it
+        const currentNextStep = messages[messages.length - 1]?.nextStep;
+        const widgetDef = WIZARD_QUESTIONS.find((q) => q.id === currentNextStep);
 
         // If this is an address selection (from autocomplete), extract just the address portion
         let updatedText = text;
@@ -696,6 +706,7 @@ export function ConversationalWizard({
         setShowHistory(false);
     };
 
+    // Compute current step for widget rendering (used in JSX)
     const currentNextStep = messages[messages.length - 1]?.nextStep;
     const widgetDef = WIZARD_QUESTIONS.find((q) => q.id === currentNextStep);
 

@@ -156,137 +156,76 @@ CurrentState: {"clientName": "MSG", "address": "NYC", "projectName": "Install", 
 Response: {"message": "Display type set to Ribbon. What pixel pitch do you need?", "nextStep": "pixelPitch", "suggestedOptions": [{"value": "6", "label": "6mm"}, {"value": "10", "label": "10mm"}], "updatedParams": {"productClass": "Ribbon"}}
 `;
 
+/**
+ * UNIFIED step inference - single source of truth
+ * Analyzes AI message to determine what step it's asking about
+ * Returns null if it can't determine (falls back to state-based computation)
+ */
 function inferStepFromMessage(message: string): string | null {
     if (!message) return null;
 
-    // CRITICAL: Only analyze the QUESTION part, not the acknowledgment
-    // Split on "." or "?" to isolate the actual question
-    const parts = message.split(/[.!]\s*/);
-    const questionPart =
-        parts.find((p) => p.includes("?")) ||
-        parts[parts.length - 1] ||
-        message;
-    const lower = questionPart.toLowerCase();
+    const lower = message.toLowerCase();
 
-    // 0. Check for Starting
-    if (lower.includes("proceed") || lower.includes("shall we proceed")) {
-        return "clientName";
-    }
-
-    // 1. Check for Confirmation/Finalizing
+    // 1. Check for Confirmation/Finalizing (highest priority)
     if (
         (lower.includes("confirm") && lower.includes("configuration")) ||
-        lower.includes("draws approx")
+        lower.includes("draws approx") ||
+        (lower.includes("all required") && lower.includes("confirm"))
     ) {
         return "confirm";
     }
 
-    // Product Type
-    if (
-        (lower.includes("type of display") ||
-            lower.includes("what product") ||
-            lower.includes("type of product")) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "productClass";
+    // 2. Check for Starting
+    if (lower.includes("proceed") || lower.includes("shall we proceed")) {
+        return "clientName";
+    }
 
-    // Dimensions - ONLY match if asking, NOT acknowledging
-    if ((lower.includes("width") || lower.includes("how wide")) && !lower.includes("locked") && !lower.includes("set")) return "widthFt";
-    if (
-        (lower.includes("height") || lower.includes("how high") || lower.includes("how tall")) &&
-        !lower.includes("locked") && !lower.includes("set")
-    )
-        return "heightFt";
-
-    // Pixel Pitch
-    if ((lower.includes("pixel") || lower.includes("pitch")) && !lower.includes("locked") && !lower.includes("set")) return "pixelPitch";
-
-    // Shape (Check BEFORE environment to prevent "outdoor" in acknowledgment overriding "shape" question)
-    if ((lower.includes("shape") || lower.includes("configuration")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed"))
-        return "shape";
-
-    // Environment (Only if the question is explicitly about indoor/outdoor)
-    if (
-        (lower.includes("installed") ||
-            lower.includes("indoor or outdoor") ||
-            lower.includes("environment")) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "environment";
-
-    // Structure
-    if (
-        (lower.includes("existing") || lower.includes("steel") || lower.includes("mounting to")) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "structureCondition";
-
-    // Mounting
-    if (
-        (lower.includes("mount") ||
-            lower.includes("rigged") ||
-            lower.includes("flown")) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "mountingType";
-
-    // Access
-    if (
-        (lower.includes("access") ||
-            lower.includes("service") ||
-            lower.includes("technician")) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "access";
-
-    // Permits
-    if (lower.includes("permit") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "permits";
-
-    // Labor
-    if (
-        (lower.includes("union") ||
-            lower.includes("labor") ||
-            lower.includes("prevailing")) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "laborType";
-
-    // Power Distance
-    if (
-        (lower.includes("power") ||
-            lower.includes("termination") ||
-            lower.includes("distance")) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "powerDistance";
-
-    // Control System
-    if ((lower.includes("control") || lower.includes("processor")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed"))
-        return "controlSystem";
-
-    // Complexity
-    if (lower.includes("complexity") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "complexity";
-
-    // Costing & Service
-    if (lower.includes("cost") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "unitCost";
-    if (lower.includes("margin") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "targetMargin";
-    if (lower.includes("service") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "serviceLevel";
-
-    // Bond
-    if (lower.includes("bond") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "bondRequired";
-
-    // Address (Lowest Priority - only if explicitly asking)
-    if (
+    // 3. Address detection (needs careful handling)
+    const isAskingForAddress =
         (lower.includes("select the correct one") ||
             lower.includes("enter the address") ||
             (lower.includes("address") && lower.includes("?"))) &&
-        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-    )
-        return "address";
+        !lower.includes("confirmed") &&
+        !lower.includes("verified");
+    if (isAskingForAddress) return "address";
+
+    // 4. Field-specific detection (ordered to avoid false positives)
+    const fieldPatterns = [
+        { step: "productClass", patterns: ["type of display", "what product", "kind of display"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "widthFt", patterns: ["width", "how wide"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "heightFt", patterns: ["height", "how high", "how tall"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "pixelPitch", patterns: ["pixel", "pitch"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "shape", patterns: ["shape", "curved"], exclude: ["locked", "set to", "confirmed", "environment"] },
+        { step: "environment", patterns: ["indoor or outdoor", "environment type"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "structureCondition", patterns: ["existing structure", "new steel", "mounting to"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "mountingType", patterns: ["mounting", "mounted", "rigged", "flown"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "access", patterns: ["access", "service access", "technician"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "permits", patterns: ["permit", "who will handle"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "laborType", patterns: ["labor", "union", "prevailing wage"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "powerDistance", patterns: ["power", "termination", "distance to"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "controlSystem", patterns: ["control system", "processor", "include controls"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "bondRequired", patterns: ["bond", "performance bond", "payment bond"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "complexity", patterns: ["complexity", "install complexity"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "unitCost", patterns: ["unit cost", "cost per", "target dollar"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "targetMargin", patterns: ["margin", "profit", "gross margin"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "serviceLevel", patterns: ["service level", "ongoing service"], exclude: ["locked", "set to", "confirmed"] },
+    ];
+
+    for (const { step, patterns, exclude } of fieldPatterns) {
+        const matchesPattern = patterns.some(p => lower.includes(p));
+        const hasExclusion = exclude.some(e => lower.includes(e));
+
+        if (matchesPattern && !hasExclusion) {
+            return step;
+        }
+    }
 
     return null;
 }
 
+/**
+ * Extract JSON from AI response, with fallback inference for non-JSON responses
+ */
 function extractJSON(text: string) {
     try {
         // 1. Try to find the EXACT JSON block first (greedy match)
@@ -310,186 +249,15 @@ function extractJSON(text: string) {
         }
 
         // 3. Last ditch: If text is just a string, return a fallback message
-        // BUT try to infer the next step from the text content to keep the UI interactive
+        // Use the unified inference function for consistency
         if (text && !text.includes("{")) {
-            const lower = text.toLowerCase();
-            let inferredStep = null;
-            let inferredOptions = null;
-
-            // Smart Inference Logic for "dumb" models
-            // NOTE: Order matters greatly here to avoid false positives.
-            // Specific phrases should be checked before generic ones.
-
-            // CONFIRMATION (Very specific)
-            // Avoid matching "Address confirmed" or "Specs confirmed"
-            if (
-                (lower.includes("confirm") &&
-                    lower.includes("configuration")) ||
-                lower.includes("draws approx")
-            ) {
-                inferredStep = "confirm";
-                inferredOptions = [
-                    { value: "Confirmed", label: "CONFIRM & GENERATE PDF" },
-                    { value: "Edit", label: "Edit Specifications" },
-                ];
-            }
-            // ADDRESS (Specific)
-            // "Address Confirmed" should NOT trigger address mode (which hides buttons)
-            else if (
-                ((lower.includes("address") && !lower.includes("confirm")) ||
-                    lower.includes("street") ||
-                    lower.includes("select the correct one")) &&
-                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-            ) {
-                inferredStep = "address";
-                inferredOptions = [];
-            }
-            // STRUCTURE & LABOR (Specific)
-            else if ((lower.includes("structure") || lower.includes("steel")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "structureCondition";
-                inferredOptions = [
-                    { value: "Existing", label: "Existing Structure (Usable)" },
-                    { value: "NewSteel", label: "New Steel Required" },
-                ];
-            } else if ((lower.includes("labor") || lower.includes("union")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "laborType";
-                inferredOptions = [
-                    { value: "NonUnion", label: "Non-Union (Standard)" },
-                    { value: "Union", label: "Union Labor Required" },
-                    { value: "Prevailing", label: "Prevailing Wage" },
-                ];
-            }
-            // SPECS (Width/Height/Pitch) - ONLY match if actually ASKING for the value
-            // Do NOT match acknowledgments like "Field 'widthFt' locked to 40"
-            else if (lower.includes("width") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "widthFt";
-                inferredOptions = [
-                    { value: "20", label: "20 ft" },
-                    { value: "40", label: "40 ft" },
-                    { value: "60", label: "60 ft" },
-                    { value: "100", label: "100 ft" },
-                    { value: "200", label: "200 ft" },
-                ];
-            } else if (lower.includes("height") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "heightFt";
-                inferredOptions = [
-                    { value: "3", label: "3 ft" },
-                    { value: "10", label: "10 ft" },
-                    { value: "20", label: "20 ft" },
-                    { value: "30", label: "30 ft" },
-                    { value: "40", label: "40 ft" },
-                ];
-            } else if (lower.includes("pitch") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "pixelPitch";
-                inferredOptions = [
-                    { value: "4", label: "4mm (Ultra Fine)" },
-                    { value: "6", label: "6mm (Fine)" },
-                    { value: "10", label: "10mm (Standard)" },
-                    { value: "16", label: "16mm (Ribbon/Perimeter)" },
-                ];
-            }
-            // ENVIRONMENT & SHAPE
-            else if (
-                (lower.includes("environment") ||
-                    lower.includes("indoor") ||
-                    lower.includes("outdoor")) &&
-                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-            ) {
-                inferredStep = "environment";
-                inferredOptions = [
-                    { value: "Indoor", label: "Indoor" },
-                    { value: "Outdoor", label: "Outdoor" },
-                ];
-            } else if ((lower.includes("shape") || lower.includes("curve")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "shape";
-                inferredOptions = [
-                    { value: "Flat", label: "Flat Panel" },
-                    { value: "Curved", label: "Curved Display" },
-                ];
-            }
-            // ACCESS & MOUNTING (Specific terms)
-            else if ((lower.includes("access") || lower.includes("service")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "access";
-                inferredOptions = [
-                    { value: "Front", label: "Front Access" },
-                    { value: "Rear", label: "Rear Access" },
-                ];
-            } else if (
-                (lower.includes("mounting") ||
-                    lower.includes("rigged") ||
-                    lower.includes("flown") ||
-                    lower.includes("pole mount")) &&
-                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-            ) {
-                inferredStep = "mountingType"; // 'mount' is too generic, used 'mounting'
-                inferredOptions = [
-                    { value: "Wall", label: "Wall Mount" },
-                    { value: "Ground", label: "Ground Stack" },
-                    { value: "Rigging", label: "Rigged/Flown" },
-                    { value: "Pole", label: "Pole Mount" },
-                ];
-            }
-            // COSTING (Permits, Bond, Control, Price)
-            else if (lower.includes("permit") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "permits";
-                inferredOptions = [
-                    { value: "Client", label: "Client Handles Permits" },
-                    { value: "ANC", label: "ANC Handles Permits" },
-                ];
-            } else if (lower.includes("control") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "controlSystem";
-                inferredOptions = [
-                    { value: "Include", label: "Yes, Include Controls" },
-                    { value: "None", label: "No, Use Existing" },
-                ];
-            } else if (lower.includes("bond") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "bondRequired";
-                inferredOptions = [
-                    { value: "No", label: "No" },
-                    { value: "Yes", label: "Yes (Add ~1.5%)" },
-                ];
-            } else if (
-                (lower.includes("cost") ||
-                    lower.includes("price") ||
-                    lower.includes("unit cost")) &&
-                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-            ) {
-                inferredStep = "unitCost";
-                inferredOptions = [
-                    { value: "1200", label: "$1,200 (Standard)" },
-                    { value: "1800", label: "$1,800 (Premium)" },
-                    { value: "Manual", label: "Enter Custom Amount" },
-                ];
-            } else if ((lower.includes("margin") || lower.includes("profit")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
-                inferredStep = "targetMargin";
-                inferredOptions = [
-                    { value: "15", label: "15% (Standard)" },
-                    { value: "20", label: "20% (Target)" },
-                    { value: "25", label: "25% (High)" },
-                ];
-            }
-            // PRODUCT CLASS (Last Resort - Generic Terms)
-            else if (
-                (lower.includes("product") ||
-                    lower.includes("type") ||
-                    lower.includes("ribbon") ||
-                    lower.includes("scoreboard")) &&
-                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
-            ) {
-                inferredStep = "productClass";
-                inferredOptions = [
-                    { value: "Scoreboard", label: "Scoreboard" },
-                    { value: "Ribbon", label: "Ribbon Board" },
-                    { value: "CenterHung", label: "Center Hung" },
-                    { value: "Vomitory", label: "Vomitory Display" },
-                ];
-            }
+            const inferredStep = inferStepFromMessage(text);
 
             return {
                 message: text.trim(),
                 updatedParams: {},
                 nextStep: inferredStep,
-                suggestedOptions: inferredOptions, // Dynamically inject options if missing
+                suggestedOptions: undefined, // Will be populated from WIZARD_QUESTIONS
             };
         }
 
@@ -654,6 +422,36 @@ export async function POST(request: NextRequest) {
             parsed.message = sanitizeAssistantMessage(parsed.message || "");
 
             parsed.updatedParams = parsed.updatedParams || {};
+
+            // SERVER-SIDE VALIDATION: Reject unknown fields completely
+            try {
+                const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
+                const validFieldIds = new Set(WIZARD_QUESTIONS.map(q => q.id));
+
+                // Filter out any fields the AI hallucinated
+                const cleanedParams: Record<string, any> = {};
+                for (const [key, value] of Object.entries(parsed.updatedParams)) {
+                    if (validFieldIds.has(key)) {
+                        // Type coercion: ensure numeric fields are numbers
+                        const questionDef = WIZARD_QUESTIONS.find(q => q.id === key);
+                        if (questionDef?.type === 'number' && typeof value === 'string') {
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue)) {
+                                cleanedParams[key] = numValue;
+                            } else {
+                                console.warn(`Invalid numeric value for ${key}: ${value}, skipping`);
+                            }
+                        } else {
+                            cleanedParams[key] = value;
+                        }
+                    } else {
+                        console.warn(`AI attempted to set unknown field '${key}', rejecting`);
+                    }
+                }
+                parsed.updatedParams = cleanedParams;
+            } catch (e) {
+                console.error("Field validation error:", e);
+            }
 
             // Derive projectName from clientName (avoid redundant question)
             if (
