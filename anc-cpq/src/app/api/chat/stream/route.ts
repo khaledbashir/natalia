@@ -70,14 +70,9 @@ Rules:
 - Output PLAIN TEXT ONLY (no JSON, no code blocks, no markdown fences).
 - Be professional and concise.
 - First: acknowledge the field that was just captured in a single short sentence.
-- Second: include a short (1-2 lines) rationale for why that exact next question is required.
-- Third: ask EXACTLY the provided next question, verbatim.
+- Second: ask EXACTLY the provided next question, verbatim.
 - Do not add extra questions.
 - Do not mention internal field IDs.
-
-Output format (MANDATORY):
-NOTES: <1-2 lines rationale>
-QUESTION: <the exact next question verbatim>
 `;
 
 const VALID_FIELD_IDS_IN_ORDER = [
@@ -141,7 +136,9 @@ function cleanHistory(history: any[]): any[] {
       // If we stripped everything, keep the original (better than empty)
       if (!content && h.content) content = h.content;
     }
-    return { ...h, content };
+    // Preserve any prior raw reasoning_content so GLM can keep continuity when enabled.
+    const reasoning_content = typeof h.thinking === "string" ? h.thinking : undefined;
+    return { ...h, content, reasoning_content };
   });
 }
 
@@ -255,10 +252,16 @@ export async function POST(request: NextRequest) {
           ]
         : [
             { role: "system", content: SYSTEM_PROMPT },
-            ...cleanedHistory.map((h: any) => ({
-              role: h.role,
-              content: h.content,
-            })),
+            ...cleanedHistory.map((h: any) => {
+              if (h.role === "assistant" && typeof h.reasoning_content === "string") {
+                return {
+                  role: h.role,
+                  content: h.content,
+                  reasoning_content: h.reasoning_content,
+                };
+              }
+              return { role: h.role, content: h.content };
+            }),
             { role: "user", content: `Input: "${message}"\nState: ${JSON.stringify(currentState)}` },
           ];
 
@@ -274,6 +277,11 @@ export async function POST(request: NextRequest) {
         messages,
         temperature: mode === "narrate" ? 0.4 : 0.1,
         stream: true,
+        // GLM-4.7 thinking mode: stream reasoning_content and preserve it when clear_thinking is false.
+        thinking: {
+          type: "enabled",
+          clear_thinking: false,
+        },
       }),
     });
 
@@ -302,18 +310,9 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         let fullText = '';
+        let reasoningContent = '';
 
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({
-              type: "thinking",
-              content:
-                mode === "narrate"
-                  ? "Drafting assistant wording for the next required question..."
-                  : "Running spec audit and extracting structured fields...",
-            })}\n\n`,
-          ),
-        );
+        // Stream the model's raw reasoning_content (GLM thinking). This is NOT modified.
 
         while (true) {
           const { done, value } = await reader.read();
@@ -330,6 +329,15 @@ export async function POST(request: NextRequest) {
               try {
                 const parsedChunk = JSON.parse(data);
                 const delta = parsedChunk.choices?.[0]?.delta;
+
+                if (delta?.reasoning_content) {
+                  reasoningContent += delta.reasoning_content;
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({ type: "thinking", content: delta.reasoning_content })}\n\n`,
+                    ),
+                  );
+                }
 
                 if (delta?.content) {
                   fullText += delta.content;
@@ -348,23 +356,8 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({
-              type: "thinking",
-              content:
-                mode === "narrate"
-                  ? "Finalizing assistant message and trace..."
-                  : "Validating extracted fields and selecting next required field...",
-            })}\n\n`,
-          ),
-        );
-
         if (mode === "narrate") {
-          const parsedNarration = parseNarrationOutput(fullText);
-
-          const safeText = parsedNarration?.question ?? "";
-          const safeNotes = parsedNarration?.notes ?? "";
+          const safeText = sanitizePlainMessage(fullText);
           const nextStep = typeof narration?.nextStep === "string" ? narration.nextStep : "";
           const suggestedOptions = Array.isArray(narration?.suggestedOptions)
             ? narration.suggestedOptions
@@ -379,26 +372,7 @@ export async function POST(request: NextRequest) {
                 `data: ${JSON.stringify({
                   type: "error",
                   requestId,
-                  error:
-                    "Narration model returned empty/unsafe output (missing QUESTION).",
-                })}\n\n`,
-              ),
-            );
-            controller.close();
-            return;
-          }
-
-          if (!safeNotes) {
-            console.error(
-              `[chat/stream] narration_missing_notes requestId=${requestId} raw=${fullText}`,
-            );
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: "error",
-                  requestId,
-                  error:
-                    "Narration model output did not include NOTES (required for trace).",
+                  error: "Narration model returned empty/unsafe output.",
                 })}\n\n`,
               ),
             );
@@ -414,7 +388,7 @@ export async function POST(request: NextRequest) {
                 nextStep,
                 suggestedOptions,
                 updatedParams: {},
-                reasoning: safeNotes,
+                reasoning: reasoningContent,
               })}\n\n`,
             ),
           );
@@ -469,7 +443,8 @@ export async function POST(request: NextRequest) {
                   nextStep,
                   suggestedOptions,
                   updatedParams: parsed.updatedParams || {},
-                  reasoning: safeReasoning,
+                  // Prefer the model's raw reasoning_content stream; fall back to JSON reasoning if present.
+                  reasoning: reasoningContent || safeReasoning,
                 })}\n\n`,
               ),
             );
