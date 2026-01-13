@@ -832,11 +832,29 @@ export async function POST(request: NextRequest) {
                         parsed.nextStep = "address";
                         thinkingNotes.push("Guardrail forced nextStep to 'address' based on keywords.");
                     }
+
+                    // --- FORCE MESSAGE SYNC WITH STEP ---
+                    // If the step has advanced (e.g. from clientName -> address due to fallback),
+                    // but the message still asks the OLD question (e.g. "What's the venue name?"),
+                    // we MUST replace the message.
+
                     const questionDef = WIZARD_QUESTIONS.find(
                         (q) => q.id === parsed.nextStep,
                     );
 
-                    // If the model leaked analysis into the user-facing message, replace with the canonical question.
+                    const currentStepBeforeThisTurn = currentState?.nextStep || 'clientName';
+                    const stepAdvanced = parsed.nextStep !== currentStepBeforeThisTurn;
+                    const messageStillMatchesOldStep = currentStepBeforeThisTurn === 'clientName' && 
+                                                     (parsed.message || "").toLowerCase().includes("venue name");
+
+                    // Force message update if we advanced step via fallback but message is stale
+                    if (stepAdvanced && messageStillMatchesOldStep && questionDef) {
+                        console.log(`Step advanced to ${parsed.nextStep} but message was stale. Updating message.`);
+                        parsed.message = questionDef.question;
+                        thinkingNotes.push("Forced message update because step advanced but message was stale.");
+                    }
+
+                    // Standard overrides
                     if (questionDef && looksLikeInternalAnalysisText(parsed.message || "")) {
                         parsed.message = questionDef.question;
                     }
@@ -858,13 +876,22 @@ export async function POST(request: NextRequest) {
                         msgLower.includes("next") ||
                         msgLower.includes("awaiting input");
 
-                    if (isAskingQuestion && questionDef) {
-                        parsed.message = questionDef.question;
-                    } else if (questionDef && parsed.nextStep !== "confirm") {
-                        // If the assistant responded without asking the actual question, append it.
-                        const alreadyAsking = (parsed.message || "").includes("?");
-                        if (!alreadyAsking) {
-                            parsed.message = `${(parsed.message || "").trim()} ${questionDef.question}`.trim();
+                    // Stronger check: Does the message actually ask the NEW question?
+                    // If not, and we are not confirming, append or replace.
+                    const asksCorrectQuestion = questionDef ? (parsed.message || "").toLowerCase().includes(questionDef.question.toLowerCase().split(' ').slice(0, 3).join(' ')) : true;
+
+                    if ((isAskingQuestion || !asksCorrectQuestion) && questionDef && parsed.nextStep !== "confirm") {
+                        // If completely off, replace. If just missing, append.
+                        if (isAskingQuestion) {
+                            parsed.message = questionDef.question;
+                        } else {
+                            const alreadyAsking = (parsed.message || "").includes("?");
+                            if (!alreadyAsking) {
+                                parsed.message = `${(parsed.message || "").trim()} ${questionDef.question}`.trim();
+                            } else if (!asksCorrectQuestion && stepAdvanced) {
+                                // If asking WRONG question (e.g. asking for name when step is address), REPLACE
+                                parsed.message = questionDef.question;
+                            }
                         }
                     }
 
