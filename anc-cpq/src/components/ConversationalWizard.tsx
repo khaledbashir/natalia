@@ -658,6 +658,9 @@ export function ConversationalWizard({
             const decoder = new TextDecoder();
             let finalContent = '';
             let finalThinking = '';
+            let finalNextStep = '';
+            let finalSuggestedOptions = [];
+            let finalUpdatedParams = {};
             
             if (reader) {
                 while (true) {
@@ -680,8 +683,11 @@ export function ConversationalWizard({
                                 } else if (parsed.type === 'content') {
                                     finalContent = parsed.content;
                                 } else if (parsed.type === 'complete') {
-                                    finalContent = parsed.content;
-                                    finalThinking = parsed.reasoning;
+                                    finalContent = parsed.message || parsed.content || finalContent;
+                                    finalThinking = parsed.reasoning || "";
+                                    finalNextStep = parsed.nextStep || "";
+                                    finalSuggestedOptions = parsed.suggestedOptions || [];
+                                    finalUpdatedParams = parsed.updatedParams || {};
                                 }
                             } catch (e) {
                                 console.error('Error parsing streaming data:', e);
@@ -693,22 +699,40 @@ export function ConversationalWizard({
             
             // Process the final response
             setStreamingThinking('');
+            setIsStreaming(false);
+            setIsLoading(false);
+
+            if (Object.keys(finalUpdatedParams).length > 0) {
+                const normalized = normalizeParams(finalUpdatedParams);
+                const newState = { ...currentStateToSend, ...normalized };
+                setCpqState(newState);
+                onUpdate(newState);
+            }
             
             const finalMessage: Message = {
                 role: "assistant",
                 content: finalContent,
-                thinking: finalThinking ? `<details class="thinking-accordion" style="margin-top: 8px; border-left: 2px solid #3b82f6; padding-left: 12px;">
-    <summary style="cursor: pointer; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-        🤔 AI Reasoning Process
-    </summary>
-    
-    <div style="margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 10px; line-height: 1.4; color: #475569; white-space: pre-wrap;">
-${finalThinking}
-    </div>
-</details>` : undefined,
+                nextStep: finalNextStep,
+                suggestedOptions: finalSuggestedOptions,
+                thinking: SHOW_REASONING ? finalThinking : undefined,
             };
             
             setMessages(prev => [...prev, finalMessage]);
+
+            if (finalNextStep) {
+                setAskedQuestions((prev) => new Set([...prev, finalNextStep]));
+            }
+
+            // Save Assistant Message to DB
+            if (projectId) {
+                fetch(`/api/projects/${projectId}/message`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(finalMessage),
+                }).catch((e) =>
+                    console.error("Failed to log assistant message", e),
+                );
+            }
             
         } catch (error) {
             console.error('Streaming chat error:', error);

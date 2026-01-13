@@ -327,15 +327,17 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 
 ### CRITICAL WARNING:
 - DO NOT invent fields that are not in this list.
-- There is NO 'depth', 'depthFt', 'resolution', 'brightness', or any other field.
-- If user mentions something not in the list, ignore it and proceed to the next valid field.
+- DO NOT repeat the same question if the user has already provided a valid answer in 'currentState'.
+- NEVER put JSON or code blocks inside the "message" field of your response.
+- If you find yourself asking the same question again, check 'currentState' - if the value is there, MOVE TO THE NEXT MISSING FIELD IMMEDIATELY.
 
 ### RESPONSE FORMAT (MANDATORY):
-- ONLY JSON.
+- ONLY JSON. NO plain text before or after the JSON block.
 - { "message": "Feedback string", "nextStep": "fieldId", "suggestedOptions": [], "updatedParams": {} }
 - **updatedParams MUST contain the field value the user just provided!** Never leave it empty if user gave a valid answer.
 - suggestedOptions is MANDATORY for selects and numbers.
 - 'nextStep' MUST be one of the 21 valid field IDs above.
+- **The "message" should ONLY contain the conversational text for the user. Do NOT include any debugging info or raw states here.**
 
 ### EXAMPLES:
 
@@ -474,14 +476,50 @@ function inferStepFromMessage(message: string): string | null {
 /**
  * Extract JSON from AI response, with fallback inference for non-JSON responses
  */
+function cleanHistory(history: any[]): any[] {
+    return history.map((h) => {
+        let content = h.content || "";
+        if (h.role === "assistant") {
+            // 1. Remove JSON blocks
+            content = content.replace(/```json[\s\S]*?```/g, "");
+            // 2. Remove markdown fences
+            content = content.replace(/```[\s\S]*?```/g, "");
+            // 3. Remove thinking/details tags if they leaked into content
+            content = content.replace(/<details[\s\S]*?<\/details>/gi, "");
+            content = content.replace(/<think>[\s\S]*?<\/think>/gi, "");
+            // 4. Remove any loose JSON-like structures that might confuse the model
+            content = content.replace(/\{[\s\S]*\}/g, "");
+            
+            content = content.trim();
+            
+            // If we stripped everything, keep the original (better than empty)
+            if (!content && h.content) content = h.content;
+        }
+        return { ...h, content };
+    });
+}
+
 function extractJSON(text: string) {
     try {
-        // 1. Try to find the EXACT JSON block first (greedy match)
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        // First, normalize the text by removing markdown fences if they wrap the entire thing
+        let cleanText = text.trim();
+        if (cleanText.startsWith("```json")) {
+            cleanText = cleanText.replace(/^```json/, "").replace(/```$/, "").trim();
+        } else if (cleanText.startsWith("```")) {
+            cleanText = cleanText.replace(/^```/, "").replace(/```$/, "").trim();
+        }
+
+        // 1. Try to find the EXACT JSON block (greedy match)
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             const potentialJson = jsonMatch[0];
             try {
-                return JSON.parse(potentialJson);
+                const parsed = JSON.parse(potentialJson);
+                // SUCCESS: Now ensure the 'message' field doesn't contain a copy of the JSON itself
+                if (parsed.message && typeof parsed.message === 'string') {
+                    parsed.message = parsed.message.replace(/```json[\s\S]*?```/g, "").replace(/\{[\s\S]*\}/g, "").trim();
+                }
+                return parsed;
             } catch (e) {
                 // 2. If parsing failed, try it again with more cleanup
                 const cleaned = potentialJson.replace(
@@ -497,18 +535,17 @@ function extractJSON(text: string) {
         }
 
         // 3. Last ditch: If text is just a string, return a fallback message.
-        // IMPORTANT: if it looks like internal analysis/reasoning, do NOT surface it.
-        if (text && !text.includes("{")) {
-            if (/\b(analysis|reasoning|state analysis|input analysis)\b/i.test(text)) {
+        if (cleanText && !cleanText.includes("{")) {
+            if (/\b(analysis|reasoning|state analysis|input analysis)\b/i.test(cleanText)) {
                 return null;
             }
-            const inferredStep = inferStepFromMessage(text);
+            const inferredStep = inferStepFromMessage(cleanText);
 
             return {
-                message: text.trim(),
+                message: cleanText.trim(),
                 updatedParams: {},
                 nextStep: inferredStep,
-                suggestedOptions: undefined, // Will be populated from WIZARD_QUESTIONS
+                suggestedOptions: undefined,
             };
         }
 
@@ -662,7 +699,7 @@ export async function POST(request: NextRequest) {
 
         const contextMessages = [
             { role: "system", content: SYSTEM_PROMPT },
-            ...history.map((h: any) => ({
+            ...cleanHistory(history).map((h: any) => ({
                 role: h.role,
                 content: h.content,
                 ...(h.thinking &&
