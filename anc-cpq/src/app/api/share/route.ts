@@ -59,7 +59,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { input, result } = body;
+    // Support both direct and wrapped keys
+    const input = body.input || body.input_data;
+    const result = body.result || body.result_data;
 
     if (!input || !result) {
       return NextResponse.json(
@@ -68,18 +70,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate the input data
-    const requiredFields = [
-      'clientName', 'address', 'productClass', 'pixelPitch',
-      'widthFt', 'heightFt', 'environment', 'shape', 'mountingType',
-      'access', 'structureCondition', 'laborType', 'powerDistance',
-      'permits', 'controlSystem', 'bondRequired', 'complexity', 'serviceLevel'
-    ];
-
-    const missingFields = requiredFields.filter(field => !input[field]);
-    if (missingFields.length > 0) {
+    // Validate the input data - make validation less strict for sharing
+    if (!input.clientName) {
       return NextResponse.json(
-        { error: `Missing required fields: ${missingFields.join(', ')}` },
+        { error: 'Missing clientName in shared data' },
         { status: 400 }
       );
     }

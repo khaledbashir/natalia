@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const dataStr = encodeURIComponent(JSON.stringify(body));
+        const { showPricing, ...rest } = body;
+        const dataStr = encodeURIComponent(JSON.stringify(rest));
 
         // Use dynamic require for puppeteer to avoid webpack bundling issues in Next.js API routes
         const puppeteer = require('puppeteer');
@@ -24,7 +25,8 @@ export async function POST(req: NextRequest) {
 
         // Navigate to the print page with data
         const PORT = process.env.PORT || 6789;
-        const printUrl = `http://localhost:${PORT}/print?data=${dataStr}`;
+        const showPricingParam = showPricing !== undefined ? `&showPricing=${showPricing}` : '';
+        const printUrl = `http://localhost:${PORT}/print?data=${dataStr}${showPricingParam}`;
 
         await page.goto(printUrl, {
             waitUntil: 'networkidle0', // Wait for all content to load

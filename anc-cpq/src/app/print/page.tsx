@@ -8,6 +8,8 @@ import { calculateCPQ } from '../../lib/calculator';
 function PrintContent() {
     const searchParams = useSearchParams();
     const dataStr = searchParams.get('data');
+    const showPricingParam = searchParams.get('showPricing');
+    const showPricing = showPricingParam !== 'false'; // Default to true unless explicitly false
 
     if (!dataStr) {
         return <div className="p-8 text-slate-500">No proposal data provided.</div>;
@@ -77,7 +79,7 @@ function PrintContent() {
                         padding: 0 !important;
                     }
                 `}</style>
-                <Preview input={input} result={result} />
+                <Preview input={input} result={result} initialShowPricing={showPricing} />
             </div>
         );
     } catch (e) {

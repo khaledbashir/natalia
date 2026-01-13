@@ -12,6 +12,7 @@ interface PreviewProps {
     result: CalculationResult;
     projectId?: number | null;
     onUpdateField?: (field: keyof CPQInput, value: any) => void;
+    initialShowPricing?: boolean;
 }
 
 const BRAND_BLUE = "#003D82";
@@ -121,10 +122,10 @@ const PricingTable = ({ result, showFooter = true, titleSuffix = "" }: { result:
 
 // --- Main Preview Component ---
 
-export function Preview({ input, result, projectId, onUpdateField }: PreviewProps) {
+export function Preview({ input, result, projectId, onUpdateField, initialShowPricing = true }: PreviewProps) {
     const [today, setToday] = React.useState('');
     const [referenceNum, setReferenceNum] = React.useState('');
-    const [showPricing, setShowPricing] = React.useState(true);
+    const [showPricing, setShowPricing] = React.useState(initialShowPricing);
     const [activeTab, setActiveTab] = React.useState<'pdf' | 'excel'>('pdf');
     const [shareUrl, setShareUrl] = React.useState<string | null>(null);
     const [isSharing, setIsSharing] = React.useState(false);
@@ -142,7 +143,10 @@ export function Preview({ input, result, projectId, onUpdateField }: PreviewProp
                 const res = await fetch('/api/pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(input)
+                    body: JSON.stringify({
+                        ...input,
+                        showPricing // Correctly pass the current visibility state
+                    })
                 });
 
                 if (res.ok) {
