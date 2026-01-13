@@ -115,6 +115,60 @@ const normalizeParams = (params: any) => {
     return normalized;
 };
 
+const sanitizeAssistantText = (text: string) => {
+    if (!text) return "";
+    let cleaned = String(text);
+
+    // Strip code fences first.
+    cleaned = cleaned.replace(/```json/gi, "```");
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, (block) => {
+        // Prefer extracting JSON inside fenced blocks.
+        const inner = block.replace(/```/g, "");
+        return inner;
+    });
+    cleaned = cleaned.replace(/```/g, "");
+
+    // If it looks like JSON (or contains JSON), attempt to extract the last valid payload.
+    const candidates: string[] = [];
+    let start = -1;
+    let depth = 0;
+    for (let i = 0; i < cleaned.length; i++) {
+        const ch = cleaned[i];
+        if (ch === "{") {
+            if (depth === 0) start = i;
+            depth++;
+        } else if (ch === "}") {
+            if (depth > 0) depth--;
+            if (depth === 0 && start !== -1) {
+                candidates.push(cleaned.slice(start, i + 1));
+                start = -1;
+            }
+        }
+    }
+
+    let lastValid: any = null;
+    for (const candidate of candidates) {
+        try {
+            const obj = JSON.parse(candidate);
+            if (obj && typeof obj === "object" && typeof obj.message === "string") {
+                lastValid = obj;
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    if (lastValid?.message && typeof lastValid.message === "string") {
+        return lastValid.message.trim();
+    }
+
+    // Final fallback: strip any brace blocks that could leak.
+    if (cleaned.includes("{")) {
+        cleaned = cleaned.replace(/\{[\s\S]*\}/g, "").trim();
+    }
+    return cleaned.trim();
+};
+
 export function ConversationalWizard({
     onComplete,
     onUpdate,
@@ -685,18 +739,10 @@ export function ConversationalWizard({
                                     finalContent = parsed.content;
                                 } else if (parsed.type === 'complete') {
                                     // Extraction logic to ensure ZERO JSON leaks into the UI
-                                    finalContent = parsed.message || parsed.content || finalContent;
+                                    finalContent = sanitizeAssistantText(parsed.message || parsed.content || finalContent);
                                     
                                     // If we somehow still have raw JSON in finalContent, force extract the 'message' field
-                                    if (finalContent.includes('{') || finalContent.trim().startsWith('{')) {
-                                        try {
-                                            const innerParsed = JSON.parse(finalContent.match(/\{[\s\S]*\}/)?.[0] || '{}');
-                                            if (innerParsed.message) finalContent = innerParsed.message;
-                                        } catch (e) {
-                                            // Final fallback: strip anything between braces
-                                            finalContent = finalContent.replace(/\{[\s\S]*\}/g, '').trim();
-                                        }
-                                    }
+                                    finalContent = sanitizeAssistantText(finalContent);
 
                                     finalThinking = parsed.reasoning || "";
                                     finalNextStep = parsed.nextStep || "";
@@ -1022,7 +1068,7 @@ export function ConversationalWizard({
                                 )}
                             >
                                 <div className="whitespace-pre-wrap font-medium tracking-tight">
-                                    {msg.content}
+                                    {msg.role === "assistant" ? sanitizeAssistantText(msg.content) : msg.content}
                                 </div>
 
                             {/* VENUE VERIFIED CARD - Show only for the message that actually CAPTURED the address */}

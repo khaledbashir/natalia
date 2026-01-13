@@ -87,28 +87,66 @@ function cleanHistory(history: any[]): any[] {
 }
 
 function extractJSON(text: string) {
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      // Try to parse the match. Check for common JSON malformations.
-      let jsonStr = jsonMatch[0];
-      // Basic fix for missing quotes around keys if AI is sloppy
-      jsonStr = jsonStr.replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
-      
-      return JSON.parse(jsonStr);
-    }
-    return null;
-  } catch (e) {
-    // Second attempt: first { until last }
-    try {
-      const firstBrace = text.indexOf('{');
-      const lastBrace = text.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+  const cleaned = (text || "")
+    .replace(/```json/gi, "```")
+    .replace(/```/g, "");
+
+  const normalizeCandidate = (candidate: string) =>
+    candidate.replace(/([\{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+
+  const isValidPayload = (obj: any) => {
+    if (!obj || typeof obj !== "object") return false;
+    if (typeof obj.message !== "string" || !obj.message.trim()) return false;
+    if (typeof obj.nextStep !== "string" || !obj.nextStep.trim()) return false;
+    if (obj.updatedParams === undefined) return false;
+    if (typeof obj.updatedParams !== "object" || obj.updatedParams === null) return false;
+    return true;
+  };
+
+  // Extract balanced {...} candidates (handles multiple JSON blocks, partial blocks, etc.)
+  const candidates: string[] = [];
+  let start = -1;
+  let depth = 0;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      if (depth > 0) depth--;
+      if (depth === 0 && start !== -1) {
+        candidates.push(cleaned.slice(start, i + 1));
+        start = -1;
       }
-    } catch (e2) {}
-    return null;
+    }
   }
+
+  let lastValid: any = null;
+  for (const candidate of candidates) {
+    try {
+      const obj = JSON.parse(normalizeCandidate(candidate));
+      if (isValidPayload(obj)) lastValid = obj;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fallback: try parsing the widest brace span.
+  if (!lastValid) {
+    try {
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const obj = JSON.parse(normalizeCandidate(cleaned.substring(firstBrace, lastBrace + 1)));
+        if (isValidPayload(obj)) lastValid = obj;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return lastValid;
 }
 
 export async function POST(request: NextRequest) {
