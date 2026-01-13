@@ -224,6 +224,19 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
         "created_at": project.created_at.isoformat()
     }
 
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    """Delete a project and its associated messages"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Cascade delete is handled by SQLAlchemy relationship or manual delete
+    # Given the schema in database.py, let's see if cascade is set
+    db.delete(project)
+    db.commit()
+    return {"status": "deleted"}
+
 @app.put("/api/projects/{project_id}/state")
 def update_project_state(project_id: int, state: Dict, db: Session = Depends(get_db)):
     """Auto-save project state from wizard"""

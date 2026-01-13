@@ -10,6 +10,7 @@ import {
     History,
     FileText,
     X,
+    Trash2,
     CheckCircle2,
     ChevronRight,
     MapPin,
@@ -769,6 +770,30 @@ ${finalThinking}
         }
     };
 
+    const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Don't trigger load when clicking delete
+        
+        if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                // If it's the current project, reset to new
+                if (projectId?.toString() === id) {
+                    handleNewProposal();
+                }
+                // Refresh history
+                fetchHistory();
+            } else {
+                alert("Failed to delete project");
+            }
+        } catch (e) {
+            console.error("Delete error:", e);
+        }
+    };
+
     // Compute current step for widget rendering (used in JSX)
     const currentNextStep = messages[messages.length - 1]?.nextStep;
     const widgetDef = WIZARD_QUESTIONS.find((q) => q.id === currentNextStep);
@@ -921,18 +946,26 @@ ${finalThinking}
                             </p>
                         )}
                         {savedProposals.map((p) => (
-                            <button
-                                key={p.id}
-                                onClick={() => handleLoadProposal(p)}
-                                className="w-full bg-slate-800/50 hover:bg-slate-800 p-4 rounded-xl border border-slate-700/50 text-left transition-all group"
-                            >
-                                <p className="text-white font-bold text-sm mb-1 group-hover:text-blue-400 transition-colors uppercase">
-                                    {p.name}
-                                </p>
-                                <p className="text-slate-500 text-[10px] uppercase font-bold tracking-tighter">
-                                    {new Date(p.timestamp).toLocaleString()}
-                                </p>
-                            </button>
+                            <div key={p.id} className="relative group/item">
+                                <button
+                                    onClick={() => handleLoadProposal(p)}
+                                    className="w-full bg-slate-800/50 hover:bg-slate-800 p-4 rounded-xl border border-slate-700/50 text-left transition-all group"
+                                >
+                                    <p className="text-white font-bold text-sm mb-1 group-hover:text-blue-400 transition-colors uppercase pr-8">
+                                        {p.name}
+                                    </p>
+                                    <p className="text-slate-500 text-[10px] uppercase font-bold tracking-tighter">
+                                        {new Date(p.timestamp).toLocaleString()}
+                                    </p>
+                                </button>
+                                <button
+                                    onClick={(e) => handleDeleteProject(p.id, e)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all hover:bg-red-400/10 rounded-lg"
+                                    title="Delete project"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         ))}
                     </div>
                 </div>
