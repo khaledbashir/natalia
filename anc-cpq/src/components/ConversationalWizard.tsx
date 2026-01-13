@@ -46,7 +46,7 @@ interface SavedProposal {
 const STORAGE_KEY = "anc_cpq_session";
 const HISTORY_KEY = "anc_cpq_history";
 
-const SHOW_REASONING = process.env.NEXT_PUBLIC_SHOW_REASONING === "true";
+const SHOW_REASONING = process.env.NEXT_PUBLIC_SHOW_REASONING !== "false";
 
 const INITIAL_CPQ_STATE: Partial<CPQInput> = {
     clientName: "",
@@ -1336,7 +1336,7 @@ ${finalThinking}
                                         <span className="ml-auto text-[8px] text-slate-600 group-open/thinking:text-blue-500">▼</span>
                                     </summary>
                                     <div className="mt-2 text-[10px] text-slate-400 font-mono whitespace-pre-wrap bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 max-w-[95%] animate-in fade-in slide-in-from-top-1">
-                                        <div dangerouslySetInnerHTML={{ __html: msg.thinking }} />
+                                        {msg.thinking}
                                     </div>
                                 </details>
                             </div>

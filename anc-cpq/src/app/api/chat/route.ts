@@ -189,6 +189,23 @@ function isLikelyStreetAddress(address: unknown): boolean {
     return (parts.length >= 2 && (hasNumber || hasStreetType)) || (trimmed.length > 25);
 }
 
+function extractThinkingFromHTML(html: string): string {
+    if (!html) return html;
+    if (!html.includes("<")) return html;
+    
+    // Extract content within the <div> inside our defined <details> structure
+    const match = html.match(/<div[^>]*>([\s\S]*?)<\/div>/i);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    
+    // Fallback: strip all HTML tags if it looks like one of our blocks
+    if (html.toLowerCase().includes("<details") || html.toLowerCase().includes("<div")) {
+        return html.replace(/<[^>]*>/g, "").trim();
+    }
+    return html;
+}
+
 async function computeNextStepFromState(state: any): Promise<string> {
     const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
 
@@ -650,7 +667,7 @@ export async function POST(request: NextRequest) {
                 content: h.content,
                 ...(h.thinking &&
                     modelConfig.supportsThinking && {
-                    reasoning_content: h.thinking,
+                    reasoning_content: extractThinkingFromHTML(h.thinking),
                 }),
             })),
             {
@@ -796,7 +813,7 @@ export async function POST(request: NextRequest) {
             .filter((p) => typeof p === "string" && p.trim().length > 0)
             .map((p) => String(p).trim());
 
-        const allowReasoning = process.env.SHOW_REASONING === "true";
+        const allowReasoning = process.env.SHOW_REASONING !== "false";
 
         if (parsed) {
             // Normalize + harden model output (never trust it for UX text or step logic)
@@ -1141,18 +1158,7 @@ export async function POST(request: NextRequest) {
                 })
                 : undefined;
 
-            // Format thinking in HTML <details> accordion pattern with better styling
-            const thinking = thinkingRaw
-                ? `<details class="thinking-accordion" style="margin-top: 8px; border-left: 2px solid #3b82f6; padding-left: 12px;">
-    <summary style="cursor: pointer; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-        🤔 AI Reasoning Process
-    </summary>
-    
-    <div style="margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 10px; line-height: 1.4; color: #475569; white-space: pre-wrap;">
-${thinkingRaw}
-    </div>
-</details>`
-                : undefined;
+            const thinking = thinkingRaw;
 
             return NextResponse.json({
                 ...parsed,
@@ -1203,18 +1209,7 @@ ${thinkingRaw}
                 })
                 : undefined;
 
-            // Format thinking in HTML <details> accordion pattern with better styling
-            const thinking = thinkingRaw
-                ? `<details class="thinking-accordion" style="margin-top: 8px; border-left: 2px solid #3b82f6; padding-left: 12px;">
-    <summary style="cursor: pointer; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-        🤔 AI Reasoning Process
-    </summary>
-    
-    <div style="margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 10px; line-height: 1.4; color: #475569; white-space: pre-wrap;">
-${thinkingRaw}
-    </div>
-</details>`
-                : undefined;
+            const thinking = thinkingRaw;
 
             return NextResponse.json({
                 message: fallbackMessage,
