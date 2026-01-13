@@ -156,31 +156,6 @@ export function ConversationalWizard({
         };
     }, [isSearchingAddress]);
 
-    const looksLikeAddressInput = useCallback((value: string) => {
-        const trimmed = value.trim();
-        if (!trimmed) return false;
-
-        // If it has 3+ comma-separated parts, it's likely a full address
-        const parts = trimmed.split(',').filter(p => p.trim());
-        if (parts.length >= 3) return true;
-
-        const hasNumber = /\b\d{1,6}\b/.test(trimmed);
-        const hasStreetType =
-            /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy|plaza|circle|square|al|district|governorate|faisal)\b/i.test(
-                trimmed,
-            );
-        // International postal codes: US ZIP, Canada A1A 1A1, UK, Jordan 5-digit, etc.
-        const hasPostalCode =
-            /\b\d{4,6}\b/.test(trimmed) || // Generic numeric postal (Jordan, Egypt, etc.)
-            /,\s*[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/.test(trimmed) || // US ZIP
-            /\b[A-Z]\d[A-Z]\s*\d[A-Z]\d\b/i.test(trimmed); // Canada
-
-        // Also check for country names at the end
-        const hasCountry = /\b(jordan|egypt|usa|uk|uae|canada|australia|germany|france|italy|spain|japan|china)\b/i.test(trimmed);
-
-        return (hasNumber && hasStreetType) || hasPostalCode || hasCountry || parts.length >= 2;
-    }, []);
-
     // Hydrate model selection from localStorage on mount
     useEffect(() => {
         if (typeof window !== "undefined") {
