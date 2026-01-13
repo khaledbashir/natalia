@@ -70,9 +70,14 @@ Rules:
 - Output PLAIN TEXT ONLY (no JSON, no code blocks, no markdown fences).
 - Be professional and concise.
 - First: acknowledge the field that was just captured in a single short sentence.
-- Second: ask EXACTLY the provided next question, verbatim.
+- Second: include a short (1-2 lines) rationale for why that exact next question is required.
+- Third: ask EXACTLY the provided next question, verbatim.
 - Do not add extra questions.
 - Do not mention internal field IDs.
+
+Output format (MANDATORY):
+NOTES: <1-2 lines rationale>
+QUESTION: <the exact next question verbatim>
 `;
 
 const VALID_FIELD_IDS_IN_ORDER = [
@@ -138,6 +143,23 @@ function cleanHistory(history: any[]): any[] {
     }
     return { ...h, content };
   });
+}
+
+function parseNarrationOutput(text: string): { notes: string; question: string } | null {
+  const raw = String(text ?? "").trim();
+  if (!raw) return null;
+
+  const notesMatch = raw.match(/\bNOTES\s*:\s*([\s\S]*?)\bQUESTION\s*:\s*/i);
+  const questionMatch = raw.match(/\bQUESTION\s*:\s*([\s\S]*)$/i);
+
+  const notes = (notesMatch?.[1] ?? "").trim();
+  const question = (questionMatch?.[1] ?? "").trim();
+
+  if (!question) return null;
+  return {
+    notes: sanitizePlainMessage(notes),
+    question: sanitizePlainMessage(question),
+  };
 }
 
 function extractJSON(text: string) {
@@ -281,20 +303,17 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         let fullText = '';
 
-        // Truthful progress trace (not chain-of-thought).
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
               type: "thinking",
               content:
                 mode === "narrate"
-                  ? "Generating assistant wording for the next step..."
+                  ? "Drafting assistant wording for the next required question..."
                   : "Running spec audit and extracting structured fields...",
             })}\n\n`,
           ),
         );
-
-        // (We do NOT request or stream chain-of-thought. Only safe progress signals.)
 
         while (true) {
           const { done, value } = await reader.read();
@@ -335,14 +354,17 @@ export async function POST(request: NextRequest) {
               type: "thinking",
               content:
                 mode === "narrate"
-                  ? "Finalizing response..."
-                  : "Validating output and selecting next required field...",
+                  ? "Finalizing assistant message and trace..."
+                  : "Validating extracted fields and selecting next required field...",
             })}\n\n`,
           ),
         );
 
         if (mode === "narrate") {
-          const safeText = sanitizePlainMessage(fullText);
+          const parsedNarration = parseNarrationOutput(fullText);
+
+          const safeText = parsedNarration?.question ?? "";
+          const safeNotes = parsedNarration?.notes ?? "";
           const nextStep = typeof narration?.nextStep === "string" ? narration.nextStep : "";
           const suggestedOptions = Array.isArray(narration?.suggestedOptions)
             ? narration.suggestedOptions
@@ -357,7 +379,26 @@ export async function POST(request: NextRequest) {
                 `data: ${JSON.stringify({
                   type: "error",
                   requestId,
-                  error: "Narration model returned empty/unsafe output.",
+                  error:
+                    "Narration model returned empty/unsafe output (missing QUESTION).",
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+            return;
+          }
+
+          if (!safeNotes) {
+            console.error(
+              `[chat/stream] narration_missing_notes requestId=${requestId} raw=${fullText}`,
+            );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  requestId,
+                  error:
+                    "Narration model output did not include NOTES (required for trace).",
                 })}\n\n`,
               ),
             );
@@ -373,7 +414,7 @@ export async function POST(request: NextRequest) {
                 nextStep,
                 suggestedOptions,
                 updatedParams: {},
-                reasoning: "",
+                reasoning: safeNotes,
               })}\n\n`,
             ),
           );

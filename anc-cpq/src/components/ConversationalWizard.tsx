@@ -676,6 +676,8 @@ export function ConversationalWizard({
 
             const updatedParams: Record<string, any> = {};
 
+            let matchedOptionLabel: string | undefined = undefined;
+
             if (widgetDef.type === "number") {
                 const numValue = parseFloat(updatedText);
                 if (isNaN(numValue)) {
@@ -715,6 +717,7 @@ export function ConversationalWizard({
                         opt.label.toLowerCase() === raw.toLowerCase(),
                 );
                 updatedParams[widgetDef.id] = matched ? matched.value : raw;
+                matchedOptionLabel = matched?.label;
             } else {
                 updatedParams[widgetDef.id] = updatedText.trim();
             }
@@ -755,9 +758,6 @@ export function ConversationalWizard({
                         : nextRequired?.question || "What is the next required specification?",
                 nextStep,
                 suggestedOptions: nextStep === "confirm" ? [] : nextRequired?.options || [],
-                thinking: SHOW_REASONING
-                    ? `LOGIC TRACE: Captured ${widgetDef.id}. Next: ${nextStep}.`
-                    : undefined,
             };
 
             // Real AI feel (without letting the model control state): ask the model to narrate.
