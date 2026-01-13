@@ -1826,7 +1826,7 @@ export function ConversationalWizard({
                                         <ChevronDown size={10} className="ml-auto opacity-40 group-open/thinking:rotate-180 transition-transform" />
                                     </summary>
                                     <div className="mt-1 pl-4 border-l border-white/5">
-                                        <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-[#05080f]/50 p-4 rounded-lg border border-white/5 max-w-[98%] shadow-inner whitespace-pre-wrap">
+                                        <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-[#05080f]/50 p-4 rounded-lg border border-white/5 max-w-[98%] shadow-inner whitespace-pre-wrap max-h-[200px] overflow-y-auto custom-scrollbar">
                                             {msg.thinking}
                                         </div>
                                     </div>
