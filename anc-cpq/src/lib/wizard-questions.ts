@@ -35,10 +35,25 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         options: [
             { value: 'Scoreboard', label: 'Scoreboard', impact: 'Standard rate' },
             { value: 'Ribbon', label: 'Ribbon Board', impact: '+20% base rate' },
-            { value: 'CenterHung', label: 'Center Hung', impact: '+30% base rate' }
+            { value: 'CenterHung', label: 'Center Hung', impact: '+30% base rate' },
+            { value: 'Vomitory', label: 'Vomitory', impact: '+15% base rate' }
         ],
         required: true,
         formulaImpact: 'Affects base rate per sqft'
+    },
+    {
+        id: 'pixelPitch',
+        category: 'display',
+        question: "What pixel pitch do you need?",
+        type: 'select',
+        options: [
+            { value: '10', label: '10mm (Standard)', impact: 'Base rate' },
+            { value: '6', label: '6mm (Fine)', impact: '+25% rate' },
+            { value: '4', label: '4mm (Ultra Fine)', impact: '+50% rate' },
+            { value: '16', label: '16mm (Coarse)', impact: '-15% rate' }
+        ],
+        required: true,
+        formulaImpact: 'Affects cost per sqft'
     },
     {
         id: 'widthFt',
@@ -53,19 +68,6 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         question: "What's the display height (in feet)?",
         type: 'number',
         required: true
-    },
-    {
-        id: 'pixelPitch',
-        category: 'display',
-        question: "What pixel pitch do you need?",
-        type: 'select',
-        options: [
-            { value: '10', label: '10mm (Standard)', impact: 'Base rate' },
-            { value: '6', label: '6mm (Fine)', impact: '+25% rate' },
-            { value: '4', label: '4mm (Ultra Fine)', impact: '+50% rate' }
-        ],
-        required: true,
-        formulaImpact: 'Affects cost per sqft'
     },
     // Environment
     {

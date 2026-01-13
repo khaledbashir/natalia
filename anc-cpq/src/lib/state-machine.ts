@@ -67,8 +67,8 @@ export const STEPS: Step[] = [
     id: 'pixelPitch',
     category: 'display',
     requiredFields: ['pixelPitch'],
-    validate: (state) => !!state.pixelPitch && state.pixelPitch > 0,
-    isComplete: (state) => !!state.pixelPitch && state.pixelPitch > 0,
+    validate: (state) => state.pixelPitch !== undefined && state.pixelPitch > 0,
+    isComplete: (state) => state.pixelPitch !== undefined && state.pixelPitch > 0,
     prompt: "What is the required pixel pitch for the display?",
     allowedValues: ['2', '3', '4', '6', '8', '10', '12', '16', '20'],
     targetField: 'pixelPitch'
@@ -77,8 +77,8 @@ export const STEPS: Step[] = [
     id: 'widthFt',
     category: 'display',
     requiredFields: ['widthFt'],
-    validate: (state) => !!state.widthFt && state.widthFt > 0,
-    isComplete: (state) => !!state.widthFt && state.widthFt > 0,
+    validate: (state) => state.widthFt !== undefined && state.widthFt > 0,
+    isComplete: (state) => state.widthFt !== undefined && state.widthFt > 0,
     prompt: "What is the display width in feet?",
     targetField: 'widthFt'
   },
@@ -86,8 +86,8 @@ export const STEPS: Step[] = [
     id: 'heightFt',
     category: 'display',
     requiredFields: ['heightFt'],
-    validate: (state) => !!state.heightFt && state.heightFt > 0,
-    isComplete: (state) => !!state.heightFt && state.heightFt > 0,
+    validate: (state) => state.heightFt !== undefined && state.heightFt > 0,
+    isComplete: (state) => state.heightFt !== undefined && state.heightFt > 0,
     prompt: "What is the display height in feet?",
     targetField: 'heightFt'
   },

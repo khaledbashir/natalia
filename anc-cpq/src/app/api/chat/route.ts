@@ -213,7 +213,7 @@ async function computeNextStepFromState(state: any): Promise<string> {
     return "confirm";
 }
 
-const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT tool. Your job is to fill exactly 21 fields for the Engineering Estimator.
+const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT tool. Your job is to fill exactly 20 fields for the Engineering Estimator.
 
 ### INTERNAL PERSONA (STRICT):
 - Speak professionally and concisely (e.g., "Client confirmed. Proceeding to next specification.")
@@ -329,11 +329,11 @@ Response: {
   }
 }
 
-**Example 3: ALL 21 ANSWERS (Jump directly to confirm)**
-User: "Madison Square Garden, 4 Pennsylvania Plaza New York NY 10001, MSG Install, Scoreboard, 10mm, 80ft wide, 25ft high, Outdoor, Curved, Wall mount, Front access, Existing structure, Union labor, Medium distance, ANC handles permits, Include controls, Yes bond, High complexity, $1500/sqft, 25% margin, Bronze service"
+**Example 3: ALL 20 ANSWERS (Jump directly to confirm)**
+User: "Madison Square Garden, 4 Pennsylvania Plaza New York NY 10001, Scoreboard, 10mm, 80ft wide, 25ft high, Outdoor, Curved, Wall mount, Front access, Existing structure, Union labor, Medium distance, ANC handles permits, Include controls, Yes bond, High complexity, $1500/sqft, 25% margin, Bronze service"
 CurrentState: {}
 Response: {
-  "message": "I've captured all 21 specifications. Please confirm to generate your proposal.",
+  "message": "I've captured all 20 specifications. Please confirm to generate your proposal.",
   "nextStep": "confirm",
   "suggestedOptions": [
     {"value": "Confirmed", "label": "CONFIRM & GENERATE PDF"},
@@ -342,7 +342,6 @@ Response: {
   "updatedParams": {
     "clientName": "Madison Square Garden",
     "address": "4 Pennsylvania Plaza New York NY 10001",
-    "projectName": "MSG Install",
     "productClass": "Scoreboard",
     "pixelPitch": 10,
     "widthFt": 80,

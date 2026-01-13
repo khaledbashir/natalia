@@ -72,7 +72,7 @@ const getInitialMessage = (): Message => ({
 });
 
 const PROGRESS_STEPS = [
-    { id: "metadata", label: "CLIENT", fields: ["clientName", "address", "projectName"] },
+    { id: "metadata", label: "CLIENT", fields: ["clientName", "address"] },
     { id: "display", label: "DISPLAY", fields: ["productClass", "pixelPitch", "widthFt", "heightFt"] },
     { id: "config", label: "DETAILS", fields: ["environment", "shape", "access", "mountingType", "structureCondition"] },
     { id: "project", label: "LOGISTICS", fields: ["laborType", "powerDistance", "permits", "controlSystem", "bondRequired", "complexity", "unitCost", "targetMargin", "serviceLevel"] },

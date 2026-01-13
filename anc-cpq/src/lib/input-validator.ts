@@ -57,16 +57,16 @@ export const NUMERIC_FIELD_RULES: Record<string, NumericFieldRule> = {
     description: 'Pixel pitch must be between 2-20mm'
   },
   widthFt: {
-    min: 1,
+    min: 0,
     max: 500,
     unit: 'ft',
-    description: 'Width must be between 1-500 feet'
+    description: 'Width must be between 0-500 feet'
   },
   heightFt: {
-    min: 1,
+    min: 0,
     max: 500,
     unit: 'ft',
-    description: 'Height must be between 1-500 feet'
+    description: 'Height must be between 0-500 feet'
   },
   unitCost: {
     min: 100,
