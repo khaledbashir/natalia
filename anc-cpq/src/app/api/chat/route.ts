@@ -216,6 +216,12 @@ async function computeNextStepFromState(state: any): Promise<string> {
 
 const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT tool. Your job is to fill exactly 20 fields for the Engineering Estimator.
 
+### WEB SEARCH CAPABILITY:
+- You have access to WEB SEARCH via the web_search tool.
+- When user provides a venue name but not a full address, USE WEB SEARCH to find it.
+- Example: If user says "plaza hotel amman", search web for "plaza hotel amman address" and return the address.
+- Format your response after web search: "I found [Venue Name] at: [Full Address]. Is this correct?"
+
 ### INTERNAL PERSONA (STRICT):
 - Speak professionally and concisely (e.g., "Client confirmed. Proceeding to next specification.")
 - Do NOT use fluff. No "How can I help you?". No "Great choice!".
@@ -243,9 +249,13 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - DO NOT ask about fields that already have values.
 - ALWAYS skip to the FIRST empty/missing field.
 
-**CONFIRM AREA LOGIC:**
-- If user confirms an address selection, set both 'clientName' AND 'address' and MOVE TO THE NEXT STEP (e.g., 'productClass').
-- NEVER ask for 'address' again after a valid confirmation.
+**ADDRESS LOOKUP LOGIC (USE WEB SEARCH):**
+- When current step is 'address' and user provides a venue name without full address:
+  1. Use web_search tool to find the venue address
+  2. Format response: "I found [Venue Name] at: [Address]. Is this correct?"
+  3. Provide options: [{"value": "[Address]", "label": "✓ Yes, use this address"}, {"value": "No", "label": "✗ No, search again"}]
+  4. Set updatedParams: { "clientName": "[Venue Name]" }
+- When user confirms the address, set both 'clientName' AND 'address' and MOVE to 'productClass'.
 
 **NEXT LOGIC:**
 - Always point 'nextStep' to the FIRST null or empty field in the sequence AFTER your bulk extractions.
@@ -647,6 +657,19 @@ export async function POST(request: NextRequest) {
             temperature: 0.1,
         };
 
+        // Add web search tool for GLM-4.7
+        if (modelConfig.id === "glm-4.7" || modelConfig.id === "glm-4.6") {
+            requestBody.tools = [
+                {
+                    type: "web_search",
+                    web_search: {
+                        enable: true,
+                        search_result: true
+                    }
+                }
+            ];
+        }
+
         // Add thinking support for ZhipuAI
         if (modelConfig.supportsThinking) {
             requestBody.thinking = { type: "enabled", clear_thinking: false };
@@ -703,6 +726,46 @@ export async function POST(request: NextRequest) {
         const choice = data.choices?.[0];
         const providerThinking: string | undefined = choice?.message?.reasoning_content;
         let rawContent = choice?.message?.content || "";
+
+        // Check for tool usage (web search results) - GLM-4.7 returns search_result in the message
+        const webSearchResults = choice?.message?.search_result || choice?.search_result;
+
+        // If web search returned results, inject them into context and ask AI to format
+        if (webSearchResults && Array.isArray(webSearchResults) && webSearchResults.length > 0) {
+            console.log("🌐 AI used web search. Found results:", webSearchResults.length);
+
+            // Format search results for context
+            const searchContext = webSearchResults.map(r =>
+                `- ${r.title || ''}: ${r.body || ''}\n  Link: ${r.link || ''}`
+            ).join('\n\n');
+
+            // Send results back to AI to format properly
+            const toolContextMessages = [
+                ...contextMessages,
+                { role: "assistant", content: `[Used web_search tool. Results:\n${searchContext}]` },
+                { role: "user", content: "Use these search results to provide the venue address. Format: I found [Venue] at: [Address]. Is this correct? Include yes/no options." }
+            ];
+
+            const toolRequestBody = {
+                ...requestBody,
+                messages: toolContextMessages,
+            };
+
+            const toolResponse = await fetch(modelConfig.endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${modelConfig.apiKey} `,
+                },
+                body: JSON.stringify(toolRequestBody),
+            });
+
+            if (!toolResponse.ok) throw new Error(await toolResponse.text());
+
+            const toolData = await toolResponse.json();
+            const toolChoice = toolData.choices?.[0];
+            rawContent = toolChoice?.message?.content || "";
+        }
 
         // Extract <think> blocks (some providers include them inside content).
         const thinkTag = extractThinkTagBlock(rawContent);
