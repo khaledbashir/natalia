@@ -538,8 +538,9 @@ export async function POST(request: NextRequest) {
         const thinking = choice?.message?.reasoning_content || "Thinking...";
         let rawContent = choice?.message?.content || "{}";
 
-        // Clean markdown if present
+        // Clean markdown and thinking tags if present
         rawContent = rawContent
+            .replace(/<think>[\s\S]*?<\/think>/gi, "") // Strip <think>...</think> blocks
             .replace(/```json/g, "")
             .replace(/```/g, "")
             .trim();
