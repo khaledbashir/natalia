@@ -30,9 +30,10 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - Use specific field identifiers (e.g., "Field 'productClass' locked to Ribbon.").
 
 ### SPEC AUDIT LOGIC (CRITICAL):
-1. **Never Backtrack:** If a field has a value in 'currentState' (e.g., "productClass": "Ribbon"), NEVER ask for it again.
-2. **Extraction:** If user provides multiple values (e.g., "10mm Ribbon"), update both 'pixelPitch' and 'productClass' in one go.
-3. **Next Logic:** Always point 'nextStep' to the FIRST null or empty field in the sequence.
+1. **ALWAYS UPDATE STATE:** When a user provides a value, you MUST include it in 'updatedParams'. Example: User says "Ribbon" → updatedParams: {"productClass": "Ribbon"}
+2. **Never Backtrack:** If a field has a value in 'currentState', NEVER ask for it again.
+3. **Extraction:** If user provides multiple values (e.g., "10mm Ribbon"), update BOTH in updatedParams.
+4. **Next Logic:** Always point 'nextStep' to the FIRST null or empty field in the sequence.
 
 ### THE ONLY 21 VALID FIELDS (IN ORDER):
 1. clientName
@@ -41,7 +42,7 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 4. productClass (Scoreboard, Ribbon, CenterHung, Vomitory)
 5. pixelPitch (4, 6, 10, 16)
 6. widthFt (number)
-7. heightFt (number) <-- NOTE: There is NO 'depth' field. LED displays are 2D (width x height only).
+7. heightFt (number) <-- NOTE: There is NO 'depth' field. LED displays are 2D only.
 8. environment (Indoor, Outdoor)
 9. shape (Flat, Curved)
 10. mountingType (Wall, Ground, Rigging, Pole)
@@ -62,11 +63,17 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - There is NO 'depth', 'depthFt', 'resolution', 'brightness', or any other field.
 - If user mentions something not in the list, ignore it and proceed to the next valid field.
 
-### RESPONSE FORMAT:
+### RESPONSE FORMAT (MANDATORY):
 - ONLY JSON.
 - { "message": "Feedback string", "nextStep": "fieldId", "suggestedOptions": [], "updatedParams": {} }
+- **updatedParams MUST contain the field value the user just provided!** Never leave it empty if user gave a valid answer.
 - suggestedOptions is MANDATORY for selects and numbers.
 - 'nextStep' MUST be one of the 21 valid field IDs above.
+
+### EXAMPLE:
+User: "Ribbon"
+CurrentState: {"clientName": "MSG", "address": "NYC", "projectName": "Install", "productClass": ""}
+Response: {"message": "Field 'productClass' locked to Ribbon. Proceeding to 'pixelPitch'.", "nextStep": "pixelPitch", "suggestedOptions": [{"value": "6", "label": "6mm"}, {"value": "10", "label": "10mm"}], "updatedParams": {"productClass": "Ribbon"}}
 `;
 
 function inferStepFromMessage(message: string): string | null {
@@ -94,12 +101,12 @@ function inferStepFromMessage(message: string): string | null {
         return "confirm";
     }
 
-    // 2. Check for Specific Questions (High Priority)
     // Product Type
     if (
-        lower.includes("type of display") ||
-        lower.includes("what product") ||
-        lower.includes("type of product")
+        (lower.includes("type of display") ||
+            lower.includes("what product") ||
+            lower.includes("type of product")) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
     )
         return "productClass";
 
@@ -115,75 +122,85 @@ function inferStepFromMessage(message: string): string | null {
     if ((lower.includes("pixel") || lower.includes("pitch")) && !lower.includes("locked") && !lower.includes("set")) return "pixelPitch";
 
     // Shape (Check BEFORE environment to prevent "outdoor" in acknowledgment overriding "shape" question)
-    if (lower.includes("shape") || lower.includes("configuration"))
+    if ((lower.includes("shape") || lower.includes("configuration")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed"))
         return "shape";
 
     // Environment (Only if the question is explicitly about indoor/outdoor)
     if (
-        lower.includes("installed") ||
-        lower.includes("indoor or outdoor") ||
-        lower.includes("environment")
+        (lower.includes("installed") ||
+            lower.includes("indoor or outdoor") ||
+            lower.includes("environment")) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
     )
         return "environment";
 
-    // Structure (More specific - only when asking about steel/existing, NOT general "structural")
-    // CHECK BEFORE MOUNTING to avoid "mounting to existing steel" triggering mountingType
-    if (lower.includes("existing") && lower.includes("steel"))
+    // Structure
+    if (
+        (lower.includes("existing") || lower.includes("steel") || lower.includes("mounting to")) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
+    )
         return "structureCondition";
-    if (lower.includes("new") && lower.includes("steel"))
-        return "structureCondition";
-    if (lower.includes("mounting to") && lower.includes("steel")) return "structureCondition";
 
     // Mounting
     if (
-        lower.includes("mount") ||
-        lower.includes("rigged") ||
-        lower.includes("flown")
+        (lower.includes("mount") ||
+            lower.includes("rigged") ||
+            lower.includes("flown")) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
     )
         return "mountingType";
 
     // Access
     if (
-        lower.includes("access") ||
-        lower.includes("service") ||
-        lower.includes("technician")
+        (lower.includes("access") ||
+            lower.includes("service") ||
+            lower.includes("technician")) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
     )
         return "access";
 
-    // Permits (CHECK BEFORE structural - "structural permits" should match permits not structure)
-    if (lower.includes("permit")) return "permits";
+    // Permits
+    if (lower.includes("permit") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "permits";
 
     // Labor
     if (
-        lower.includes("union") ||
-        lower.includes("labor") ||
-        lower.includes("prevailing")
+        (lower.includes("union") ||
+            lower.includes("labor") ||
+            lower.includes("prevailing")) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
     )
         return "laborType";
 
     // Power Distance
     if (
-        lower.includes("power") ||
-        lower.includes("termination") ||
-        lower.includes("distance")
+        (lower.includes("power") ||
+            lower.includes("termination") ||
+            lower.includes("distance")) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
     )
         return "powerDistance";
 
-    // Permits
-    if (lower.includes("permit")) return "permits";
-
     // Control System
-    if (lower.includes("control") || lower.includes("processor"))
+    if ((lower.includes("control") || lower.includes("processor")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed"))
         return "controlSystem";
 
+    // Complexity
+    if (lower.includes("complexity") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "complexity";
+
+    // Costing & Service
+    if (lower.includes("cost") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "unitCost";
+    if (lower.includes("margin") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "targetMargin";
+    if (lower.includes("service") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "serviceLevel";
+
     // Bond
-    if (lower.includes("bond")) return "bondRequired";
+    if (lower.includes("bond") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) return "bondRequired";
 
     // Address (Lowest Priority - only if explicitly asking)
     if (
-        lower.includes("select the correct one") ||
-        lower.includes("enter the address") ||
-        (lower.includes("address") && lower.includes("?"))
+        (lower.includes("select the correct one") ||
+            lower.includes("enter the address") ||
+            (lower.includes("address") && lower.includes("?"))) &&
+        !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
     )
         return "address";
 
@@ -239,21 +256,22 @@ function extractJSON(text: string) {
             // ADDRESS (Specific)
             // "Address Confirmed" should NOT trigger address mode (which hides buttons)
             else if (
-                (lower.includes("address") && !lower.includes("confirm")) ||
-                lower.includes("street") ||
-                lower.includes("select the correct one")
+                ((lower.includes("address") && !lower.includes("confirm")) ||
+                    lower.includes("street") ||
+                    lower.includes("select the correct one")) &&
+                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
             ) {
                 inferredStep = "address";
                 inferredOptions = [];
             }
             // STRUCTURE & LABOR (Specific)
-            else if (lower.includes("structure") || lower.includes("steel")) {
+            else if ((lower.includes("structure") || lower.includes("steel")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "structureCondition";
                 inferredOptions = [
                     { value: "Existing", label: "Existing Structure (Usable)" },
                     { value: "NewSteel", label: "New Steel Required" },
                 ];
-            } else if (lower.includes("labor") || lower.includes("union")) {
+            } else if ((lower.includes("labor") || lower.includes("union")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "laborType";
                 inferredOptions = [
                     { value: "NonUnion", label: "Non-Union (Standard)" },
@@ -292,16 +310,17 @@ function extractJSON(text: string) {
             }
             // ENVIRONMENT & SHAPE
             else if (
-                lower.includes("environment") ||
-                lower.includes("indoor") ||
-                lower.includes("outdoor")
+                (lower.includes("environment") ||
+                    lower.includes("indoor") ||
+                    lower.includes("outdoor")) &&
+                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
             ) {
                 inferredStep = "environment";
                 inferredOptions = [
                     { value: "Indoor", label: "Indoor" },
                     { value: "Outdoor", label: "Outdoor" },
                 ];
-            } else if (lower.includes("shape") || lower.includes("curve")) {
+            } else if ((lower.includes("shape") || lower.includes("curve")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "shape";
                 inferredOptions = [
                     { value: "Flat", label: "Flat Panel" },
@@ -309,17 +328,18 @@ function extractJSON(text: string) {
                 ];
             }
             // ACCESS & MOUNTING (Specific terms)
-            else if (lower.includes("access") || lower.includes("service")) {
+            else if ((lower.includes("access") || lower.includes("service")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "access";
                 inferredOptions = [
                     { value: "Front", label: "Front Access" },
                     { value: "Rear", label: "Rear Access" },
                 ];
             } else if (
-                lower.includes("mounting") ||
-                lower.includes("rigged") ||
-                lower.includes("flown") ||
-                lower.includes("pole mount")
+                (lower.includes("mounting") ||
+                    lower.includes("rigged") ||
+                    lower.includes("flown") ||
+                    lower.includes("pole mount")) &&
+                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
             ) {
                 inferredStep = "mountingType"; // 'mount' is too generic, used 'mounting'
                 inferredOptions = [
@@ -330,28 +350,29 @@ function extractJSON(text: string) {
                 ];
             }
             // COSTING (Permits, Bond, Control, Price)
-            else if (lower.includes("permit")) {
+            else if (lower.includes("permit") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "permits";
                 inferredOptions = [
                     { value: "Client", label: "Client Handles Permits" },
                     { value: "ANC", label: "ANC Handles Permits" },
                 ];
-            } else if (lower.includes("control")) {
+            } else if (lower.includes("control") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "controlSystem";
                 inferredOptions = [
                     { value: "Include", label: "Yes, Include Controls" },
                     { value: "None", label: "No, Use Existing" },
                 ];
-            } else if (lower.includes("bond")) {
+            } else if (lower.includes("bond") && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "bondRequired";
                 inferredOptions = [
                     { value: "No", label: "No" },
                     { value: "Yes", label: "Yes (Add ~1.5%)" },
                 ];
             } else if (
-                lower.includes("cost") ||
-                lower.includes("price") ||
-                lower.includes("unit cost")
+                (lower.includes("cost") ||
+                    lower.includes("price") ||
+                    lower.includes("unit cost")) &&
+                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
             ) {
                 inferredStep = "unitCost";
                 inferredOptions = [
@@ -359,7 +380,7 @@ function extractJSON(text: string) {
                     { value: "1800", label: "$1,800 (Premium)" },
                     { value: "Manual", label: "Enter Custom Amount" },
                 ];
-            } else if (lower.includes("margin") || lower.includes("profit")) {
+            } else if ((lower.includes("margin") || lower.includes("profit")) && !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")) {
                 inferredStep = "targetMargin";
                 inferredOptions = [
                     { value: "15", label: "15% (Standard)" },
@@ -369,10 +390,11 @@ function extractJSON(text: string) {
             }
             // PRODUCT CLASS (Last Resort - Generic Terms)
             else if (
-                lower.includes("product") ||
-                lower.includes("type") ||
-                lower.includes("ribbon") ||
-                lower.includes("scoreboard")
+                (lower.includes("product") ||
+                    lower.includes("type") ||
+                    lower.includes("ribbon") ||
+                    lower.includes("scoreboard")) &&
+                !lower.includes("locked") && !lower.includes("set") && !lower.includes("confirmed")
             ) {
                 inferredStep = "productClass";
                 inferredOptions = [

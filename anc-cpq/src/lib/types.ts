@@ -19,12 +19,12 @@ export interface ScreenConfig {
     shape: Shape;
     access: Access;
     complexity: Complexity;
-    structure_condition?: 'Existing' | 'NewSteel';
-    labor_type?: LaborType;
-    power_distance?: PowerDistance;
+    structureCondition?: 'Existing' | 'NewSteel';
+    laborType?: LaborType;
+    powerDistance?: PowerDistance;
     permits?: PermitType;
-    control_system?: ControlSystem;
-    bond_required?: boolean;
+    controlSystem?: ControlSystem;
+    bondRequired?: boolean;
 }
 
 export interface CPQInput {

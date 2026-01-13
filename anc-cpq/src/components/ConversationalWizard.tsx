@@ -85,17 +85,31 @@ const normalizeParams = (params: any) => {
         'class': 'productClass',
         'labor': 'laborType',
         'bond': 'bondRequired',
-        'controls': 'controlSystem'
+        'controls': 'controlSystem',
+        'structure': 'structureCondition',
+        'mounting': 'mountingType',
+        'power': 'powerDistance',
+        'permit': 'permits',
+        'cost': 'unitCost',
+        'margin': 'targetMargin',
+        'service': 'serviceLevel'
     };
 
     Object.entries(params).forEach(([key, val]) => {
         // 1. Convert snake_case to camelCase
         let camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
 
-        // 2. Map aliases to standard field IDs
-        if (aliasMap[camelKey.toLowerCase()]) {
-            camelKey = aliasMap[camelKey.toLowerCase()];
+        // 2. Map aliases and handle casing
+        const lowerKey = camelKey.toLowerCase();
+        if (aliasMap[lowerKey]) {
+            camelKey = aliasMap[lowerKey];
+        } else {
+            // Check for direct match with standard IDs if not in aliasMap
+            const standardIds = WIZARD_QUESTIONS.map(q => q.id);
+            const match = standardIds.find(id => id.toLowerCase() === lowerKey);
+            if (match) camelKey = match;
         }
+
         normalized[camelKey] = val;
     });
     return normalized;
