@@ -155,11 +155,10 @@ function isSERPSnippet(message: string): boolean {
 function isFullAddress(message: string): boolean {
   // Look for street number + street name + city + state/country pattern
   const addressPattern = /\d+\s+[\w\s]+(?:Street|St|Ave|Avenue|Road|Rd|Blvd|Boulevard|Lane|Ln|Drive|Dr|Way|Court|Ct|Place|Pl).*\b(City|State|Country|[A-Z]{2})\b/i;
-  
-  // Also check for zip code pattern
-  const zipPattern = /\d{5}(-\d{4})?/;
-  
-  return addressPattern.test(message) || zipPattern.test(message);
+
+  // IMPORTANT: Do not treat "City, ST 10001" or ZIP-only strings as a full address.
+  // A full address must include a street number + street-type token.
+  return addressPattern.test(message);
 }
 
 /**

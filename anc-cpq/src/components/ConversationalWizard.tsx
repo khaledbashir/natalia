@@ -393,7 +393,8 @@ export function ConversationalWizard({
 
             if (data.results && data.results.length > 0) {
                 const bestMatch = data.results[0];
-                const address = bestMatch.address || bestMatch.display_name;
+                // Prefer display_name because it is typically the most complete (often includes street + country).
+                const address = bestMatch.display_name || bestMatch.address;
                 const title = bestMatch.title;
 
                 // Auto-inject the result as a suggestion
@@ -401,7 +402,7 @@ export function ConversationalWizard({
                     role: 'assistant',
                     content: `I found **${title}** at:\n${address}\n\nIs this correct?`,
                     suggestedOptions: [
-                        { value: address, label: "Yes, confirm location" },
+                        { value: address, label: "Use this address" },
                         { value: "No", label: "No, search again" }
                     ]
                 };

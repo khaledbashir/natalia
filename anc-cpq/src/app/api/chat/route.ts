@@ -22,6 +22,85 @@ import {
     invalidatePriceCache
 } from "../../../lib/pricing-service";
 
+function getFriendlyFieldLabel(fieldId: string): string {
+    const labels: Record<string, string> = {
+        clientName: "Venue name",
+        address: "Venue address",
+        projectName: "Project name",
+        productClass: "Display type",
+        pixelPitch: "Pixel pitch",
+        widthFt: "Display width",
+        heightFt: "Display height",
+        environment: "Environment",
+        shape: "Shape",
+        mountingType: "Mounting",
+        access: "Service access",
+        structureCondition: "Structure condition",
+        laborType: "Labor",
+        powerDistance: "Power/data distance",
+        permits: "Permits",
+        controlSystem: "Control system",
+        bondRequired: "Bond",
+        complexity: "Complexity",
+        unitCost: "Unit cost",
+        targetMargin: "Target margin",
+        serviceLevel: "Service level",
+    };
+    return labels[fieldId] || fieldId;
+}
+
+function sanitizeAssistantMessage(message: string): string {
+    if (!message) return message;
+
+    let sanitized = message;
+
+    // Replace common "Field 'x' locked to y" patterns with user-friendly confirmations
+    sanitized = sanitized.replace(
+        /Field\s+'([^']+)'\s+locked\s+to\s+([^\.\n]+)\.?/gi,
+        (_m, fieldId, value) => `${getFriendlyFieldLabel(String(fieldId))} set to ${String(value).trim()}.`,
+    );
+
+    // Remove overly-robotic "proceeding" lines
+    sanitized = sanitized.replace(/\s*Proceeding\s+to\s+'[^']+'\.?/gi, "");
+    sanitized = sanitized.replace(/\s*Awaiting\s+input\s+for\s+'[^']+'\.?/gi, "");
+
+    return sanitized.trim();
+}
+
+function isLikelyStreetAddress(address: unknown): boolean {
+    if (typeof address !== "string") return false;
+    const trimmed = address.trim();
+    if (!trimmed) return false;
+
+    // Require a street number + a street-type token.
+    const hasNumber = /\b\d{1,6}\b/.test(trimmed);
+    const hasStreetType = /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy)\b/i.test(
+        trimmed,
+    );
+
+    return hasNumber && hasStreetType;
+}
+
+async function computeNextStepFromState(state: any): Promise<string> {
+    const { WIZARD_QUESTIONS } = await import("../../../lib/wizard-questions");
+
+    for (const q of WIZARD_QUESTIONS) {
+        const value = state?.[q.id];
+
+        // Treat address as incomplete unless it looks like a true street address.
+        if (q.id === "address") {
+            if (!isLikelyStreetAddress(value)) return "address";
+            continue;
+        }
+
+        if (value === undefined || value === null || value === "" || value === 0) {
+            return q.id;
+        }
+    }
+
+    return "confirm";
+}
+
 const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT tool. Your job is to fill exactly 21 fields for the Engineering Estimator.
 
 ### INTERNAL PERSONA (STRICT):
@@ -571,6 +650,31 @@ export async function POST(request: NextRequest) {
         const parsed = extractJSON(rawContent);
 
         if (parsed) {
+            // Normalize + harden model output (never trust it for UX text or step logic)
+            parsed.message = sanitizeAssistantMessage(parsed.message || "");
+
+            parsed.updatedParams = parsed.updatedParams || {};
+
+            // Derive projectName from clientName (avoid redundant question)
+            if (
+                (parsed.updatedParams.clientName || currentState?.clientName) &&
+                !parsed.updatedParams.projectName &&
+                !currentState?.projectName
+            ) {
+                const derivedProjectName = parsed.updatedParams.clientName || currentState.clientName;
+                parsed.updatedParams.projectName = derivedProjectName;
+            }
+
+            // Reject partial addresses (e.g., "New York, NY 10001")
+            if (Object.prototype.hasOwnProperty.call(parsed.updatedParams, "address")) {
+                const candidate = parsed.updatedParams.address;
+                if (!isLikelyStreetAddress(candidate)) {
+                    delete parsed.updatedParams.address;
+                    parsed.message =
+                        "I need the full street address (e.g., 4 Pennsylvania Plaza, New York, NY 10001).";
+                }
+            }
+
             // Check if pricing should be recalculated
             if (parsed.updatedParams) {
                 const changedFields = Object.keys(parsed.updatedParams);
@@ -587,6 +691,18 @@ export async function POST(request: NextRequest) {
             // HARD GUARDRAIL: Override suggestedOptions with authoritative source
             if (parsed.nextStep || parsed.message) {
                 try {
+                    const { WIZARD_QUESTIONS } =
+                        await import("../../../lib/wizard-questions");
+
+                    const mergedState = {
+                        ...(currentState || {}),
+                        ...(parsed.updatedParams || {}),
+                    };
+
+                    // Compute the authoritative next step from the merged state.
+                    const computedNextStep = await computeNextStepFromState(mergedState);
+                    parsed.nextStep = computedNextStep;
+
                     // A. Infer if AI is jumping the gun on address
                     // Run the smarter inference logic to validate/correct the step
                     const inferredStep = inferStepFromMessage(parsed.message);
@@ -626,9 +742,6 @@ export async function POST(request: NextRequest) {
                         );
                         parsed.nextStep = "address";
                     }
-
-                    const { WIZARD_QUESTIONS } =
-                        await import("../../../lib/wizard-questions");
                     const questionDef = WIZARD_QUESTIONS.find(
                         (q) => q.id === parsed.nextStep,
                     );
@@ -642,8 +755,7 @@ export async function POST(request: NextRequest) {
                         parsed.suggestedOptions = [];
                     }
 
-                    // If the message is asking for a new field (contains "proceeding to" or similar),
-                    // replace it with the proper question text from WIZARD_QUESTIONS
+                    // If the model is outputting transitional/robotic text, always replace with the canonical question.
                     const isAskingQuestion =
                         msgLower.includes("proceeding to") ||
                         msgLower.includes("locked to") ||
@@ -652,15 +764,23 @@ export async function POST(request: NextRequest) {
                         msgLower.includes("awaiting input");
 
                     if (isAskingQuestion && questionDef) {
-                        // Extract the confirmation part if present (e.g., "Client name set to Madison Square.")
-                        const confirmationMatch = parsed.message.match(/^([^.]+\.)/);
-                        const confirmation = confirmationMatch ? confirmationMatch[1].trim() : "";
+                        parsed.message = questionDef.question;
+                    } else if (questionDef && parsed.nextStep !== "confirm") {
+                        // If the assistant responded without asking the actual question, append it.
+                        const alreadyAsking = (parsed.message || "").includes("?");
+                        if (!alreadyAsking) {
+                            parsed.message = `${(parsed.message || "").trim()} ${questionDef.question}`.trim();
+                        }
+                    }
 
-                        // Replace with friendly question
-                        if (confirmation) {
-                            parsed.message = `${confirmation} ${questionDef.question}`;
-                        } else {
-                            parsed.message = questionDef.question;
+                    if (parsed.nextStep === "confirm") {
+                        parsed.suggestedOptions = [
+                            { value: "Confirmed", label: "CONFIRM & GENERATE PDF" },
+                            { value: "Edit", label: "Edit Specifications" },
+                        ];
+                        if (!parsed.message) {
+                            parsed.message =
+                                "All required specs are captured. Confirm to generate the proposal, or edit any field.";
                         }
                     }
                 } catch (e) {

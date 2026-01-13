@@ -14,7 +14,7 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
     {
         id: 'clientName',
         category: 'metadata',
-        question: "What's the client or venue name?",
+        question: "What's the venue name?",
         type: 'text',
         required: true
     },
@@ -28,9 +28,9 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
     {
         id: 'projectName',
         category: 'metadata',
-        question: "What's the project name or location?",
+        question: "Do you want a project nickname? (Optional)",
         type: 'text',
-        required: true
+        required: false
     },
     // Display
     {
