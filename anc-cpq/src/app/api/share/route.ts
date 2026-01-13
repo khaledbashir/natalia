@@ -27,8 +27,13 @@ export async function POST(req: NextRequest) {
         shareStore.set(shareId, shareData);
         
         // Build the share URL
+        // In production: Set NEXT_PUBLIC_BASE_URL in Easypanel env vars
+        // Example: https://your-domain.com
+        // If not set, falls back to request origin (works for testing but share links break on prod)
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
         const shareUrl = `${baseUrl}/share/${shareId}`;
+        
+        console.log('Share URL generated:', shareUrl, '(baseUrl:', baseUrl, ')');
         
         return NextResponse.json({
             success: true,
