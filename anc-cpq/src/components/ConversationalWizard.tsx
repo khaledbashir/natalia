@@ -683,7 +683,20 @@ export function ConversationalWizard({
                                 } else if (parsed.type === 'content') {
                                     finalContent = parsed.content;
                                 } else if (parsed.type === 'complete') {
+                                    // Extraction logic to ensure ZERO JSON leaks into the UI
                                     finalContent = parsed.message || parsed.content || finalContent;
+                                    
+                                    // If we somehow still have raw JSON in finalContent, force extract the 'message' field
+                                    if (finalContent.includes('{') || finalContent.trim().startsWith('{')) {
+                                        try {
+                                            const innerParsed = JSON.parse(finalContent.match(/\{[\s\S]*\}/)?.[0] || '{}');
+                                            if (innerParsed.message) finalContent = innerParsed.message;
+                                        } catch (e) {
+                                            // Final fallback: strip anything between braces
+                                            finalContent = finalContent.replace(/\{[\s\S]*\}/g, '').trim();
+                                        }
+                                    }
+
                                     finalThinking = parsed.reasoning || "";
                                     finalNextStep = parsed.nextStep || "";
                                     finalSuggestedOptions = parsed.suggestedOptions || [];
@@ -845,96 +858,74 @@ export function ConversationalWizard({
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0f] overflow-hidden relative border-r border-slate-800">
-            {/* PROGRESS HEADER */}
-            <div className="bg-[#0a0a0f] border-b border-white/5 p-4 z-20">
-                <div className="flex justify-between items-center mb-3">
+        <div className="flex flex-col h-full bg-[#03060a] overflow-hidden relative border-r border-slate-800">
+            {/* COMPACT PROGRESS HEADER */}
+            <div className="bg-[#03060a] border-b border-white/5 px-5 py-3 z-20">
+                <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
-                        <div className="px-2 py-0.5 bg-[#003D82] rounded text-[10px] font-black text-white tracking-widest leading-none">
+                        <div className="px-1.5 py-0.5 bg-[#0047AB] rounded-sm text-[9px] font-black text-white tracking-widest leading-none">
                             {progress}%
                         </div>
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                            Complete
+                        <span className="text-[9px] text-slate-500 font-black uppercase tracking-[0.2em]">
+                            Verification Progress
                         </span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                         <ModelSelector
                             selectedModel={selectedModel}
                             onModelChange={setSelectedModel}
                         />
                         <button
                             onClick={() => setShowHistory(!showHistory)}
-                            className="p-1.5 text-slate-500 hover:text-white transition-colors"
+                            className="p-1 text-slate-600 hover:text-blue-400 transition-colors"
                         >
-                            <History size={16} />
+                            <History size={14} />
                         </button>
                         <button
                             onClick={handleNewProposal}
-                            className="p-1.5 text-slate-500 hover:text-white transition-colors"
+                            className="p-1 text-slate-600 hover:text-blue-400 transition-colors shadow-sm"
                         >
-                            <Plus size={16} />
+                            <Plus size={14} />
                         </button>
                     </div>
                 </div>
 
-                {/* Progress Label */}
-                <div className="flex justify-between items-end mb-2">
-                    <span className={clsx(
-                        "text-[10px] font-black uppercase tracking-[0.15em] transition-colors duration-500",
-                        progress === 100 ? "text-emerald-400" : "text-slate-500"
-                    )}>
-                        {progress === 100 ? "✓ READY TO GENERATE" : "Configuring..."}
-                    </span>
-                    <span className={clsx(
-                        "text-[10px] font-black transition-colors duration-500",
-                        progress === 100 ? "text-emerald-400" : "text-slate-400"
-                    )}>
-                        {progress === 100 ? "ALL FIELDS COMPLETE" : `${totalFields - filledFields} left`}
-                    </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="h-1.5 bg-slate-800/50 rounded-full overflow-hidden mb-6 border border-slate-700/30">
+                {/* SLIM Progress Bar */}
+                <div className="h-1 bg-slate-900 rounded-full overflow-hidden mb-3">
                     <div
                         className={clsx(
-                            "h-full transition-all duration-1000 ease-out",
-                            progress === 100
-                                ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
-                                : "bg-[#003D82]"
+                            "h-full transition-all duration-700 ease-in-out",
+                            progress === 100 ? "bg-emerald-500" : "bg-[#0047AB]"
                         )}
                         style={{ width: `${progress}%` }}
                     />
                 </div>
 
-                {/* Milestone Chips */}
-                <div className="flex justify-between">
+                {/* TINY Milestone Progress */}
+                <div className="flex justify-between px-1">
                     {PROGRESS_STEPS.map((step) => {
                         const status = getStepStatus(step);
                         return (
-                            <div
-                                key={step.id}
-                                className="flex flex-col items-center gap-1.5 opacity-80"
-                            >
+                            <div key={step.id} className="flex items-center gap-1.5">
                                 <div
                                     className={clsx(
-                                        "w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-500",
-                                        status === "complete"
-                                            ? "bg-blue-600 border-blue-500 text-white"
-                                            : status === "active"
-                                                ? "border-blue-400 bg-blue-500/10 text-blue-400 animate-pulse"
-                                                : "border-slate-700 text-slate-700",
+                                        "w-1.5 h-1.5 rounded-full transition-all duration-500",
+                                        status === "complete" ? "bg-blue-500" : status === "active" ? "bg-amber-500 animate-pulse" : "bg-slate-800",
                                     )}
-                                >
-                                    {status === "complete" ? (
-                                        <CheckCircle2 size={12} />
-                                    ) : (
-                                        <div className="w-1 h-1 rounded-full bg-current" />
-                                    )}
-                                </div>
-                                <span
-                                    className={clsx(
-                                        "text-[8px] font-black tracking-widest uppercase",
-                                        status === "complete"
+                                />
+                                <span className={clsx(
+                                    "text-[7px] font-black tracking-widest uppercase",
+                                    status === "complete" ? "text-slate-400" : status === "active" ? "text-slate-200" : "text-slate-700"
+                                )}>
+                                    {step.label}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* History Overlay */}
                                             ? "text-slate-300"
                                             : status === "active"
                                                 ? "text-blue-400"
@@ -998,37 +989,37 @@ export function ConversationalWizard({
             {/* Messages Area */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+                className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scroll-smooth"
             >
                 {messages.map((msg, i) => (
                     <div
                         key={i}
                         className={clsx(
-                            "flex flex-col gap-2",
+                            "flex flex-col gap-1.5",
                             msg.role === "user" ? "items-end" : "items-start",
                         )}
                     >
-                        <div className="flex items-center gap-2 mb-1 px-2">
+                        <div className="flex items-center gap-2 mb-0.5 px-1.5 opacity-60">
                             {msg.role === "assistant" ? (
                                 <>
-                                    <div className="w-6 h-6 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20">
+                                    <div className="w-5 h-5 bg-blue-600/10 rounded-md flex items-center justify-center border border-blue-500/20">
                                         <Bot
-                                            size={14}
+                                            size={12}
                                             className="text-blue-400"
                                         />
                                     </div>
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                        ANC Assistant
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        ANC System
                                     </span>
                                 </>
                             ) : (
                                 <>
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                        You
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Estimator
                                     </span>
-                                    <div className="w-6 h-6 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">
+                                    <div className="w-5 h-5 bg-slate-800 rounded-md flex items-center justify-center border border-slate-700">
                                         <User
-                                            size={14}
+                                            size={12}
                                             className="text-slate-400"
                                         />
                                     </div>
@@ -1037,13 +1028,13 @@ export function ConversationalWizard({
                         </div>
                         <div
                             className={clsx(
-                                "max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed shadow-sm",
+                                "max-w-[92%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-lg transition-all",
                                 msg.role === "user"
-                                    ? "bg-[#003D82] text-white border border-blue-900/50"
-                                    : "bg-[#1a1a24] text-slate-200 border border-slate-700/50",
+                                    ? "bg-[#0047AB] text-white border border-blue-400/20 rounded-tr-sm"
+                                    : "bg-slate-900/80 backdrop-blur-sm text-slate-100 border border-slate-800 rounded-tl-sm",
                             )}
                         >
-                            <div className="whitespace-pre-wrap font-medium">
+                            <div className="whitespace-pre-wrap font-medium tracking-tight">
                                 {msg.content}
                             </div>
 
@@ -1162,11 +1153,11 @@ export function ConversationalWizard({
                                                                     ),
                                                                 )
                                                             }
-                                                            className="px-4 py-1.5 bg-[#0f1420] hover:bg-[#003D82] text-slate-300 hover:text-white border border-slate-700 hover:border-[#003D82] rounded-full text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5 group"
+                                                            className="px-5 py-2.5 bg-[#03060a] hover:bg-[#0047AB] text-slate-200 hover:text-white border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 group"
                                                         >
                                                             {opt.label}{" "}
                                                             <ChevronRight
-                                                                size={10}
+                                                                size={12}
                                                                 className="text-slate-600 group-hover:text-white"
                                                             />
                                                         </button>
@@ -1387,12 +1378,12 @@ export function ConversationalWizard({
                         {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
                             <div className="px-5 mt-2">
                                 <details className="group/thinking" open={false}>
-                                    <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest hover:text-blue-400 transition-colors list-none select-none">
-                                        <div className="w-1 h-1 bg-slate-500 group-open/thinking:bg-blue-400 rounded-full transition-colors"></div>
-                                        <span>System Logic Analysis</span>
-                                        <span className="ml-auto text-[8px] text-slate-600 group-open/thinking:text-blue-500">▼</span>
+                                    <summary className="cursor-pointer flex items-center gap-2 text-[9px] text-slate-600 font-bold uppercase tracking-[0.2em] hover:text-blue-500 transition-colors list-none select-none">
+                                        <div className="w-1 h-1 bg-slate-700 group-open/thinking:animate-ping rounded-full transition-colors"></div>
+                                        <span>Logic Audit</span>
+                                        <span className="ml-auto text-[7px] text-slate-800">▼</span>
                                     </summary>
-                                    <div className="mt-2 text-[10px] text-slate-400 font-mono whitespace-pre-wrap bg-slate-900/80 p-3 rounded-lg border border-slate-700/50 max-w-[95%] animate-in fade-in slide-in-from-top-1 shadow-2xl">
+                                    <div className="mt-1.5 text-[10px] text-slate-400 font-mono leading-relaxed bg-[#05080f] p-3 rounded-lg border border-slate-800/50 max-w-[98%] shadow-inner">
                                         {msg.thinking}
                                     </div>
                                 </details>
@@ -1454,16 +1445,16 @@ export function ConversationalWizard({
                 )}
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 bg-[#0a0a0f] border-t border-white/5 space-y-3">
-                <div className="flex gap-2">
+            {/* Compact Input Area */}
+            <div className="p-3 bg-[#03060a] border-t border-white/5 shadow-2xl">
+                <div className="flex gap-2 items-center">
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-all active:scale-95 disabled:opacity-50"
+                        className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-500 hover:text-blue-400 rounded-lg border border-slate-800 transition-all active:scale-95 disabled:opacity-50"
                         title="Upload client brief"
                     >
-                        <Upload size={18} />
+                        <Upload size={16} />
                     </button>
                     <input
                         ref={fileInputRef}
@@ -1472,40 +1463,33 @@ export function ConversationalWizard({
                         accept=".txt,.md,.pdf"
                         onChange={handleFileUpload}
                     />
-                    <div className="flex-1 relative">
-                        <div className="relative flex items-center">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) =>
-                                    e.key === "Enter" && handleSend(input)
-                                }
-                                placeholder={
-                                    isUploading
-                                        ? "Extracting project data..."
-                                        : "Type your answer or ask a question..."
-                                }
-                                disabled={isLoading || isUploading}
-                                className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl px-5 py-3 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none disabled:opacity-50 placeholder:text-slate-600 font-medium shadow-inner"
-                            />
-                            <button
-                                onClick={() => handleSend(input)}
-                                disabled={
-                                    isLoading || isUploading || !input.trim()
-                                }
-                                className="absolute right-2 p-2 bg-[#003D82] hover:bg-[#002a5c] text-white rounded-lg transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                <Send size={16} />
-                            </button>
-                        </div>
+                    <div className="flex-1 relative group">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !isLoading) handleSend(input);
+                            }}
+                            disabled={isLoading || isUploading}
+                            placeholder={isUploading ? "Analyzing Brief..." : "Respond or ask a question..."}
+                            className="w-full bg-slate-900/50 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none placeholder:text-slate-600 font-medium transition-all group-hover:bg-slate-900"
+                        />
+                        <button
+                            onClick={() => handleSend(input)}
+                            disabled={!input.trim() || isLoading || isUploading}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-500 hover:text-blue-400 disabled:text-slate-700 transition-colors"
+                        >
+                            <Send size={18} />
+                        </button>
                     </div>
                 </div>
-                <div className="flex justify-center">
-                    <p className="text-[9px] text-slate-600 font-medium">
-                        {projectId ? "✓ Auto-saving" : "Starting session..."}
-                    </p>
+                <div className="mt-2 flex justify-center">
+                   <p className="text-[8px] font-bold text-slate-700 uppercase tracking-[0.2em] flex items-center gap-1">
+                      <span className="w-1 h-1 bg-green-500/40 rounded-full animate-pulse"></span>
+                      {projectId ? "Logic Vault Active" : "Initializing..."}
+                   </p>
                 </div>
             </div>
         </div>

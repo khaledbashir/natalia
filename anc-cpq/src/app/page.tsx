@@ -67,8 +67,8 @@ export default function Home() {
 
     return (
         <main className="flex h-screen w-full overflow-hidden font-sans">
-            {/* Left Panel: AI Wizard or Manual Form (35% width) */}
-            <div className="w-[35%] h-full shrink-0 z-10 relative shadow-xl bg-slate-900 flex flex-col">
+            {/* Left Panel: AI Wizard or Manual Form (40% width for better readability) */}
+            <div className="w-[40%] h-full shrink-0 z-10 relative shadow-2xl bg-slate-950 flex flex-col">
                 {/* Mode Toggle */}
                 <div className="flex border-b border-slate-800">
                     <button
