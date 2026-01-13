@@ -351,10 +351,10 @@ CurrentState: {}
 Response: {
   "message": "I've captured all 20 specifications. Please confirm to generate your proposal.",
   "nextStep": "confirm",
-  "suggestedOptions": [
-    {"value": "Confirmed", "label": "CONFIRM & GENERATE PDF"},
-    {"value": "Edit", "label": "Edit Specifications"}
-  ],
+   "suggestedOptions": [
+     {"value": "Confirmed", "label": "CONFIRM & GENERATE PDF"},
+     {"value": "Edit", "label": "REVIEW & EDIT SPECS"}
+   ],
   "updatedParams": {
     "clientName": "Madison Square Garden",
     "address": "4 Pennsylvania Plaza New York NY 10001",
@@ -1092,11 +1092,11 @@ export async function POST(request: NextRequest) {
                     if (parsed.nextStep === "confirm") {
                         parsed.suggestedOptions = [
                             { value: "Confirmed", label: "CONFIRM & GENERATE PDF" },
-                            { value: "Edit", label: "Edit Specifications" },
+                            { value: "Edit", label: "REVIEW & EDIT SPECS" },
                         ];
                         if (!parsed.message) {
                             parsed.message =
-                                "All required specs are captured. Confirm to generate the proposal, or edit any field.";
+                                "All required specs are captured. Confirm to generate proposal, or review & edit any field.";
                         }
                     }
                 } catch (e) {

@@ -124,11 +124,11 @@ Price recalculates on every message, even properly non-impacting ones (like name
 - [x] Logic: `projectName` = `${clientName} - ${productClass}` (Ignore search query text after lookup)
 
 ### Issue 12: CTA Confusion
-**Status**: ✅ FOUND
+**Status**: ✅ FIXED
 **Description**:
 Final button "CONFIRM & GENERATE PDF" vs label "Edit Specifications".
 **Action**:
-- [ ] Align button text and labels
+- [x] Align button text and labels
 
 ---
 
