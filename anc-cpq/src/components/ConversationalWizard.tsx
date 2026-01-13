@@ -1466,6 +1466,42 @@ export function ConversationalWizard({
                                     </>
                                 )}
                             </div>
+
+                            {/* Logic Engine Trace (Thinking) - TOP POSITION */}
+                            {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
+                                <div className="px-1 w-full max-w-[96%] animate-in fade-in slide-in-from-top-1">
+                                    <details className="group/thinking" open={i === messages.length - 1}>
+                                        <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-[#0047AB] font-black uppercase tracking-[0.2em] hover:text-blue-400 transition-colors list-none select-none py-1.5 opacity-80 hover:opacity-100">
+                                            <div className="w-2 h-[1px] bg-blue-600/50 group-open/thinking:w-4 transition-all"></div>
+                                            <span>Logic Engine Trace</span>
+                                            <ChevronDown size={10} className="ml-auto opacity-40 group-open/thinking:rotate-180 transition-transform" />
+                                        </summary>
+                                        <div className="mt-1 pl-4 border-l border-blue-500/10 mb-2">
+                                            <div className="text-[10px] text-slate-400 font-mono leading-relaxed bg-[#05080f] p-3 rounded-lg border border-white/5 shadow-inner whitespace-pre-wrap max-h-[500px] overflow-y-auto custom-scrollbar">
+                                                {msg.thinking}
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+                            )}
+                            
+                            {/* Streaming Thinking Display - TOP POSITION */}
+                            {isStreaming && streamingThinking && i === messages.length - 1 && (
+                                <div className="px-1 w-full max-w-[96%] animate-in fade-in slide-in-from-top-1">
+                                    <div className="flex items-center gap-2 py-1.5 opacity-90">
+                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                                        <span className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em] animate-pulse">
+                                            Logic Stream Active
+                                        </span>
+                                    </div>
+                                    <div className="mt-1 pl-4 border-l border-blue-500/20 mb-2">
+                                        <div className="text-[10px] text-blue-300/70 font-mono whitespace-pre-wrap bg-blue-500/5 p-3 rounded-lg border border-blue-500/10 shadow-[inner_0_0_20px_rgba(59,130,246,0.05)]">
+                                            {streamingThinking}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div
                                 className={clsx(
                                     "max-w-[96%] w-full rounded-2xl px-6 py-4.5 text-[15px] leading-[1.6] shadow-2xl transition-all",
@@ -1817,45 +1853,13 @@ export function ConversationalWizard({
                                     </div>
                                 )}
                         </div>
-                        {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
-                            <div className="px-2 mt-2">
-                                <details className="group/thinking" open={i === messages.length - 1}>
-                                    <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-[#0047AB] font-black uppercase tracking-[0.2em] hover:text-blue-400 transition-colors list-none select-none py-2">
-                                        <div className="w-2 h-[1px] bg-blue-600/50 group-open/thinking:w-4 transition-all"></div>
-                                        <span>Logic Engine Trace</span>
-                                        <ChevronDown size={10} className="ml-auto opacity-40 group-open/thinking:rotate-180 transition-transform" />
-                                    </summary>
-                                    <div className="mt-1 pl-4 border-l border-white/5">
-                                        <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-[#05080f]/50 p-4 rounded-lg border border-white/5 max-w-[98%] shadow-inner whitespace-pre-wrap max-h-[200px] overflow-y-auto custom-scrollbar">
-                                            {msg.thinking}
-                                        </div>
-                                    </div>
-                                </details>
-                            </div>
-                        )}
-                        
-                        {/* Streaming thinking display */}
-                        {isStreaming && streamingThinking && i === messages.length - 1 && (
-                            <div className="px-2 mt-2">
-                                <div className="flex items-center gap-3 py-2">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                                    <span className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em]">
-                                        Executing Logic Audit...
-                                    </span>
-                                </div>
-                                <div className="mt-1 pl-4 border-l border-blue-500/20">
-                                    <div className="text-[10px] text-blue-300/60 font-mono whitespace-pre-wrap bg-blue-500/5 p-4 rounded-lg border border-blue-500/10 max-w-[95%]">
-                                        {streamingThinking}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ))}
-                </div>
-                {(isLoading || isUploading) && (
-                    <div className="flex flex-col gap-3 mt-4">
-                        <div className="flex items-start gap-3">
+                        </div>
+                    ))}
+                    
+                    {/* Loading State (Non-streaming) */}
+                    {(isLoading || isUploading) && (
+                        <div className="flex flex-col gap-3 mt-4">
+                            <div className="flex items-start gap-3">
                             <div className="w-8 h-8 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
                                 <Bot size={16} className="text-blue-400" />
                             </div>
@@ -1889,6 +1893,7 @@ export function ConversationalWizard({
                         )}
                     </div>
                 )}
+                </div>
             </div>
 
             {/* Compact Input Area */}
