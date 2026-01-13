@@ -1441,43 +1441,33 @@ export function ConversationalWizard({
                         >
                             <div className="flex items-center gap-2 mb-0.5 px-2 opacity-80">
                                 {msg.role === "assistant" ? (
-                                    <>
-                                        <div className="w-6 h-6 bg-blue-600/10 rounded-md flex items-center justify-center border border-blue-500/20">
-                                            <Bot
-                                                size={14}
-                                                className="text-blue-400"
-                                            />
-                                        </div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            ANC LOGIC ENGINE
-                                        </span>
-                                    </>
+                                    <div className="w-6 h-6 bg-blue-600/10 rounded-md flex items-center justify-center border border-blue-500/20">
+                                        <Bot
+                                            size={14}
+                                            className="text-blue-400"
+                                        />
+                                    </div>
                                 ) : (
-                                    <>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            SPEC AUDITOR
-                                        </span>
-                                        <div className="w-6 h-6 bg-slate-800 rounded-md flex items-center justify-center border border-slate-700">
-                                            <User
-                                                size={14}
-                                                className="text-slate-400"
-                                            />
-                                        </div>
-                                    </>
+                                    <div className="w-6 h-6 bg-slate-800 rounded-md flex items-center justify-center border border-slate-700">
+                                        <User
+                                            size={14}
+                                            className="text-slate-400"
+                                        />
+                                    </div>
                                 )}
                             </div>
 
                             {/* Logic Engine Trace (Thinking) - TOP POSITION */}
                             {SHOW_REASONING && msg.thinking && msg.role === "assistant" && (
                                 <div className="px-1 w-full max-w-[96%] animate-in fade-in slide-in-from-top-1">
-                                    <details className="group/thinking" open={i === messages.length - 1}>
-                                        <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-[#0047AB] font-black uppercase tracking-[0.2em] hover:text-blue-400 transition-colors list-none select-none py-1.5 opacity-80 hover:opacity-100">
-                                            <div className="w-2 h-[1px] bg-blue-600/50 group-open/thinking:w-4 transition-all"></div>
-                                            <span>Logic Engine Trace</span>
+                                    <details className="group/thinking">
+                                        <summary className="cursor-pointer flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] hover:text-blue-400 transition-colors list-none select-none py-1.5 opacity-60 hover:opacity-100">
+                                            <div className="w-2 h-[1px] bg-slate-700 group-open/thinking:w-4 transition-all"></div>
+                                            <span>Technical Trace</span>
                                             <ChevronDown size={10} className="ml-auto opacity-40 group-open/thinking:rotate-180 transition-transform" />
                                         </summary>
                                         <div className="mt-1 pl-4 border-l border-blue-500/10 mb-2">
-                                            <div className="text-[10px] text-slate-400 font-mono leading-relaxed bg-[#05080f] p-3 rounded-lg border border-white/5 shadow-inner whitespace-pre-wrap max-h-[500px] overflow-y-auto custom-scrollbar">
+                                            <div className="text-[10px] text-slate-400 font-mono leading-relaxed bg-[#05080f] p-3 rounded-lg border border-white/5 shadow-inner whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar">
                                                 {msg.thinking}
                                             </div>
                                         </div>
@@ -1488,14 +1478,14 @@ export function ConversationalWizard({
                             {/* Streaming Thinking Display - TOP POSITION */}
                             {isStreaming && streamingThinking && !msg.thinking && msg.role === "assistant" && i === messages.length - 1 && (
                                 <div className="px-1 w-full max-w-[96%] animate-in fade-in slide-in-from-top-1">
-                                    <div className="flex items-center gap-2 py-1.5 opacity-90">
-                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-                                        <span className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em] animate-pulse">
-                                            Logic Stream Active
+                                    <div className="flex items-center gap-2 py-1.5 opacity-60">
+                                        <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></div>
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">
+                                            Processing Logic...
                                         </span>
                                     </div>
-                                    <div className="mt-1 pl-4 border-l border-blue-500/20 mb-2">
-                                        <div className="text-[10px] text-blue-300/70 font-mono whitespace-pre-wrap bg-blue-500/5 p-3 rounded-lg border border-blue-500/10 shadow-[inner_0_0_20px_rgba(59,130,246,0.05)]">
+                                    <div className="mt-0.5 pl-4 border-l border-white/5 mb-2">
+                                        <div className="text-[9px] text-slate-500/70 font-mono italic whitespace-pre-wrap line-clamp-2 overflow-hidden">
                                             {streamingThinking}
                                         </div>
                                     </div>
