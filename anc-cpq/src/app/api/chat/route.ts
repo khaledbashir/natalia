@@ -719,38 +719,58 @@ export async function POST(request: NextRequest) {
 
         if (!response.ok) throw new Error(await response.text());
 
-        // Handle streaming response
+        // Handle streaming response with buffer to avoid partial JSON parse errors
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let fullContent = "";
         let fullThinking = "";
+        let buffer = "";
         
         if (reader) {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(line => line.trim());
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() ?? ""; // keep the last partial line, if any
                 
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
+                for (const rawLine of lines) {
+                    const line = rawLine.trim();
+                    if (!line.startsWith('data:')) continue;
+                    const data = line.slice(5).trim(); // handles "data:" and "data: "
+                    if (!data || data === '[DONE]') continue;
+                    
+                    try {
+                        const parsed = JSON.parse(data);
+                        const delta = parsed.choices?.[0]?.delta;
                         
-                        try {
-                            const parsed = JSON.parse(data);
-                            const delta = parsed.choices?.[0]?.delta;
-                            
-                            if (delta?.content) {
-                                fullContent += delta.content;
-                            }
-                            if (delta?.reasoning_content) {
-                                fullThinking += delta.reasoning_content;
-                            }
-                        } catch (e) {
-                            console.error('Error parsing streaming data:', e);
+                        if (delta?.content) {
+                            fullContent += delta.content;
                         }
+                        if (delta?.reasoning_content) {
+                            fullThinking += delta.reasoning_content;
+                        }
+                    } catch (e) {
+                        // Most parse errors come from partial chunks; re-buffer and continue
+                        buffer = `${data}\n${buffer}`;
+                        console.error('Error parsing streaming data:', e);
+                    }
+                }
+            }
+            // Flush any remaining decoder state and process trailing buffer
+            buffer += decoder.decode();
+            const tail = buffer.trim();
+            if (tail.startsWith('data:')) {
+                const data = tail.slice(5).trim();
+                if (data && data !== '[DONE]') {
+                    try {
+                        const parsed = JSON.parse(data);
+                        const delta = parsed.choices?.[0]?.delta;
+                        if (delta?.content) fullContent += delta.content;
+                        if (delta?.reasoning_content) fullThinking += delta.reasoning_content;
+                    } catch (e) {
+                        console.error('Error parsing trailing streaming data:', e);
                     }
                 }
             }
