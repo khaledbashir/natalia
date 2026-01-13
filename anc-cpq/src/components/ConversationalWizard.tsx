@@ -605,6 +605,11 @@ export function ConversationalWizard({
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
 
+                // Track asked questions to prevent repeat prompts
+                if (validatedNextStep) {
+                    setAskedQuestions((prev) => new Set([...prev, validatedNextStep]));
+                }
+
                 // Save Assistant Message to DB
                 if (projectId) {
                     fetch(`/api/projects/${projectId}/message`, {
