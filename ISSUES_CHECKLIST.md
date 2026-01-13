@@ -110,11 +110,11 @@ Shows "2 left" when finished.
 - [x] Fix progress calculation frontend logic
 
 ### Issue 10: Excessive Price Recalculation
-**Status**: ✅ FOUND
+**Status**: ✅ FIXED
 **Description**:
 Price recalculates on every message, even properly non-impacting ones (like name).
 **Action**:
-- [ ] Optimize `shouldRecalculatePrice` predicate
+- [x] Optimize `shouldRecalculatePrice` predicate
 
 ### Issue 11: Data Pollution (Typo Propagation)
 **Status**: ✅ FOUND

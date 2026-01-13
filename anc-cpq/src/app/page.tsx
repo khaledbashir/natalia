@@ -28,8 +28,24 @@ export default function Home() {
         complexity: "Standard" as any,
     });
 
-    // 3. Real-time Calculation (Memoized for performance)
-    const result = useMemo(() => calculateCPQ(input), [input]);
+    // Fields that affect pricing (optimization to prevent excessive recalculation)
+    const PRICING_FIELDS = [
+        'productClass', 'pixelPitch', 'environment', 'shape', 
+        'structureCondition', 'mountingType', 'access', 'laborType',
+        'targetMargin', 'bondRequired', 'widthFt', 'heightFt'
+    ] as const;
+
+    // Extract only pricing-relevant fields for dependency tracking
+    const pricingInput = useMemo(() => {
+        const pricing: any = {};
+        PRICING_FIELDS.forEach(field => {
+            pricing[field] = input[field];
+        });
+        return pricing as CPQInput;
+    }, [input]);
+
+    // 3. Real-time Calculation (Memoized for performance - only recalculates when pricing fields change)
+    const result = useMemo(() => calculateCPQ(input), [pricingInput]);
 
     // 4. Handlers
     const handleInputChange = useCallback((field: keyof CPQInput, value: any) => {
