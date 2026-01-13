@@ -122,6 +122,7 @@ export function ConversationalWizard({
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [cpqState, setCpqState] = useState<Partial<CPQInput>>(INITIAL_CPQ_STATE);
+    const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
     const [showHistory, setShowHistory] = useState(false);
     const [savedProposals, setSavedProposals] = useState<SavedProposal[]>([]);
     const [isUploading, setIsUploading] = useState(false);
