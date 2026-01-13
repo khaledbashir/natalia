@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AI_MODELS, DEFAULT_MODEL } from '../../../lib/ai-models';
+import { AI_MODELS, DEFAULT_MODEL } from '../../../../lib/ai-models';
 
 export async function POST(request: NextRequest) {
   try {
