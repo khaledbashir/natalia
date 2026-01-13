@@ -127,12 +127,14 @@ export function ConversationalWizard({
     const [isUploading, setIsUploading] = useState(false);
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
     const [showAddressInput, setShowAddressInput] = useState(false);
+    const [isSearchingAddress, setIsSearchingAddress] = useState(false);
     const [expandedThinking, setExpandedThinking] = useState<number | null>(
         null,
     );
     const [streamingThinking, setStreamingThinking] = useState<string>('');
     const [isStreaming, setIsStreaming] = useState(false);
     const [projectId, setProjectId] = useState<number | null>(null);
+    const [searchStep, setSearchStep] = useState(1);
     const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
     const [lastFieldUpdated, setLastFieldUpdated] = useState<string | null>(null);
 
@@ -246,20 +248,28 @@ export function ConversationalWizard({
         const trimmedQuery = query.trim();
         if (trimmedQuery.length <= 3) {
             setAddressSuggestions([]);
+            setSearchStep(1);
             return;
         }
 
+        setSearchStep(1);
         searchTimeoutRef.current = setTimeout(() => {
             setIsSearchingAddress(true);
+            setSearchStep(2);
             fetch(
                 `/api/search-places?query=${encodeURIComponent(trimmedQuery)}`,
             )
                 .then((res) => res.json())
                 .then((data) => {
+                    setSearchStep(3);
                     setAddressSuggestions(data.results || []);
                     setIsSearchingAddress(false);
+                    setSearchStep(4);
                 })
-                .catch(() => setIsSearchingAddress(false));
+                .catch(() => {
+                    setIsSearchingAddress(false);
+                    setSearchStep(1);
+                });
         }, 300);
     }, []);
 
