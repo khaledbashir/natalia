@@ -9,6 +9,7 @@ export type PowerDistance = 'Close' | 'Medium' | 'Far';
 export type PermitType = 'Client' | 'ANC' | 'Existing';
 export type ControlSystem = 'Include' | 'None';
 export type ServiceLevel = 'bronze' | 'silver' | 'gold';
+export type UpsellOption = 'None' | 'Basic' | 'Premium';
 
 export interface ScreenConfig {
     id: string;
@@ -75,7 +76,12 @@ export interface CPQInput {
     unitCost?: number;
     targetMargin?: number;
 
-    // 13. Multi-screen
+    // 13. Upsells (Revenue Impact)
+    contentManagement?: UpsellOption;
+    spareParts?: UpsellOption;
+    maintenance?: UpsellOption;
+
+    // 14. Multi-screen
     screens?: ScreenConfig[];
 }
 

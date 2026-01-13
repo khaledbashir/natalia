@@ -238,6 +238,46 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
             { value: 'gold', label: 'Gold' }
         ],
         required: true
+    },
+    // Upsells - Revenue Impact
+    {
+        id: 'contentManagement',
+        category: 'project',
+        question: "Would you like a content management system (CMS) subscription for content updates?",
+        type: 'select',
+        options: [
+            { value: 'None', label: 'No, Client manages content' },
+            { value: 'Basic', label: 'Basic CMS (+$5,000/yr)' },
+            { value: 'Premium', label: 'Premium CMS + Creative (+$15,000/yr)' }
+        ],
+        required: false,
+        formulaImpact: 'CMS provides recurring revenue and keeps content fresh'
+    },
+    {
+        id: 'spareParts',
+        category: 'project',
+        question: "Would you like a spare parts kit included for quick repairs?",
+        type: 'select',
+        options: [
+            { value: 'None', label: 'No spare parts' },
+            { value: 'Basic', label: 'Basic Kit (+$3,000)' },
+            { value: 'Premium', label: 'Extended Kit (+$8,000)' }
+        ],
+        required: false,
+        formulaImpact: 'Spare parts reduce downtime and increase parts revenue'
+    },
+    {
+        id: 'maintenance',
+        category: 'project',
+        question: "Would you like to include a maintenance agreement?",
+        type: 'select',
+        options: [
+            { value: 'None', label: 'No maintenance agreement' },
+            { value: 'Basic', label: 'Annual Preventive Maintenance (+$5,000/yr)' },
+            { value: 'Premium', label: 'Priority Response + Preventive (+$12,000/yr)' }
+        ],
+        required: false,
+        formulaImpact: 'Maintenance agreements provide recurring revenue and peace of mind'
     }
 ];
 

@@ -135,11 +135,11 @@ Final button "CONFIRM & GENERATE PDF" vs label "Edit Specifications".
 ## 🟢 LOW PRIORITY (Features)
 
 ### Issue 13: Missing Revenue Impact (Upsells)
-**Status**: ✅ FOUND
+**Status**: ✅ FIXED
 **Description**:
 No content management, spare parts, or maintenance upsells.
 **Action**:
-- [ ] Add Upsell step/questions
+- [x] Add Upsell step/questions
 
 ### Issue 14: Confusing Question Terminology
 **Status**: ✅ FOUND
