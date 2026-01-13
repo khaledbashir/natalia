@@ -132,6 +132,7 @@ export function ConversationalWizard({
     const [isUploading, setIsUploading] = useState(false);
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
     const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+    const [searchStep, setSearchStep] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -139,6 +140,24 @@ export function ConversationalWizard({
 
     // Model selection
     const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
+
+    // Transition search steps for the visual agent
+    useEffect(() => {
+        let t1: NodeJS.Timeout, t2: NodeJS.Timeout, t3: NodeJS.Timeout;
+        if (isSearchingAddress) {
+            setSearchStep(1);
+            t1 = setTimeout(() => setSearchStep(2), 700);
+            t2 = setTimeout(() => setSearchStep(3), 1400);
+            t3 = setTimeout(() => setSearchStep(4), 2100);
+        } else {
+            setSearchStep(0);
+        }
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            clearTimeout(t3);
+        };
+    }, [isSearchingAddress]);
 
     const looksLikeAddressInput = useCallback((value: string) => {
         const trimmed = value.trim();
@@ -1145,14 +1164,46 @@ export function ConversationalWizard({
 
                                                     {/* Show searching spinner */}
                                                     {widgetDef.id === "address" && isSearchingAddress && (
-                                                        <div className="bg-[#0f1420] border border-blue-500/30 rounded-xl p-4 flex items-center gap-4 animate-in fade-in">
-                                                            <div className="relative">
-                                                                <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
+                                                        <div className="bg-[#0f1420] border border-blue-500/30 rounded-xl overflow-hidden shadow-2xl animate-in fade-in scale-95 transition-all w-full">
+                                                            <div className="p-3 bg-blue-600/10 border-b border-blue-500/20 flex items-center justify-between">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                                                                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em]">
+                                                                        Active Search Engine
+                                                                    </p>
+                                                                </div>
+                                                                <span className="text-[9px] text-blue-500/50 font-mono">ANC-LOCATE-V4</span>
                                                             </div>
-                                                            <div>
-                                                                <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                                                                    Searching for {cpqState.clientName || "venue"}...
-                                                                </p>
+                                                            <div className="p-5 space-y-4">
+                                                                <div className="flex items-center gap-4">
+                                                                    <p className="text-xs font-bold text-white">
+                                                                        Locating <span className="text-blue-400 italic">"{cpqState.clientName || "venue"}"</span>
+                                                                    </p>
+                                                                </div>
+                                                                <div className="space-y-3 pl-1 border-l border-slate-800">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <CheckCircle2 size={12} className="text-emerald-500" />
+                                                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Initialization started</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        {searchStep >= 2 ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Loader2 size={12} className="text-blue-400 animate-spin" />}
+                                                                        <span className={clsx("text-[9px] font-bold uppercase tracking-widest", searchStep >= 2 ? "text-slate-500" : "text-blue-400")}>
+                                                                            Querying Global Venue Database
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        {searchStep >= 3 ? <CheckCircle2 size={12} className="text-emerald-500" /> : searchStep === 2 ? <Loader2 size={12} className="text-blue-400 animate-spin" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-800 ml-1" />}
+                                                                        <span className={clsx("text-[9px] font-bold uppercase tracking-widest", searchStep >= 3 ? "text-slate-500" : searchStep === 2 ? "text-blue-400" : "text-slate-800")}>
+                                                                            Fetching Precise Coordinates
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        {searchStep >= 4 ? <CheckCircle2 size={12} className="text-emerald-500" /> : searchStep === 3 ? <Loader2 size={12} className="text-blue-400 animate-spin" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-800 ml-1" />}
+                                                                        <span className={clsx("text-[9px] font-bold uppercase tracking-widest", searchStep >= 4 ? "text-slate-500" : searchStep === 3 ? "text-blue-400" : "text-slate-800")}>
+                                                                            Normalizing Address String
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}
