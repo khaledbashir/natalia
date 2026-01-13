@@ -18,14 +18,14 @@ export default function Home() {
         clientName: "",
         address: "",
         projectName: "",
-        productClass: "Scoreboard",
+        productClass: "Scoreboard" as any,
         widthFt: 0,
         heightFt: 0,
-        pixelPitch: 10,
-        environment: "Indoor",
-        shape: "Flat",
-        access: "Front",
-        complexity: "Standard",
+        pixelPitch: 0 as any,
+        environment: "Indoor" as any,
+        shape: "Flat" as any,
+        access: "Front" as any,
+        complexity: "Standard" as any,
     });
 
     // 3. Real-time Calculation (Memoized for performance)

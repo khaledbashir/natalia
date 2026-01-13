@@ -47,18 +47,10 @@ const HISTORY_KEY = "anc_cpq_history";
 
 const SHOW_REASONING = process.env.NEXT_PUBLIC_SHOW_REASONING === "true";
 
-const INITIAL_CPQ_STATE: CPQInput = {
+const INITIAL_CPQ_STATE: Partial<CPQInput> = {
     clientName: "",
     address: "",
     projectName: "",
-    productClass: "Scoreboard",
-    widthFt: 0,
-    heightFt: 0,
-    pixelPitch: 10,
-    environment: "Indoor",
-    shape: "Flat",
-    access: "Front",
-    complexity: "Standard",
 };
 
 const getInitialMessage = (): Message => ({
@@ -198,11 +190,11 @@ export function ConversationalWizard({
     const totalFields = WIZARD_QUESTIONS.length;
     const filledFields = WIZARD_QUESTIONS.filter(q => {
         const val = cpqState[q.id as keyof CPQInput];
-        // For required fields, check if value exists
+        // For required fields, check if value exists and is not a "null/empty" placeholder
         if (q.required) {
-            return val !== undefined && val !== null && val !== "";
+            return val !== undefined && val !== null && val !== "" && val !== 0;
         }
-        // For optional fields, only count if explicitly set (not empty string)
+        // For optional fields, only count if explicitly set
         return val !== undefined && val !== null && val !== "";
     }).length;
 
