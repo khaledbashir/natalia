@@ -153,12 +153,17 @@ function isSERPSnippet(message: string): boolean {
  * Check if message looks like a full address
  */
 function isFullAddress(message: string): boolean {
-  // Look for street number + street name + city + state/country pattern
-  const addressPattern = /\d+\s+[\w\s]+(?:Street|St|Ave|Avenue|Road|Rd|Blvd|Boulevard|Lane|Ln|Drive|Dr|Way|Court|Ct|Place|Pl).*\b(City|State|Country|[A-Z]{2})\b/i;
+  const trimmed = message.trim();
+  const parts = trimmed.split(',').map(p => p.trim());
+  
+  // If it has multiple parts (comma separated), it's likely an address or venue result
+  if (parts.length >= 3) return true;
 
-  // IMPORTANT: Do not treat "City, ST 10001" or ZIP-only strings as a full address.
-  // A full address must include a street number + street-type token.
-  return addressPattern.test(message);
+  // Look for street number + street name pattern
+  const hasNumber = /\d+/.test(trimmed);
+  const hasStreetType = /\b(street|st|ave|avenue|road|rd|blvd|boulevard|lane|ln|drive|dr|way|court|ct|place|pl|plaza|coast|governorate|district|al|pasha)\b/i.test(trimmed);
+
+  return (parts.length >= 2 && (hasNumber || hasStreetType));
 }
 
 /**

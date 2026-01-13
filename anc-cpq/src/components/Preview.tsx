@@ -10,6 +10,7 @@ import { CostBreakdownDisplay } from './CostBreakdownDisplay';
 interface PreviewProps {
     input: CPQInput;
     result: CalculationResult;
+    projectId?: number | null;
     onUpdateField?: (field: keyof CPQInput, value: any) => void;
 }
 
@@ -230,7 +231,11 @@ export function Preview({ input, result, onUpdateField }: PreviewProps) {
             const res = await fetch('/api/share', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input, result })
+                body: JSON.stringify({ 
+                    input_data: input, 
+                    result_data: result,
+                    project_id: projectId 
+                })
             });
             
             if (res.ok) {

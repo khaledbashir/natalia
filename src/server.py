@@ -19,8 +19,10 @@ import datetime
 from calculator import CPQCalculator, CPQInput
 from excel_generator import ExcelGenerator
 from pdf_generator import PDFGenerator
-from database import init_db, get_db, Project, Message, SessionLocal
+from database import init_db, get_db, Project, Message, SharedProposal, SessionLocal
 from sqlalchemy.orm import Session
+import secrets
+import string
 
 app = FastAPI()
 
@@ -98,6 +100,11 @@ class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage] # For context window
     current_state: Dict
+
+class ShareRequest(BaseModel):
+    project_id: Optional[int] = None
+    input: Dict
+    result: Dict
 
 # --- API Endpoints ---
 
@@ -185,6 +192,20 @@ def create_project(client_name: str = "New Project", db: Session = Depends(get_d
     db.refresh(new_project)
     return {"id": new_project.id, "client_name": new_project.client_name}
 
+@app.get("/api/projects")
+def list_projects(db: Session = Depends(get_db)):
+    """List all projects for the history view"""
+    projects = db.query(Project).order_by(Project.created_at.desc()).all()
+    return [
+        {
+            "id": p.id,
+            "client_name": p.client_name,
+            "created_at": p.created_at.isoformat(),
+            "state": p.state
+        }
+        for p in projects
+    ]
+
 @app.get("/api/projects/{project_id}")
 def get_project(project_id: int, db: Session = Depends(get_db)):
     """Retrieve full project state and history"""
@@ -234,6 +255,59 @@ def save_message(project_id: int, msg: ChatMessage, db: Session = Depends(get_db
     db.add(new_msg)
     db.commit()
     return {"status": "logged"}
+
+@app.post("/api/share")
+def create_share(req: ShareRequest, db: Session = Depends(get_db)):
+    """Create a persistent shared proposal link"""
+    # Generate a unique share ID (11 chars, similar to YouTube IDs)
+    alphabet = string.ascii_letters + string.digits
+    share_id = ''.join(secrets.choice(alphabet) for _ in range(11))
+    
+    expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+    
+    new_share = SharedProposal(
+        id=share_id,
+        project_id=req.project_id,
+        input_data=req.input,
+        result_data=req.result,
+        expires_at=expires_at
+    )
+    
+    db.add(new_share)
+    db.commit()
+    
+    # Build share URL
+    base_url = os.environ.get("NEXT_PUBLIC_BASE_URL", "http://localhost:3000")
+    share_url = f"{base_url.rstrip('/')}/share/{share_id}"
+    
+    return {
+        "success": True,
+        "shareId": share_id,
+        "shareUrl": share_url,
+        "expiresAt": expires_at.isoformat()
+    }
+
+@app.get("/api/share")
+def get_share(id: str, db: Session = Depends(get_db)):
+    """Retrieve shared proposal data from database"""
+    share = db.query(SharedProposal).filter(SharedProposal.id == id).first()
+    if not share:
+        raise HTTPException(status_code=404, detail="Share link not found or expired")
+    
+    if share.expires_at < datetime.datetime.utcnow():
+        # Clean up expired shares on access
+        db.delete(share)
+        db.commit()
+        raise HTTPException(status_code=410, detail="Share link has expired")
+    
+    return {
+        "id": share.id,
+        "project_id": share.project_id,
+        "input": share.input_data,
+        "result": share.result_data,
+        "createdAt": share.created_at.isoformat(),
+        "expiresAt": share.expires_at.isoformat()
+    }
 
 @app.post("/api/generate")
 async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):

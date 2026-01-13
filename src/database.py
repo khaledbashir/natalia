@@ -48,6 +48,23 @@ class Project(Base):
 
     # Relationships
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
+    shares = relationship("SharedProposal", back_populates="project", cascade="all, delete-orphan")
+
+class SharedProposal(Base):
+    __tablename__ = "shared_proposals"
+
+    id = Column(String, primary_key=True, index=True) # The unique shareId
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    
+    # Snapshot of context for this specific share
+    input_data = Column(JSON)
+    result_data = Column(JSON)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    expires_at = Column(DateTime)
+
+    # Relationships
+    project = relationship("Project", back_populates="shares")
 
 class Message(Base):
     __tablename__ = "messages"

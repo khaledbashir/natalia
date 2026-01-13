@@ -174,17 +174,18 @@ function isLikelyStreetAddress(address: unknown): boolean {
     const trimmed = address.trim();
     if (!trimmed) return false;
 
-    // Prefer a true street address.
-    const hasNumber = /\b\d{1,6}\b/.test(trimmed);
+    // Check for multiple components (comma separated) - standard for international addresses
+    const parts = trimmed.split(',').map(p => p.trim());
+    if (parts.length >= 3) return true;
+
+    // Look for street number + street name pattern or common tokens
+    const hasNumber = /\d+/.test(trimmed);
     const hasStreetType =
-        /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy|plaza)\b/i.test(
+        /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy|plaza|coast|governorate|district|highway|hwy|sq|square|circle|cir|al|alley|province)\b/i.test(
             trimmed,
         );
 
-    // Also accept a common venue-style address that includes city/state/zip (e.g., "Madison Square Garden, New York, NY 10001").
-    const hasCityStateZip = /,\s*[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/.test(trimmed);
-
-    return (hasNumber && hasStreetType) || hasCityStateZip;
+    return (parts.length >= 2 && (hasNumber || hasStreetType)) || (trimmed.length > 25);
 }
 
 async function computeNextStepFromState(state: any): Promise<string> {
@@ -378,45 +379,47 @@ function inferStepFromMessage(message: string): string | null {
     if (
         (lower.includes("confirm") && lower.includes("configuration")) ||
         lower.includes("draws approx") ||
-        (lower.includes("all required") && lower.includes("confirm"))
+        (lower.includes("all required") && lower.includes("confirm")) ||
+        lower.includes("ready to generate")
     ) {
         return "confirm";
     }
 
     // 2. Check for Starting
-    if (lower.includes("proceed") || lower.includes("shall we proceed")) {
+    if (lower.includes("proceed") || lower.includes("shall we proceed") || lower.includes("let's start")) {
         return "clientName";
     }
 
-    // 3. Address detection (needs careful handling)
+    // 3. Address detection
     const isAskingForAddress =
         (lower.includes("select the correct one") ||
-            lower.includes("enter the address") ||
-            (lower.includes("address") && lower.includes("?"))) &&
+            (lower.includes("address") && (lower.includes("?") || lower.includes("where is")))) &&
         !lower.includes("confirmed") &&
-        !lower.includes("verified");
+        !lower.includes("verified") &&
+        !lower.includes("got it");
     if (isAskingForAddress) return "address";
 
     // 4. Field-specific detection (ordered to avoid false positives)
+    // We only infer if the message EXPLICITLY asks the question
     const fieldPatterns = [
-        { step: "productClass", patterns: ["type of display", "what product", "kind of display"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "widthFt", patterns: ["width", "how wide"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "heightFt", patterns: ["height", "how high", "how tall"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "pixelPitch", patterns: ["pixel", "pitch"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "shape", patterns: ["shape", "curved"], exclude: ["locked", "set to", "confirmed", "environment"] },
-        { step: "environment", patterns: ["indoor or outdoor", "environment type"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "structureCondition", patterns: ["existing structure", "new steel", "mounting to"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "mountingType", patterns: ["mounting", "mounted", "rigged", "flown"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "access", patterns: ["access", "service access", "technician"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "permits", patterns: ["permit", "who will handle"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "laborType", patterns: ["labor", "union", "prevailing wage"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "powerDistance", patterns: ["power", "termination", "distance to"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "controlSystem", patterns: ["control system", "processor", "include controls"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "bondRequired", patterns: ["bond", "performance bond", "payment bond"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "complexity", patterns: ["complexity", "install complexity"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "unitCost", patterns: ["unit cost", "cost per", "target dollar"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "targetMargin", patterns: ["margin", "profit", "gross margin"], exclude: ["locked", "set to", "confirmed"] },
-        { step: "serviceLevel", patterns: ["service level", "ongoing service"], exclude: ["locked", "set to", "confirmed"] },
+        { step: "productClass", patterns: ["type of display", "what type of display", "kind of display"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "widthFt", patterns: ["width in feet", "how wide"], exclude: ["locked", "set to", "confirmed", "capturing", "captured", "height"] },
+        { step: "heightFt", patterns: ["height in feet", "how high", "how tall"], exclude: ["locked", "set to", "confirmed", "capturing", "captured", "width"] },
+        { step: "pixelPitch", patterns: ["pixel pitch", "what pitch"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "shape", patterns: ["shape", "curved or flat", "flat or curved"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "environment", patterns: ["indoor or outdoor", "indoor/outdoor", "environment"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "structureCondition", patterns: ["existing structure", "new steel", "mounting to existing"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "mountingType", patterns: ["mounting type", "how will it be mounted", "rigged or flown"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "access", patterns: ["front or rear access", "service access"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "permits", patterns: ["permits", "handle the city"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "laborType", patterns: ["labor requirements", "union labor"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "powerDistance", patterns: ["distance to power", "power/data termination"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "controlSystem", patterns: ["control system", "processors"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "bondRequired", patterns: ["performance bond", "bond required"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "complexity", patterns: ["install complexity"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "unitCost", patterns: ["unit cost", "cost per square"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "targetMargin", patterns: ["target margin", "profit margin"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
+        { step: "serviceLevel", patterns: ["service level", "ongoing maintenance"], exclude: ["locked", "set to", "confirmed", "capturing", "captured"] },
     ];
 
     for (const { step, patterns, exclude } of fieldPatterns) {
@@ -655,21 +658,31 @@ export async function POST(request: NextRequest) {
                         // Type coercion: ensure numeric fields are numbers
                         const questionDef = WIZARD_QUESTIONS.find(q => q.id === key);
                         if (questionDef?.type === 'number' && typeof value === 'string') {
-                            const numValue = parseFloat(value);
+                            const numValue = parseFloat(value.replace(/[^0-9.]/g, ''));
                             if (!isNaN(numValue)) {
                                 cleanedParams[key] = numValue;
-                            } else {
-                                console.warn(`Invalid numeric value for ${key}: ${value}, skipping`);
                             }
                         } else {
                             cleanedParams[key] = value;
                         }
                     } else {
-                        console.warn(`AI attempted to set unknown field '${key}', rejecting`);
                         rejectedFields.push(String(key));
                     }
                 }
                 parsed.updatedParams = cleanedParams;
+
+                // Backup Numeric Extraction (if AI missed it but it was a simple number response)
+                const currentStepId = await computeNextStepFromState(currentState || {});
+                const currentQuestion = WIZARD_QUESTIONS.find(q => q.id === currentStepId);
+                
+                if (currentQuestion?.type === 'number' && Object.keys(parsed.updatedParams).length === 0) {
+                    const numericMatch = message.match(/\b\d+(\.\d+)?\b/);
+                    if (numericMatch) {
+                        const val = parseFloat(numericMatch[0]);
+                        parsed.updatedParams[currentQuestion.id] = val;
+                        thinkingNotes.push(`Backup extraction caught value ${val} for ${currentQuestion.id}`);
+                    }
+                }
             } catch (e) {
                 console.error("Field validation error:", e);
                 thinkingNotes.push("Field validation threw; see server logs.");

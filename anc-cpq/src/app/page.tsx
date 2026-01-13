@@ -11,6 +11,7 @@ import { MessageSquare, Settings, Database } from "lucide-react";
 export default function Home() {
     // 1. Input mode toggle
     const [mode, setMode] = useState<"ai" | "form" | "salesforce">("ai");
+    const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
 
     // 2. Valid default state for the 8 variables
     const [input, setInput] = useState<CPQInput>({
@@ -91,6 +92,7 @@ export default function Home() {
                     <div className="flex-1 overflow-hidden">
                         {mode === "ai" ? (
                             <ConversationalWizard
+                                onProjectInit={setActiveProjectId}
                                 onComplete={handleWizardComplete}
                                 onUpdate={handleWizardUpdate}
                             />
@@ -123,6 +125,7 @@ export default function Home() {
             {/* Right Panel: Preview (65% width) */}
             <div className="w-[65%] h-full">
                 <Preview
+                    projectId={activeProjectId}
                     input={input}
                     result={result}
                     onUpdateField={handleInputChange}

@@ -23,6 +23,7 @@ import clsx from "clsx";
 interface ConversationalWizardProps {
     onComplete: (params: Partial<CPQInput>) => void;
     onUpdate: (params: Partial<CPQInput>) => void;
+    onProjectInit?: (id: number) => void;
 }
 
 interface Message {
@@ -122,11 +123,12 @@ const normalizeParams = (params: any) => {
 export function ConversationalWizard({
     onComplete,
     onUpdate,
+    onProjectInit,
 }: ConversationalWizardProps) {
     const [messages, setMessages] = useState<Message[]>([getInitialMessage()]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [cpqState, setCpqState] = useState<Partial<CPQInput>>({});
+    const [cpqState, setCpqState] = useState<Partial<CPQInput>>(INITIAL_CPQ_STATE);
     const [showHistory, setShowHistory] = useState(false);
     const [savedProposals, setSavedProposals] = useState<SavedProposal[]>([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -137,6 +139,9 @@ export function ConversationalWizard({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Track recently updated fields to avoid showing verification cards too late
+    const [lastFieldUpdated, setLastFieldUpdated] = useState<string | null>(null);
 
     // Model selection
     const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
@@ -222,6 +227,26 @@ export function ConversationalWizard({
     );
     const [projectId, setProjectId] = useState<number | null>(null);
 
+    // Fetch All Projects (History)
+    const fetchHistory = useCallback(async () => {
+        try {
+            const res = await fetch("/api/projects");
+            if (res.ok) {
+                const data = await res.json();
+                const historyAsProposals: SavedProposal[] = data.map((p: any) => ({
+                    id: p.id.toString(),
+                    name: p.client_name || "Untitled Project",
+                    timestamp: new Date(p.created_at).getTime(),
+                    state: p.state || {},
+                    messages: [] // Don't need all messages for the list
+                }));
+                setSavedProposals(historyAsProposals);
+            }
+        } catch (e) {
+            console.error("Failed to fetch project history", e);
+        }
+    }, []);
+
     // Load session from Server (DB) or Create New
     useEffect(() => {
         const initSession = async () => {
@@ -233,6 +258,7 @@ export function ConversationalWizard({
                     if (res.ok) {
                         const data = await res.json();
                         setProjectId(data.id);
+                        if (onProjectInit) onProjectInit(data.id);
                         if (data.messages && data.messages.length > 0) {
                             setMessages(data.messages);
                         }
@@ -253,6 +279,7 @@ export function ConversationalWizard({
                 if (res.ok) {
                     const data = await res.json();
                     setProjectId(data.id);
+                    if (onProjectInit) onProjectInit(data.id);
                     localStorage.setItem("anc_project_id", data.id.toString());
                 }
             } catch (e) {
@@ -261,7 +288,15 @@ export function ConversationalWizard({
         };
 
         initSession();
-    }, []);
+        fetchHistory();
+    }, [onUpdate, onProjectInit, fetchHistory]);
+
+    // Handle history toggle
+    useEffect(() => {
+        if (showHistory) {
+            fetchHistory();
+        }
+    }, [showHistory, fetchHistory]);
 
     // Save state to Server (DB) on changes
     useEffect(() => {
@@ -618,6 +653,13 @@ export function ConversationalWizard({
                 Object.keys(data.updatedParams).length > 0
             ) {
                 const normalized = normalizeParams(data.updatedParams);
+                
+                // Track the last field updated to control UI signals
+                const updatedKeys = Object.keys(normalized);
+                if (updatedKeys.length > 0) {
+                    setLastFieldUpdated(updatedKeys[updatedKeys.length - 1]);
+                }
+
                 const newState = {
                     ...currentStateToSend,
                     ...normalized,
@@ -733,11 +775,31 @@ export function ConversationalWizard({
         localStorage.removeItem(STORAGE_KEY);
     };
 
-    const handleLoadProposal = (prop: SavedProposal) => {
-        setMessages(prop.messages);
-        setCpqState(prop.state);
-        onUpdate(prop.state);
-        setShowHistory(false);
+    const handleLoadProposal = async (prop: SavedProposal) => {
+        try {
+            const res = await fetch(`/api/projects/${prop.id}`);
+            if (res.ok) {
+                const data = await res.json();
+                setProjectId(data.id);
+                if (onProjectInit) onProjectInit(data.id);
+                localStorage.setItem("anc_project_id", data.id.toString());
+                
+                if (data.messages && data.messages.length > 0) {
+                    setMessages(data.messages);
+                } else {
+                    setMessages([getInitialMessage()]);
+                }
+                
+                if (data.state) {
+                    setCpqState(data.state);
+                    onUpdate(data.state);
+                }
+                setShowHistory(false);
+            }
+        } catch (e) {
+            console.error("Failed to load proposal", e);
+            alert("Failed to load project from server");
+        }
     };
 
     // Compute current step for widget rendering (used in JSX)
@@ -939,9 +1001,10 @@ export function ConversationalWizard({
                                 {msg.content}
                             </div>
 
-                            {/* VENUE VERIFIED CARD - Show only once when transitioning FROM address step */}
+                            {/* VENUE VERIFIED CARD - Show only for the message that actually CAPTURED the address */}
                             {msg.role === "assistant" &&
-                                msg.nextStep === "productClass" &&
+                                i === messages.length - 1 && 
+                                lastFieldUpdated === 'address' &&
                                 cpqState.address && (
                                     <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-start gap-3 animate-in zoom-in-95 duration-500">
                                         <div className="bg-green-500/20 p-2 rounded-lg">
