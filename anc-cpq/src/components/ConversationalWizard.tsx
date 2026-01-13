@@ -136,6 +136,21 @@ export function ConversationalWizard({
     // Model selection
     const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
 
+    const looksLikeAddressInput = useCallback((value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) return false;
+
+        const hasNumber = /\b\d{1,6}\b/.test(trimmed);
+        const hasStreetType =
+            /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy|plaza)\b/i.test(
+                trimmed,
+            );
+        const hasCityStateZip =
+            /,\s*[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/.test(trimmed);
+
+        return (hasNumber && hasStreetType) || hasCityStateZip;
+    }, []);
+
     // Hydrate model selection from localStorage on mount
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -509,6 +524,18 @@ export function ConversationalWizard({
         }
 
         setAddressSuggestions([]);
+
+        // Address step can accept either:
+        // 1) a full address (send to AI), OR
+        // 2) a venue/search query (run address search locally, then user selects a result)
+        if (widgetDef?.id === "address" && !isAddressSelection && !looksLikeAddressInput(updatedText)) {
+            const userMsg: Message = { role: "user", content: updatedText };
+            setMessages((prev) => [...prev, userMsg]);
+            setInput("");
+            await performAutoAddressLookup(updatedText);
+            return;
+        }
+
         const userMsg: Message = { role: "user", content: updatedText };
         setMessages((prev) => [...prev, userMsg]);
         setInput("");
@@ -605,36 +632,8 @@ export function ConversationalWizard({
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
 
-                // AUTO-SEARCH: IMMEDIATELY trigger search when clientName is captured
-                // Don't wait for address step - search as soon as we have a client name
-                // BUT ONLY if we don't already have an address
-                if (
-                    data.updatedParams?.clientName &&
-                    !data.updatedParams?.address &&
-                    !cpqState.address // Don't search if address already exists
-                ) {
-                    const searchQuery = data.updatedParams.clientName;
-                    console.log(
-                        "🔍 Auto-triggering address search for:",
-                        searchQuery,
-                    );
-                    performAutoAddressLookup(searchQuery);
-                }
-
-                // Also trigger if AI explicitly transitions to address step
-                // BUT ONLY if we're not already confirming an address (avoid loop)
-                if (data.nextStep === "address" && !isAddressSelection && !cpqState.address) {
-                    const searchQuery =
-                        data.updatedParams?.clientName ||
-                        text;
-                    if (searchQuery && !searchQuery.includes(",")) { // Avoid re-searching formatted addresses
-                        console.log(
-                            "🔍 Address step triggered, searching for:",
-                            searchQuery,
-                        );
-                        performAutoAddressLookup(searchQuery);
-                    }
-                }
+                // IMPORTANT: No automatic address searches.
+                // Address lookup should be explicit (user can type a query and press Enter, or click the Search button).
 
                 // Save Assistant Message to DB
                 if (projectId) {
@@ -1090,7 +1089,10 @@ export function ConversationalWizard({
                                                             placeholder={
                                                                 widgetDef.id ===
                                                                     "clientName"
-                                                                    ? "Enter venue or client name (we'll auto-find the address)..."
+                                                                    ? "Enter venue name..."
+                                                                    : widgetDef.id ===
+                                                                          "address"
+                                                                          ? "Type a full address OR type a venue name and click Search..."
                                                                     : "Enter details..."
                                                             }
                                                             autoFocus
@@ -1103,10 +1105,15 @@ export function ConversationalWizard({
                                                                         e.currentTarget as HTMLInputElement;
                                                                     const val =
                                                                         inputEl.value;
-                                                                    // Auto-search is triggered automatically by handleSend when clientName is set
-                                                                    handleSend(
-                                                                        val,
-                                                                    );
+                                                                    // Address step: Enter acts like Search if it doesn't look like an address.
+                                                                    if (widgetDef.id === "address" && val.trim() && !looksLikeAddressInput(val)) {
+                                                                        performAutoAddressLookup(val);
+                                                                        inputEl.value = "";
+                                                                        setAddressSuggestions([]);
+                                                                        return;
+                                                                    }
+
+                                                                    handleSend(val);
                                                                     inputEl.value =
                                                                         "";
                                                                     setAddressSuggestions(
@@ -1116,12 +1123,36 @@ export function ConversationalWizard({
                                                             }}
                                                             className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-700 font-bold"
                                                         />
+
+                                                        {widgetDef.id === "address" && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    const inputEl =
+                                                                        e.currentTarget
+                                                                            .previousElementSibling as HTMLInputElement;
+                                                                    const val = inputEl?.value || "";
+                                                                    if (!val.trim()) return;
+                                                                    performAutoAddressLookup(val);
+                                                                    inputEl.value = "";
+                                                                    setAddressSuggestions([]);
+                                                                }}
+                                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-slate-700"
+                                                            >
+                                                                Search
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={(e) => {
                                                                 const input = e
                                                                     .currentTarget
                                                                     .previousElementSibling as HTMLInputElement;
-                                                                // Auto-search is triggered automatically by handleSend when clientName is set
+                                                                // For address: Next submits only if it looks like an address; otherwise Search.
+                                                                if (widgetDef.id === "address" && input?.value?.trim() && !looksLikeAddressInput(input.value)) {
+                                                                    performAutoAddressLookup(input.value);
+                                                                    setAddressSuggestions([]);
+                                                                    input.value = "";
+                                                                    return;
+                                                                }
                                                                 handleSend(
                                                                     input.value,
                                                                 );

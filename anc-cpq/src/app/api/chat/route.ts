@@ -72,13 +72,17 @@ function isLikelyStreetAddress(address: unknown): boolean {
     const trimmed = address.trim();
     if (!trimmed) return false;
 
-    // Require a street number + a street-type token.
+    // Prefer a true street address.
     const hasNumber = /\b\d{1,6}\b/.test(trimmed);
-    const hasStreetType = /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy)\b/i.test(
-        trimmed,
-    );
+    const hasStreetType =
+        /\b(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|place|pl|parkway|pkwy|plaza)\b/i.test(
+            trimmed,
+        );
 
-    return hasNumber && hasStreetType;
+    // Also accept a common venue-style address that includes city/state/zip (e.g., "Madison Square Garden, New York, NY 10001").
+    const hasCityStateZip = /,\s*[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/.test(trimmed);
+
+    return (hasNumber && hasStreetType) || hasCityStateZip;
 }
 
 async function computeNextStepFromState(state: any): Promise<string> {
@@ -86,6 +90,11 @@ async function computeNextStepFromState(state: any): Promise<string> {
 
     for (const q of WIZARD_QUESTIONS) {
         const value = state?.[q.id];
+
+        // Optional questions should never block completion.
+        if (q.required === false) {
+            continue;
+        }
 
         // Treat address as incomplete unless it looks like a true street address.
         if (q.id === "address") {
@@ -110,16 +119,32 @@ const SYSTEM_PROMPT = `You are the ANC Project Assistant, an internal SPEC AUDIT
 - When confirming a field, use natural language: "Client name set to Madison Square." NOT "Field 'clientName' locked to Madison Square."
 
 ### SPEC AUDIT LOGIC (CRITICAL):
-1. **EXTRACT EVERYTHING:** When user provides a long message with multiple specs, extract ALL recognizable values at once.
-   - Example: "I need a 10mm ribbon board, 40ft wide, outdoor use, wall mounted"
-   - Response: updatedParams: {"productClass": "Ribbon", "pixelPitch": 10, "widthFt": 40, "environment": "Outdoor", "mountingType": "Wall"}
-   - Then point nextStep to the FIRST empty field (e.g., heightFt)
 
-2. **NEVER BACKTRACK:** If a field has a value in 'currentState', NEVER ask for it again. Skip to the next empty field.
+**BULK EXTRACTION MODE (AGGRESSIVE):**
+- When the user provides a long message containing answers to multiple questions, you MUST extract ALL recognizable values AT ONCE.
+- Scan the message for ANY field values mentioned (use the cheat sheet below).
+- Add them ALL to 'updatedParams'.
+- Then set 'nextStep' to the FIRST EMPTY/MISSING field after merging with currentState.
+- Examples:
+  - User: "I need a 10mm ribbon board, 40ft wide, outdoor use, wall mounted, front access, existing structure, standard complexity, bronze service, client is MSG at 4 Pennsylvania Plaza"
+  - updatedParams: { "clientName": "MSG", "address": "4 Pennsylvania Plaza", "productClass": "Ribbon", "pixelPitch": "10", "widthFt": 40, "environment": "Outdoor", "mountingType": "Wall", "access": "Front", "structureCondition": "Existing", "complexity": "Standard", "serviceLevel": "bronze" }
+  - nextStep: "heightFt" (first missing field after those)
+  - User: "Outdoor scoreboard 50x25, 6mm, curved, rear access, union labor, close power, client handles permits, no controls, no bond"
+  - updatedParams: { "productClass": "Scoreboard", "widthFt": 50, "heightFt": 25, "pixelPitch": "6", "environment": "Outdoor", "shape": "Curved", "access": "Rear", "laborType": "Union", "powerDistance": "Close", "permits": "Client", "controlSystem": "None", "bondRequired": false }
+  - nextStep: "mountingType" (first missing field after those)
+- If the user's message contains answers to MANY questions (e.g., 10+ fields), extract ALL and jump directly to "confirm" or the first missing.
 
-3. **Be Aggressive:** If you see ANY of the 21 fields mentioned in the user's message, extract them. Don't wait to be asked explicitly.
+**STATE AWARENESS:**
+- Check 'currentState' to see what's already filled.
+- DO NOT ask about fields that already have values.
+- ALWAYS skip to the FIRST empty/missing field.
 
-4. **Next Logic:** Always point 'nextStep' to the FIRST null or empty field in the sequence AFTER your extractions.
+**CONFIRMATION FLOW:**
+- If user confirms an address selection, set both 'clientName' AND 'address' and MOVE TO THE NEXT STEP (e.g., 'projectName').
+- NEVER ask for 'address' again after a valid confirmation.
+
+**NEXT LOGIC:**
+- Always point 'nextStep' to the FIRST null or empty field in the sequence AFTER your bulk extractions.
 
 ### THE ONLY 21 VALID FIELDS (IN ORDER):
 1. clientName
@@ -179,11 +204,11 @@ User: "Ribbon"
 CurrentState: {"clientName": "MSG", "address": "NYC", "projectName": "Install", "productClass": ""}
 Response: {"message": "Display type set to Ribbon. What pixel pitch do you need?", "nextStep": "pixelPitch", "suggestedOptions": [{"value": "6", "label": "6mm"}, {"value": "10", "label": "10mm"}], "updatedParams": {"productClass": "Ribbon"}}
 
-**Example 2: MASS EXTRACTION (Do this every time)**
+**Example 2: BULK EXTRACTION (Skip to first missing question)**
 User: "I need a scoreboard for MSG, 10mm pitch, 80ft wide by 25ft high, outdoor installation, wall mounted with rear access, existing structure, non-union labor"
 CurrentState: {}
 Response: {
-  "message": "Got it. I've captured: Scoreboard, 10mm, 80x25ft, outdoor, wall mount, rear access, existing structure, non-union. What's the address?",
+  "message": "Got it. I've captured: Scoreboard, 10mm, 80x25ft, outdoor, wall mount, rear access, existing structure, non-union. What's address?",
   "nextStep": "address",
   "suggestedOptions": [],
   "updatedParams": {
@@ -197,6 +222,41 @@ Response: {
     "access": "Rear",
     "structureCondition": "Existing",
     "laborType": "NonUnion"
+  }
+}
+
+**Example 3: ALL 21 ANSWERS (Jump directly to confirm)**
+User: "Madison Square Garden, 4 Pennsylvania Plaza New York NY 10001, MSG Install, Scoreboard, 10mm, 80ft wide, 25ft high, Outdoor, Curved, Wall mount, Front access, Existing structure, Union labor, Medium distance, ANC handles permits, Include controls, Yes bond, High complexity, $1500/sqft, 25% margin, Bronze service"
+CurrentState: {}
+Response: {
+  "message": "I've captured all 21 specifications. Please confirm to generate your proposal.",
+  "nextStep": "confirm",
+  "suggestedOptions": [
+    {"value": "Confirmed", "label": "CONFIRM & GENERATE PDF"},
+    {"value": "Edit", "label": "Edit Specifications"}
+  ],
+  "updatedParams": {
+    "clientName": "Madison Square Garden",
+    "address": "4 Pennsylvania Plaza New York NY 10001",
+    "projectName": "MSG Install",
+    "productClass": "Scoreboard",
+    "pixelPitch": 10,
+    "widthFt": 80,
+    "heightFt": 25,
+    "environment": "Outdoor",
+    "shape": "Curved",
+    "mountingType": "Wall",
+    "access": "Front",
+    "structureCondition": "Existing",
+    "laborType": "Union",
+    "powerDistance": "Medium",
+    "permits": "ANC",
+    "controlSystem": "Include",
+    "bondRequired": "Yes",
+    "complexity": "High",
+    "unitCost": 1500,
+    "targetMargin": 25,
+    "serviceLevel": "bronze"
   }
 }
 `;
@@ -550,7 +610,12 @@ export async function POST(request: NextRequest) {
                     // Run the smarter inference logic to validate/correct the step
                     const inferredStep = inferStepFromMessage(parsed.message);
 
-                    if (inferredStep && inferredStep !== parsed.nextStep) {
+                    const inferredDef = inferredStep
+                        ? WIZARD_QUESTIONS.find((q) => q.id === inferredStep)
+                        : undefined;
+                    const inferredIsOptional = inferredDef?.required === false;
+
+                    if (inferredStep && inferredStep !== parsed.nextStep && !inferredIsOptional) {
                         console.log(
                             `Step Correction: AI said '${parsed.nextStep}' but message implies '${inferredStep}'. Overriding.`,
                         );
