@@ -176,6 +176,9 @@ export default function Preview({ input, result, projectId, onUpdateField, initi
             structure_condition: s.structureCondition || 'Existing',
             labor_type: s.laborType || 'NonUnion',
             power_distance: s.powerDistance || 'Close',
+            mounting_type: s.mountingType || input.mountingType || 'Wall',
+            venue_type: input.venueType || 'corporate',
+            target_margin: input.targetMargin || 30.0,
             permits: s.permits || 'Client',
             control_system: s.controlSystem || 'Include',
             bond_required: !!s.bondRequired
@@ -193,6 +196,8 @@ export default function Preview({ input, result, projectId, onUpdateField, initi
             target_margin: input.targetMargin || 0,
             labor_type: input.laborType || 'NonUnion',
             power_distance: input.powerDistance || 'Close',
+            mounting_type: input.mountingType || 'Wall',
+            venue_type: input.venueType || 'corporate',
             permits: input.permits || 'Client',
             control_system: input.controlSystem || 'Include',
             bond_required: !!input.bondRequired

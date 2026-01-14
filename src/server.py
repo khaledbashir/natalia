@@ -99,13 +99,20 @@ class ScreenInput(BaseModel):
     pixel_pitch: str
     width_ft: float
     height_ft: float
-    indoor: bool
+    is_outdoor: bool
     mounting_type: str
     structure_condition: str
     labor_type: str
     power_distance: str
     target_margin: float
     venue_type: str
+    shape: Optional[str] = "Flat"
+    access: Optional[str] = "Rear"
+    complexity: Optional[str] = "Standard"
+    permits: Optional[str] = "Client"
+    control_system: Optional[str] = "Include"
+    bond_required: Optional[bool] = False
+    unit_cost: Optional[float] = 0.0
 
 
 class ProjectRequest(BaseModel):
@@ -360,10 +367,10 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
                 pixel_pitch=float(s.pixel_pitch),
                 width_ft=s.width_ft,
                 height_ft=s.height_ft,
-                is_outdoor=not s.indoor,
-                shape="Flat",
-                access="Rear",
-                complexity="Standard",
+                is_outdoor=s.is_outdoor,
+                shape=s.shape,
+                access=s.access,
+                complexity=s.complexity,
                 target_margin=s.target_margin,
                 structure_condition=s.structure_condition,
                 labor_type=s.labor_type,
@@ -371,9 +378,10 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
                 venue_type=s.venue_type,
                 service_level=req.service_level,
                 timeline=req.timeline,
-                permits=req.permits,
-                control_system=req.control_system,
-                bond_required=req.bond_required,
+                permits=s.permits or req.permits,
+                control_system=s.control_system or req.control_system,
+                bond_required=s.bond_required or req.bond_required,
+                unit_cost=s.unit_cost,
             )
 
             # Calculate using the working CPQCalculator
@@ -386,11 +394,12 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
 
             # Add calculated dimensions to result
             if "inputs" in result:
-                result["inputs"].width_px = width_pixels
-                result["inputs"].height_px = height_pixels
-                result["inputs"].total_sqft = s.width_ft * s.height_ft
-                result["inputs"].indoor = s.indoor
-                result["inputs"].mounting_type = s.mounting_type
+                # result["inputs"] is a dataclass instance in CPQCalculator
+                setattr(result["inputs"], "width_px", width_pixels)
+                setattr(result["inputs"], "height_px", height_pixels)
+                setattr(result["inputs"], "total_sqft", s.width_ft * s.height_ft)
+                setattr(result["inputs"], "indoor", not s.is_outdoor)
+                setattr(result["inputs"], "mounting_type", s.mounting_type)
 
             project_data.append(result)
 
