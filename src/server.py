@@ -9,7 +9,8 @@ if not os.environ.get("DATABASE_URL"):
     if os.path.exists(parent_env):
         load_dotenv(parent_env)
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -25,6 +26,16 @@ import secrets
 import string
 
 app = FastAPI()
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log validation errors for debugging"""
+    print(f"Validation error for {request.url}: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc.body)},
+    )
 
 
 @app.get("/health")
@@ -100,12 +111,12 @@ class ScreenInput(BaseModel):
     width_ft: float
     height_ft: float
     is_outdoor: bool
-    mounting_type: str
-    structure_condition: str
-    labor_type: str
-    power_distance: str
-    target_margin: float
-    venue_type: str
+    mounting_type: Optional[str] = "Wall"
+    structure_condition: Optional[str] = "Existing"
+    labor_type: Optional[str] = "NonUnion"
+    power_distance: Optional[str] = "Close"
+    target_margin: Optional[float] = 30.0
+    venue_type: Optional[str] = "corporate"
     shape: Optional[str] = "Flat"
     access: Optional[str] = "Rear"
     complexity: Optional[str] = "Standard"
@@ -113,6 +124,7 @@ class ScreenInput(BaseModel):
     control_system: Optional[str] = "Include"
     bond_required: Optional[bool] = False
     unit_cost: Optional[float] = 0.0
+    id: Optional[Any] = None
 
 
 class ProjectRequest(BaseModel):

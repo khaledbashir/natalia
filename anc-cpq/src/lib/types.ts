@@ -36,6 +36,8 @@ export interface ScreenConfig {
     workingHours?: string;
     weatherProtection?: string;
     sitePreparation?: string;
+    mountingType?: MountingType;
+    venueType?: string;
 }
 
 export interface CPQInput {
@@ -99,6 +101,7 @@ export interface CPQInput {
     workingHours?: string;
     weatherProtection?: string;
     sitePreparation?: string;
+    venueType?: string;
 
     // 15. Multi-screen
     screens?: ScreenConfig[];
