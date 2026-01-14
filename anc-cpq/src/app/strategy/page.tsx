@@ -1,357 +1,546 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  ShieldCheck, 
-  Database, 
-  Zap, 
-  Settings, 
-  Lock, 
-  FileText, 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import {
+  ShieldCheck,
+  Database,
+  Zap,
+  Settings,
+  Lock,
+  FileText,
   ArrowRight,
   HelpCircle,
-  ChevronDown,
-  Layout,
-  RefreshCw,
   Cpu,
   BarChart3,
   Globe,
   Monitor,
   CheckCircle2,
   TrendingUp,
-  Glasses
+  MessageSquare,
+  FileEdit,
+  MapPin,
+  Search,
+  Clock,
+  Users,
+  AlertTriangle,
+  Workflow,
+  Truck,
+  Wrench,
+  Calculator,
+  ClipboardCheck,
+  Link2,
+  GitBranch,
+  Layers,
+  Building2,
+  HardHat,
+  Construction,
+  Factory,
+  Building,
 } from 'lucide-react';
 
 const StrategyPage = () => {
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [intakeMethod, setIntakeMethod] = useState('wizard');
 
-  const sections = [
-    { id: 'logic', title: 'Logic Architecture', icon: Cpu },
-    { id: 'capabilities', title: 'System Catalog', icon: Layout },
-    { id: 'security', title: 'Security', icon: ShieldCheck },
-    { id: 'roadmap', title: 'Evolution Roadmap', icon: TrendingUp },
-    { id: 'faq', title: 'Strategy FAQ', icon: HelpCircle },
-  ];
-
-  const faqs = [
-    {
-      q: "How did you build the pricing if the primary Excel documentation remains internal?",
-      a: "The architecture utilizes a 'Modular Logic Injection' framework. We have engineered the core algorithm based on documented industry standards and the specific business rules identified in preliminary strategy sessions (e.g., structural factor loading, labor multipliers, and environment-based surcharges). This ensures the infrastructure is fully prepared to ingest proprietary ANC data via secure API or encrypted file upload once enterprise-level data agreements are in place."
+  const naturalLanguageExample = {
+    venue: "Madison Square Garden",
+    address: "4 Pennsylvania Plaza, NY",
+    details: {
+      product: "scoreboard",
+      pitch: "6mm",
+      dimensions: "40 by 20 feet",
+      environment: "indoor, flat",
+      mounting: "wall mounted",
+      installation: "front access",
+      structure: "existing steel structure",
+      labor: "union labor"
     },
-    {
-      q: "Is our proprietary logic and margin structure protected?",
-      a: "Absolutely. The system is designed with strict Data Sovereignty in mind. The computational logic layer is decoupled from the user-facing AI interface. This ensures that sensitive margin structures, multiplier tables, and vendor-specific costs are processed within a secure, private runtime environment and are never utilized for model training or exposed to external third-party services."
-    },
-    {
-      q: "How are enterprise-wide cost updates managed?",
-      a: "The system features a Centralized Policy Management interface. Cost-basis updates—such as shifts in raw material costs or labor rate adjustments—are governed at the administrative level. Once a global change is committed, the engine ensures that all subsequent project generations across the organization utilize the updated valuation parameters, ensuring institutional consistency."
-    },
-    {
-      q: "Can this system handle large-scale, multi-zone implementations (e.g., Integrated Stadium Systems)?",
-      a: "The logic engine is built for scalability. It supports 'Nested Configuration hierarchies' where a single master proposal can encompass multiple complex subsystems (Main Display, 360 Ribbon, Vomitory placements) while maintaining individual technical specifications and synchronized labor requirements."
-    },
-    {
-      q: "What is the strategic roadmap for CRM integration?",
-      a: "The architecture is 'Platform-Agnostic' and API-first. The roadmap includes an automated Enterprise Bridge that allows the system to populate from CRM opportunity objects. This ensures that client data, historical context, and project goals flow seamlessly into the CPQ engine, minimizing manual entry errors and maintaining data integrity across the sales cycle."
-    }
-  ];
+    aiExtracted: ["Address identified & validated", "Product type: Scoreboard", "Pitch: 6mm confirmed", "Union labor requirement detected", "Missing: Power requirements", "Missing: Mounting height", "Missing: Content management system preference"]
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-[#003366] text-white shadow-lg">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <nav className="sticky top-0 z-50 bg-[#003366] text-white shadow-lg border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-white p-1 rounded shadow-inner">
-               <span className="text-[#003366] font-black text-xl tracking-tighter">ANC</span>
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-1.5 rounded-lg shadow-lg">
+              <span className="text-[#003366] font-black text-xl tracking-tighter">ANC</span>
             </div>
-            <span className="font-medium tracking-tight border-l border-white/20 pl-3 ml-1 hidden md:block">
-              Strategy & Implementation Portal
-            </span>
+            <span className="font-semibold tracking-tight text-sm md:text-base">Strategy & Implementation Portal</span>
           </div>
-          <div className="flex gap-6 overflow-x-auto whitespace-nowrap scrollbar-hide py-2">
-            {sections.map((s) => (
-              <a 
-                key={s.id} 
-                href={`#${s.id}`} 
-                className="text-sm font-semibold hover:text-blue-300 transition-colors uppercase tracking-widest"
-              >
-                {s.title}
-              </a>
-            ))}
+          <div className="hidden md:flex gap-2">
+            <Badge variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20 cursor-pointer">
+              Phase 1: Validation
+            </Badge>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-4 py-12">
-        {/* Hero Section */}
-        <header className="mb-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-[#003366] px-4 py-2 rounded-full text-sm font-bold mb-6">
-            <ShieldCheck size={16} /> 
-            PHASE 1: STRATEGIC VALIDATION & ENGINE ARCHITECTURE
+      <main className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+        <div className="mb-12 text-center">
+          <div className="inline-flex items-center gap-2 bg-[#003366]/10 text-[#003366] px-4 py-2 rounded-full text-xs font-bold mb-6">
+            <ShieldCheck size={14} />
+            ENTERPRISE CPQ STRATEGY DOCUMENT
           </div>
-          <h1 className="text-5xl md:text-6xl font-black text-slate-900 mb-6 tracking-tight">
-            The <span className="text-[#003366]">ANC CPQ</span> <br/>Logic Engine
+          <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">
+            ANC <span className="text-[#003366]">Proposal Engine</span>
           </h1>
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed font-medium">
-            Bridging the gap between legacy estimation workflows and next-generation institutional intelligence.
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            Transforming complex estimation workflows into intelligent, consistent, and scalable proposals.
           </p>
-        </header>
+        </div>
 
-        {/* Strategic Metrics Section */}
-        <section className="mb-24 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
           {[
-            { label: "Efficiency", value: "85%", sub: "Reduction in Proposal Lead Time" },
-            { label: "Accuracy", value: "100%", sub: "Alignment with Engineering Logic" },
-            { label: "Compliance", value: "Zero", sub: "Data Leaks to Third-Party AI" },
-            { label: "Scalability", value: "∞", sub: "Users per Centralized Logic Hub" },
+            { label: "Time Saved", value: "85%", icon: Clock, color: "bg-green-100 text-green-700" },
+            { label: "Accuracy", value: "100%", icon: CheckCircle2, color: "bg-blue-100 text-blue-700" },
+            { label: "Data Protection", value: "Zero", sub: "External Exposure", icon: Lock, color: "bg-purple-100 text-purple-700" },
+            { label: "Users", value: "∞", icon: Users, color: "bg-orange-100 text-orange-700" },
           ].map((stat, i) => (
-            <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-center border-b-4 border-b-[#003366]">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-              <p className="text-3xl font-black text-[#003366]">{stat.value}</p>
-              <p className="text-[10px] text-slate-500 font-bold uppercase">{stat.sub}</p>
-            </div>
+            <Card key={i} className="border-2 border-slate-200 hover:border-[#003366] transition-colors">
+              <CardContent className="p-6 text-center">
+                <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full mb-3 ${stat.color}`}>
+                  <stat.icon size={18} />
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+                {stat.sub && <p className="text-[10px] text-slate-500 font-semibold">{stat.sub}</p>}
+              </CardContent>
+            </Card>
           ))}
-        </section>
+        </div>
 
-        {/* Logic Section */}
-        <section id="logic" className="mb-24 scroll-mt-24">
-          <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl shadow-slate-200 border border-slate-100">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="bg-[#003366] p-3 rounded-2xl text-white">
-                <Cpu size={32} />
-              </div>
-              <h2 className="text-3xl font-bold italic tracking-tight uppercase">Modular Logic Infrastructure</h2>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-12">
-              <div>
-                <p className="text-lg text-slate-700 mb-6 font-bold leading-relaxed border-l-4 border-[#003366] pl-4">
-                  Data Sovereignty & Intellectual Property Management
-                </p>
-                <p className="text-slate-600 mb-6 leading-relaxed">
-                  The primary directive of this architecture is the absolute protection of ANC's proprietary computational logic. Unlike standard "black-box" models, this system utilizes a <span className="text-[#003366] font-bold">Decoupled Formula Engine.</span> 
-                </p>
-                <ul className="space-y-4">
-                  {[
-                    "Abstraction Layer: Logic processing is strictly separated from user-facing AI.",
-                    "Institutional Compliance: Engineered for full alignment with legacy Excel validation.",
-                    "Precision Governance: Centralized management of multipliers and labor rates.",
-                    "Auditable Provenance: Every output is traceable to specific engineering business rules."
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3 text-slate-700 font-semibold text-sm">
-                      <div className="mt-1 flex-shrink-0 text-[#003366]">
-                        <ArrowRight size={14} />
+        <Card className="mb-16 border-2 border-slate-200 shadow-xl">
+          <CardHeader className="bg-gradient-to-r from-[#003366] to-[#004d99] text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <Workflow className="w-6 h-6" />
+              Intelligent Intake Methods
+            </CardTitle>
+            <CardDescription className="text-blue-100 text-base">
+              Choose how you want to provide project specifications. The AI extracts and validates all requirements automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <Tabs value={intakeMethod} onValueChange={setIntakeMethod} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="wizard" className="gap-2">
+                  <MessageSquare size={16} />
+                  Question Wizard
+                </TabsTrigger>
+                <TabsTrigger value="form" className="gap-2">
+                  <FileEdit size={16} />
+                  Structured Form
+                </TabsTrigger>
+                <TabsTrigger value="natural" className="gap-2">
+                  <Globe size={16} />
+                  Natural Language
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="wizard" className="space-y-4">
+                <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="bg-[#003366] p-2 rounded-lg text-white">
+                      <MessageSquare size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg mb-2">Adaptive Question Wizard</h3>
+                      <p className="text-slate-600 text-sm mb-4">Answer questions one at a time. The wizard adapts based on your answers, skipping irrelevant questions.</p>
+                      <div className="space-y-3">
+                        {[
+                          "What type of venue are you working with?",
+                          "What's the address? (Auto-validates & retrieves structural data)",
+                          "What display product do you need?",
+                          "What's the required pixel pitch?",
+                          "Mounting location and method?",
+                          "Union labor requirements?",
+                        ].map((q, i) => (
+                          <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${i === 0 ? 'bg-[#003366] text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-white text-[#003366]' : 'bg-slate-100 text-slate-400'}`}>
+                              {i + 1}
+                            </div>
+                            <span className="text-sm">{q}</span>
+                            {i === 1 && <MapPin size={14} className="ml-auto text-yellow-400" />}
+                            {i === 0 && <ArrowRight size={16} className="ml-auto opacity-50" />}
+                          </div>
+                        ))}
                       </div>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-                <h3 className="font-bold text-slate-900 mb-4 uppercase text-xs tracking-widest">Pricing Waterfall Logic</h3>
-                <div className="space-y-4">
-                   <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                      <span className="text-sm font-semibold text-slate-500">Manual Override</span>
-                      <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-tighter">100% Priority</span>
-                   </div>
-                   <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                      <span className="text-sm font-semibold text-slate-500">ANC Master Sheet</span>
-                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-tighter">API Connected</span>
-                   </div>
-                   <div className="flex justify-between items-center opacity-50">
-                      <span className="text-sm font-semibold text-slate-500 text-strikethrough">Public Web Data</span>
-                      <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-tighter">Strictly Restricted</span>
-                   </div>
-                </div>
-                <div className="mt-8 p-4 bg-[#003366] rounded-xl text-white text-xs font-medium leading-relaxed">
-                  "The architecture reflects the institutional trust of ANC's senior estimators. We have built an interface that preserves rigorous engineering standards while enhancing throughput."
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* System Capability Catalog */}
-        <section id="capabilities" className="mb-24 scroll-mt-24">
-          <div className="flex flex-col gap-6">
-            <h2 className="text-3xl font-black text-slate-900 flex items-center gap-3 mb-4 uppercase tracking-tighter">
-              <Layout className="text-[#003366]" size={32} />
-              System Capability Catalog
-            </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                {
-                  title: "Intelligent Intake Wizard",
-                  exec: "Reduces proposal time from hours to minutes via a guided, adaptive interview.",
-                  tech: "A state-driven conditional logic engine that filters out irrelevant technical questions based on project type.",
-                  icon: Zap
-                },
-                {
-                  title: "Real-Time Pricing Engine",
-                  exec: "Ensures margin consistency across the entire sales team, regardless of location.",
-                  tech: "Modular multiplier injection layer that calculates raw materials, labor, and surcharges instantly.",
-                  icon: BarChart3
-                },
-                {
-                  title: "Institutional Knowledge Base",
-                  exec: "Digitizes the 'unwritten' rules of senior estimators to prevent costly errors.",
-                  tech: "Deterministic rule-set repository (Industry Templates) mapped to ANC's historical hardware standards.",
-                  icon: Database
-                },
-                {
-                  title: "Automated Artifact Generation",
-                  exec: "Instantly produces high-fidelity PDFs and internal Excel validation spreadsheets.",
-                  tech: "Server-side headless rendering engine transforming configuration state into structured documentation.",
-                  icon: FileText
-                }
-              ].map((item, i) => (
-                <div key={i} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex gap-4 items-start mb-4">
-                    <div className="bg-blue-50 p-2 rounded-lg text-[#003366]">
-                      <item.icon size={24} />
-                    </div>
-                    <h3 className="font-bold text-lg text-slate-900">{item.title}</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-[10px] font-black text-[#003366] uppercase tracking-[0.2em] mb-1">Impact / Executive</p>
-                      <p className="text-sm text-slate-600 font-medium leading-relaxed">{item.exec}</p>
-                    </div>
-                    <div className="pl-4 border-l-2 border-slate-100 italic">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Architecture / Technical</p>
-                      <p className="text-sm text-slate-500 leading-relaxed font-mono">{item.tech}</p>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
+              </TabsContent>
 
-        {/* Security Section */}
-        <section id="security" className="mb-24 scroll-mt-24">
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { 
-                title: "IP Protection", 
-                desc: "Your proprietary formulas never leave the secure application layer. It's a black box to the external AI.",
-                icon: Lock
-              },
-              { 
-                title: "Institutional Consistency", 
-                desc: "Standardizes every output. A proposal from 2026 will match the logic of 2024 perfectly.",
-                icon: CheckCircle2
-              },
-              { 
-                title: "Internal Audit", 
-                desc: "Every proposal creates a hidden Excel validation block for your team to check the math.",
-                icon: Layout
-              }
-            ].map((card, i) => (
-              <div key={i} className="bg-[#003366] text-white p-8 rounded-3xl shadow-lg border-t-4 border-blue-400">
-                <card.icon className="mb-4 text-blue-300" size={32} />
-                <h3 className="text-xl font-bold mb-2">{card.title}</h3>
-                <p className="text-blue-100 text-sm leading-relaxed">{card.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+              <TabsContent value="form" className="space-y-4">
+                <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-[#003366] p-2 rounded-lg text-white">
+                      <FileEdit size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg mb-2">Structured Form</h3>
+                      <p className="text-slate-600 text-sm mb-4">Fill out all specifications at once. Best for experienced users who know exactly what they need.</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          { label: "Venue Name", placeholder: "e.g., Madison Square Garden" },
+                          { label: "Address", placeholder: "4 Pennsylvania Plaza, NY", icon: <MapPin size={14} className="text-[#003366]" /> },
+                          { label: "Product Type", placeholder: "Scoreboard, Ribbon, etc." },
+                          { label: "Pixel Pitch", placeholder: "6mm, 10mm, etc." },
+                          { label: "Dimensions (ft)", placeholder: "40 x 20" },
+                          { label: "Environment", placeholder: "Indoor/Outdoor" },
+                        ].map((field, i) => (
+                          <div key={i} className="space-y-1">
+                            <label className="text-xs font-bold text-slate-700 uppercase">{field.label}</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder={field.placeholder}
+                                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#003366]"
+                              />
+                              {field.icon && <div className="absolute right-3 top-1/2 -translate-y-1/2">{field.icon}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                          <Search size={12} className="mr-1" />
+                          Address Lookup Active
+                        </Badge>
+                        <span className="text-xs">Auto-validates venue & retrieves structural data</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
 
-        {/* Roadmap / Future Vision */}
-        <section id="roadmap" className="mb-24 scroll-mt-24">
-          <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-12 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 text-blue-500 opacity-10 pointer-events-none">
-              <TrendingUp size={180} />
-            </div>
-            
-            <div className="relative z-10 flex flex-col md:flex-row gap-12">
-              <div className="md:w-1/3">
-                <h2 className="text-4xl font-black mb-6 tracking-tight leading-none uppercase">Project <span className="text-blue-400 block">Evolution</span> Roadmap</h2>
-                <p className="text-slate-400 font-medium text-sm leading-relaxed mb-8">
-                  From a precision estimation tool to an organization-wide intelligence engine.
-                </p>
-                <div className="bg-blue-600/20 border border-blue-500/30 rounded-xl p-6">
-                  <p className="text-xs font-black text-blue-400 uppercase tracking-widest mb-2">Current Status</p>
-                  <p className="text-lg font-bold">Phase 1: Validation</p>
-                  <p className="text-sm text-blue-100">Logic testing and structural framework established.</p>
+              <TabsContent value="natural" className="space-y-4">
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-lg p-6 border border-slate-700">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-blue-500 p-2 rounded-lg text-white">
+                      <Globe size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg mb-2">Natural Language Processing</h3>
+                      <p className="text-slate-300 text-sm mb-4">Describe your project in plain English. The AI extracts all specifications and asks only what's missing.</p>
+
+                      <div className="bg-slate-950/50 rounded-lg p-4 mb-4 font-mono text-sm leading-relaxed border border-slate-700">
+                        <p>"Hi, I'm <span className="text-green-400 font-bold">Madison Square Garden</span>. Address is <span className="text-yellow-400 font-bold">4 Pennsylvania Plaza, NY</span>. I need a <span className="text-blue-400 font-bold">scoreboard</span>, <span className="text-purple-400 font-bold">6mm pitch</span>, <span className="text-orange-400 font-bold">40 by 20 feet</span>. It's indoor, flat, wall mounted. Technicians will use front access and we have existing steel structure. We need <span className="text-red-400 font-bold">union labor</span>."</p>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                              <CheckCircle2 size={16} className="text-green-500" />
+                              AI Extracted Specifications
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            {[
+                              { label: "Venue", value: "Madison Square Garden" },
+                              { label: "Address", value: "4 Pennsylvania Plaza, NY" },
+                              { label: "Product", value: "Scoreboard" },
+                              { label: "Pitch", value: "6mm" },
+                              { label: "Dimensions", value: "40 × 20 ft" },
+                              { label: "Environment", value: "Indoor" },
+                              { label: "Mounting", value: "Wall-mounted, front access" },
+                              { label: "Structure", value: "Existing steel" },
+                              { label: "Labor", value: "Union required" },
+                            ].map((item, i) => (
+                              <div key={i} className="flex justify-between text-sm">
+                                <span className="text-slate-500">{item.label}</span>
+                                <span className="font-semibold">{item.value}</span>
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="border-orange-200">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm flex items-center gap-2 text-orange-700">
+                              <AlertTriangle size={16} />
+                              Questions Remaining
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            {[
+                              "What are the power requirements?",
+                              "What mounting height is preferred?",
+                              "Content management system preference?",
+                              "Timeline for installation?",
+                              "Budget constraints?",
+                              "Specific content requirements?",
+                            ].map((q, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm text-orange-700">
+                                <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
+                                {q}
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <div className="mt-4 p-4 bg-blue-500/20 border border-blue-400/30 rounded-lg">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-blue-200 mb-2">
+                          <MapPin size={16} />
+                          Address Intelligence
+                        </div>
+                        <p className="text-xs text-blue-100">
+                          Address validated against venue database. Structural data retrieved: Ceiling height 80ft, Catwalk access confirmed, Electrical service 480V available.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <div className="grid md:grid-cols-2 gap-6 mb-16">
+          <Card className="border-2 border-[#003366] shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="bg-[#003366] p-2 rounded-lg text-white">
+                  <Calculator size={20} />
+                </div>
+                Real-Time Pricing Engine
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <span className="text-sm font-semibold text-slate-700">Raw Materials</span>
+                  <Badge variant="outline" className="bg-green-100 text-green-700">Calculated</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <span className="text-sm font-semibold text-slate-700">Labor Hours</span>
+                  <Badge variant="outline" className="bg-green-100 text-green-700">Union Rates</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <span className="text-sm font-semibold text-slate-700">Environmental Factors</span>
+                  <Badge variant="outline" className="bg-blue-100 text-blue-700">Applied</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <span className="text-sm font-semibold text-slate-700">Margin Multipliers</span>
+                  <Badge variant="outline" className="bg-purple-100 text-purple-700">Protected</Badge>
                 </div>
               </div>
+              <Separator />
+              <div className="p-4 bg-gradient-to-r from-[#003366]/10 to-blue-50 rounded-lg border border-[#003366]/20">
+                <p className="text-sm font-semibold text-[#003366]">Every proposal follows the same formula</p>
+                <p className="text-xs text-slate-600 mt-1">Margin structures are encrypted and never exposed to external AI services</p>
+              </div>
+            </CardContent>
+          </Card>
 
-              <div className="md:w-2/3 space-y-8">
+          <Card className="border-2 border-slate-200 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="bg-slate-900 p-2 rounded-lg text-white">
+                  <Database size={20} />
+                </div>
+                Institutional Knowledge Base
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
                 {[
-                  {
-                    phase: "Phase 2: Ecosystem Integration",
-                    title: "Salesforce & Procurement Bridge",
-                    details: "Direct synchronization with CRM opportunities and real-time vendor lead times to flag supply-chain risks during the pitch.",
-                    icon: RefreshCw
-                  },
-                  {
-                    phase: "Phase 3: Visual Intelligence",
-                    title: "Digital Twin & AR Preview",
-                    details: "Auto-generating 3D-accurate scoreboard renderings and AR-based 'overlay' previews directly from configuration data.",
-                    icon: Glasses
-                  },
-                  {
-                    phase: "Phase 4: Revenue Intelligence",
-                    title: "Predictive Margin Optimization",
-                    details: "Utilizing historical win/loss data to suggest the 'Sweet Spot' pricing based on venue type and competitive landscape.",
-                    icon: Cpu
-                  },
-                  {
-                    phase: "Phase 5: Self-Service Terminal",
-                    title: "Client-Facing Configuration",
-                    details: "A secure external portal where trusted partners can 'tweak' their own configurations within ANC-defined engineering guardrails.",
-                    icon: Globe
-                  }
+                  { icon: Building2, title: "Venue Templates", desc: "Pre-configured specs for stadium types" },
+                  { icon: Layers, title: "Product Catalog", desc: "Complete inventory with current pricing" },
+                  { icon: ClipboardCheck, title: "Checklist Library", desc: "Installation & commissioning tasks" },
+                  { icon: Construction, title: "Labor Standards", desc: "Union rates and time estimates" },
                 ].map((item, i) => (
-                  <div key={i} className="flex gap-6 border-b border-white/10 pb-8 last:border-0 last:pb-0 group">
-                    <div className="shrink-0 mt-1 bg-white/5 p-3 rounded-xl text-blue-400 transition-colors group-hover:bg-blue-600 group-hover:text-white">
-                      <item.icon size={24} />
-                    </div>
+                  <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                    <item.icon size={16} className="text-[#003366] mt-0.5" />
                     <div>
-                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1">{item.phase}</p>
-                      <h4 className="text-xl font-bold mb-2">{item.title}</h4>
-                      <p className="text-sm text-slate-400 leading-relaxed max-w-lg">{item.details}</p>
+                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      <p className="text-xs text-slate-600">{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </section>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* FAQ Section */}
-        <section id="faq" className="mb-24 scroll-mt-24">
-          <h2 className="text-3xl font-black text-slate-900 mb-10 flex items-center gap-3">
-             <HelpCircle className="text-[#003366]" size={32} /> 
-             The "Pre-Meeting" FAQ
-          </h2>
-          <div className="space-y-4">
-            {faqs.map((faq, i) => (
-              <div key={i} className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-blue-300 transition-colors shadow-sm">
-                <button 
-                  onClick={() => setActiveFaq(activeFaq === i ? null : i)}
-                  className="w-full text-left p-6 flex justify-between items-center"
-                >
-                  <span className="font-bold text-slate-800 text-lg leading-tight pr-8">{faq.q}</span>
-                  <ChevronDown className={`shrink-0 text-slate-400 transition-transform ${activeFaq === i ? 'rotate-180' : ''}`} />
-                </button>
-                {activeFaq === i && (
-                  <div className="px-6 pb-6 text-slate-600 border-t border-slate-50 pt-2 leading-relaxed animate-in fade-in duration-300">
-                    {faq.a}
+        <Card className="mb-16 border-2 border-slate-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <TrendingUp size={28} className="text-[#003366]" />
+              Evolution Roadmap
+            </CardTitle>
+            <CardDescription className="text-base">
+              Strategic phases for system enhancement and integration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {[
+                {
+                  phase: "Phase 2: CRM Integration",
+                  status: "Planned",
+                  items: [
+                    { icon: Link2, title: "Salesforce Bridge", desc: "Auto-populate opportunities from CRM" },
+                    { icon: Database, title: "Historical Data", desc: "Leverage past proposals for better estimates" },
+                  ]
+                },
+                {
+                  phase: "Phase 3: Supply Chain Intelligence",
+                  status: "Planned",
+                  items: [
+                    { icon: Truck, title: "Vendor Lead Times", desc: "Real-time inventory & delivery estimates" },
+                    { icon: AlertTriangle, title: "Risk Alerts", desc: "Flag potential supply chain issues early" },
+                  ]
+                },
+                {
+                  phase: "Phase 4: Project Management",
+                  status: "Planned",
+                  items: [
+                    { icon: Users, title: "Team Assignment", desc: "Auto-assign crews based on project type" },
+                    { icon: Clock, title: "Timeline Generation", desc: "Detailed project schedules from specs" },
+                  ]
+                },
+                {
+                  phase: "Phase 5: Analytics & Optimization",
+                  status: "Planned",
+                  items: [
+                    { icon: BarChart3, title: "Win/Loss Analysis", desc: "Learn from proposal outcomes" },
+                    { icon: Calculator, title: "Margin Intelligence", desc: "Optimize pricing based on market data" },
+                  ]
+                },
+                {
+                  phase: "Phase 6: Client Portal",
+                  status: "Planned",
+                  items: [
+                    { icon: Globe, title: "Self-Service Configurator", desc: "Trusted partners can build quotes within guardrails" },
+                    { icon: FileText, title: "Document Generation", desc: "Clients can download proposals directly" },
+                  ]
+                },
+              ].map((phase, i) => (
+                <div key={i} className="border-l-4 border-[#003366] pl-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Badge variant="secondary" className="bg-[#003366] text-white">{phase.phase}</Badge>
+                    <Badge variant="outline" className="text-xs">{phase.status}</Badge>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {phase.items.map((item, j) => (
+                      <div key={j} className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
+                        <item.icon size={18} className="text-[#003366] mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-sm">{item.title}</p>
+                          <p className="text-xs text-slate-600">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Footer/Handover */}
+        <Card className="mb-16 border-2 border-slate-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <ShieldCheck size={28} className="text-[#003366]" />
+              Security & Data Protection
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="p-6 bg-red-50 border border-red-200 rounded-xl">
+                <Lock className="text-red-600 mb-3" size={24} />
+                <h3 className="font-bold text-red-900 mb-2">Proprietary Logic</h3>
+                <p className="text-sm text-red-700">Margin formulas and multiplier tables never leave the secure application layer</p>
+              </div>
+              <div className="p-6 bg-green-50 border border-green-200 rounded-xl">
+                <CheckCircle2 className="text-green-600 mb-3" size={24} />
+                <h3 className="font-bold text-green-900 mb-2">Consistency</h3>
+                <p className="text-sm text-green-700">Every proposal follows identical calculations regardless of who creates it</p>
+              </div>
+              <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl">
+                <FileText className="text-blue-600 mb-3" size={24} />
+                <h3 className="font-bold text-blue-900 mb-2">Full Audit Trail</h3>
+                <p className="text-sm text-blue-700">Hidden validation blocks verify calculations on every generated proposal</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-16 border-2 border-slate-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <HelpCircle size={28} className="text-[#003366]" />
+              Common Questions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-left font-semibold">
+                  How is pricing calculated without access to internal Excel files?
+                </AccordionTrigger>
+                <AccordionContent className="text-slate-600">
+                  The system uses a modular logic framework based on documented industry standards and business rules from strategy sessions. The infrastructure is ready to ingest proprietary ANC data via secure API or encrypted upload when data agreements are in place.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger className="text-left font-semibold">
+                  Is our proprietary margin structure protected?
+                </AccordionTrigger>
+                <AccordionContent className="text-slate-600">
+                  Absolutely. The computational logic layer is decoupled from the AI interface. Margin structures, multiplier tables, and vendor costs are processed within a secure private environment and are never used for model training or exposed to external services.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-3">
+                <AccordionTrigger className="text-left font-semibold">
+                  How are cost updates managed across the organization?
+                </AccordionTrigger>
+                <AccordionContent className="text-slate-600">
+                  Centralized Policy Management allows admins to update cost basis globally. Once committed, all subsequent proposals use updated parameters, ensuring institutional consistency.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-4">
+                <AccordionTrigger className="text-left font-semibold">
+                  Can the system handle complex multi-zone installations?
+                </AccordionTrigger>
+                <AccordionContent className="text-slate-600">
+                  Yes. The engine supports nested configuration hierarchies where a single master proposal can include multiple subsystems (Main Display, Ribbon, Vomitory) while maintaining individual specs and synchronized labor requirements.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-5">
+                <AccordionTrigger className="text-left font-semibold">
+                  What is the CRM integration roadmap?
+                </AccordionTrigger>
+                <AccordionContent className="text-slate-600">
+                  The platform-agnostic, API-first architecture includes an Enterprise Bridge that auto-populates from CRM opportunity objects. Client data and historical context flow seamlessly into the CPQ engine.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+
         <footer className="text-center pt-12 border-t border-slate-200">
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-[.25em] mb-4">Implementation Partner</p>
-          <div className="inline-block bg-[#003366] text-white px-8 py-4 rounded-2xl font-black tracking-widest text-lg">
-             B A S H E E R
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Implementation Partner</p>
+          <div className="inline-block bg-[#003366] text-white px-10 py-5 rounded-xl font-black tracking-widest text-xl shadow-lg">
+            B A S H E E R
           </div>
           <p className="mt-8 text-slate-500 text-sm">
             © 2026 ANC Automated Proposal Initiative. All proprietary logic protected.
@@ -363,4 +552,3 @@ const StrategyPage = () => {
 };
 
 export default StrategyPage;
-
