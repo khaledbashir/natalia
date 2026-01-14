@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import json
 import datetime
-from anc_configurable_calculator import ANCConfigurableCalculator
+from calculator import CPQCalculator, CPQInput
 from excel_generator import ExcelGenerator
 from pdf_generator import PDFGenerator
 from database import init_db, get_db, Project, Message, SharedProposal, SessionLocal
@@ -340,35 +340,36 @@ def get_share(share_id: str, db: Session = Depends(get_db)):
 @app.post("/api/generate")
 async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
     try:
-        # Use the new configurable calculator instead of old CPQCalculator
-        calc = ANCConfigurableCalculator()
+        # Use the existing working CPQCalculator instead of the missing configurable one
+        calc = CPQCalculator()
         project_data = []
 
         for s in req.screens:
-            # Create input data for the configurable calculator
-            screen_data = {
-                "client_name": req.client_name,
-                "product_class": s.product_class,
-                "pixel_pitch": float(s.pixel_pitch),
-                "width_ft": s.width_ft,
-                "height_ft": s.height_ft,
-                "indoor": s.indoor,
-                "mounting_type": s.mounting_type,
-                "structure_condition": s.structure_condition,
-                "labor_type": s.labor_type,
-                "power_distance": s.power_distance,
-                "target_margin": s.target_margin,
-                "venue_type": s.venue_type,
-                "service_level": req.service_level,
-                "timeline": req.timeline,
-                "permits": req.permits,
-                "control_system": req.control_system,
-                "bond_required": req.bond_required,
-                "contingency_pct": 5.0,  # Default 5%
-            }
+            # Create CPQInput for the working calculator
+            inp = CPQInput(
+                client_name=req.client_name,
+                product_class=s.product_class,
+                pixel_pitch=float(s.pixel_pitch),
+                width_ft=s.width_ft,
+                height_ft=s.height_ft,
+                is_outdoor=not s.indoor,
+                shape="Flat",  # Default
+                access="Rear",  # Default
+                complexity="Standard",  # Default
+                target_margin=s.target_margin,
+                structure_condition=s.structure_condition,
+                labor_type=s.labor_type,
+                power_distance=s.power_distance,
+                venue_type=s.venue_type,
+                service_level=s.service_level,
+                timeline=s.timeline,
+                permits=s.permits,
+                control_system=s.control_system,
+                bond_required=req.bond_required,
+            )
 
-            # Calculate using the new configurable calculator
-            result = calc.calculate_quote_from_dict(screen_data)
+            # Calculate using the working CPQCalculator
+            result = calc.calculate_quote(inp)
 
             # Add pixel dimensions for Excel generator
             pixel_pitch_mm = float(s.pixel_pitch)
