@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import json
 import datetime
-from calculator import CPQCalculator, CPQInput
+from anc_configurable_calculator import ANCConfigurableCalculator
 from excel_generator import ExcelGenerator
 from pdf_generator import PDFGenerator
 from database import init_db, get_db, Project, Message, SharedProposal, SessionLocal
@@ -340,42 +340,42 @@ def get_share(share_id: str, db: Session = Depends(get_db)):
 @app.post("/api/generate")
 async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
     try:
-        calc = CPQCalculator()
+        # Use the new configurable calculator instead of old CPQCalculator
+        calc = ANCConfigurableCalculator()
         project_data = []
 
         for s in req.screens:
-            inp = CPQInput(
-                client_name=req.client_name,
-                product_class=s.product_class,
-                pixel_pitch=float(s.pixel_pitch),  # Convert string to float
-                width_ft=s.width_ft,
-                height_ft=s.height_ft,
-                is_outdoor=not s.indoor,  # Convert indoor to is_outdoor
-                shape="Flat",  # Default shape
-                access="Rear",  # Default access
-                complexity="Standard",  # Default complexity
-                target_margin=s.target_margin,
-                structure_condition=s.structure_condition,
-                labor_type=s.labor_type,
-                power_distance=s.power_distance,
-                permits=req.permits,
-                control_system=req.control_system,
-                bond_required=req.bond_required,
-                venue_type=s.venue_type,
-                service_level=req.service_level,
-                timeline=req.timeline,
-            )
+            # Create input data for the configurable calculator
+            screen_data = {
+                "client_name": req.client_name,
+                "product_class": s.product_class,
+                "pixel_pitch": float(s.pixel_pitch),
+                "width_ft": s.width_ft,
+                "height_ft": s.height_ft,
+                "indoor": s.indoor,
+                "mounting_type": s.mounting_type,
+                "structure_condition": s.structure_condition,
+                "labor_type": s.labor_type,
+                "power_distance": s.power_distance,
+                "target_margin": s.target_margin,
+                "venue_type": s.venue_type,
+                "service_level": req.service_level,
+                "timeline": req.timeline,
+                "permits": req.permits,
+                "control_system": req.control_system,
+                "bond_required": req.bond_required,
+                "contingency_pct": 5.0,  # Default 5%
+            }
 
-            result = calc.calculate_quote(inp)
+            # Calculate using the new configurable calculator
+            result = calc.calculate_quote_from_dict(screen_data)
 
             # Add pixel dimensions for Excel generator
             pixel_pitch_mm = float(s.pixel_pitch)
-            width_pixels = int(
-                (s.width_ft * 304.8) / pixel_pitch_mm
-            )  # Convert feet to mm, divide by pitch
+            width_pixels = int((s.width_ft * 304.8) / pixel_pitch_mm)
             height_pixels = int((s.height_ft * 304.8) / pixel_pitch_mm)
 
-            # Add calculated pixel dimensions to the result
+            # Add calculated dimensions to result
             if "inputs" in result:
                 result["inputs"].width_px = width_pixels
                 result["inputs"].height_px = height_pixels
@@ -404,7 +404,10 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
         }
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in generate_proposal: {e}")
+        import traceback
+
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -435,6 +438,12 @@ async def download_pdf():
 async def startup_event():
     init_db()
     print("Database initialized")
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "ANC CPQ Backend"}
 
 
 # Run the server
