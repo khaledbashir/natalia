@@ -1,0 +1,8 @@
+/root/natalia/src/server.py:57: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+Database URL: postgresql://postgres:e00301ee4ceb5dc2a6f1@natalia...
