@@ -83,7 +83,7 @@ class SoftwareLicense:
     license_model: str  # "per_screen", "per_venue", "enterprise"
     annual_cost: float
     one_time_cost: float = 0.0
-    features: List[str]
+    features: List[str] = None
     max_displays: Optional[int] = None
 
 
@@ -398,6 +398,7 @@ ANC_SOFTWARE: Dict[str, SoftwareLicense] = {
         type=SoftwareType.THIRD_PARTY,
         license_model="per_venue",
         one_time_cost=25000.0,
+        annual_cost=0.0,
         features=[
             "Integration with existing CMS",
             "Standard display drivers",
@@ -409,6 +410,7 @@ ANC_SOFTWARE: Dict[str, SoftwareLicense] = {
         name="Manual Control System",
         type=SoftwareType.MANUAL,
         license_model="per_venue",
+        annual_cost=0.0,
         one_time_cost=10000.0,
         features=[
             "Basic control equipment",

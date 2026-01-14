@@ -1,7 +1,7 @@
-// Question definitions for the Conversational Wizard
+// Question definitions for the Conversational Wizard - ENHANCED for Natalia's workflow
 export interface WizardQuestion {
     id: string;
-    category: 'metadata' | 'display' | 'environment' | 'structure' | 'access' | 'labor' | 'project';
+    category: 'metadata' | 'display' | 'environment' | 'structure' | 'access' | 'labor' | 'project' | 'installation';
     question: string;
     type: 'text' | 'select' | 'number';
     options?: { value: string; label: string; impact?: string }[];
@@ -69,6 +69,128 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         type: 'number',
         required: true
     },
+
+    // NEW: Installation Assessment Section (Critical for Natalia's workflow)
+    {
+        id: 'installationEnvironment',
+        category: 'installation',
+        question: "Is this installation indoor or outdoor?",
+        type: 'select',
+        options: [
+            { value: 'Indoor', label: 'Indoor - Controlled Environment', impact: 'Standard installation' },
+            { value: 'Outdoor', label: 'Outdoor - Weather Exposure', impact: '+Weather protection required' }
+        ],
+        required: true,
+        formulaImpact: 'Outdoor requires weatherproofing and special mounting'
+    },
+    {
+        id: 'serviceAccess',
+        category: 'installation',
+        question: "Will technicians access the display from the front or rear for service?",
+        type: 'select',
+        options: [
+            { value: 'Front', label: 'Front Access Only', impact: '+Service complexity' },
+            { value: 'Rear', label: 'Rear Access Available', impact: 'Standard service access' },
+            { value: 'Both', label: 'Both Front and Rear Access', impact: 'Optimal service access' }
+        ],
+        required: true,
+        formulaImpact: 'Front-only access increases service time and complexity'
+    },
+    {
+        id: 'mountingComplexity',
+        category: 'installation',
+        question: "How will the display be mounted?",
+        type: 'select',
+        options: [
+            { value: 'WallFlat', label: 'Flat Wall Mount - Simple', impact: 'Standard mounting' },
+            { value: 'WallCustom', label: 'Custom Wall Mount - Complex', impact: '+Custom steel required' },
+            { value: 'GroundStack', label: 'Ground Stacked - Floor Mount', impact: '+Support structure needed' },
+            { value: 'RiggedFlown', label: 'Rigged/Flown from Structure', impact: '+Engineering review required' },
+            { value: 'PoleMount', label: 'Pole Mounted - Freestanding', impact: '+Foundation and pole required' }
+        ],
+        required: true,
+        formulaImpact: 'Complex mounting increases structural engineering requirements'
+    },
+    {
+        id: 'structureCondition',
+        category: 'installation',
+        question: "What's the condition of the existing structure for mounting?",
+        type: 'select',
+        options: [
+            { value: 'ExistingGood', label: 'Existing Structure - Good Condition', impact: 'Standard structural analysis' },
+            { value: 'ExistingPoor', label: 'Existing Structure - Requires Repair', impact: '+Structural reinforcement needed' },
+            { value: 'NewSteel', label: 'New Steel Structure Required', impact: '+$15,000-50,000 for new steel' },
+            { value: 'Foundation', label: 'New Foundation Required', impact: '+Foundation engineering and construction' }
+        ],
+        required: true,
+        formulaImpact: 'Poor existing structure or new steel significantly increases costs'
+    },
+    {
+        id: 'craneAccess',
+        category: 'installation',
+        question: "Is crane access available for equipment installation?",
+        type: 'select',
+        options: [
+            { value: 'CraneAvailable', label: 'Yes - Crane access available', impact: 'Standard equipment installation' },
+            { value: 'CraneRental', label: 'No - Crane rental required', impact: '+$5,000-15,000 crane rental' },
+            { value: 'ManualOnly', label: 'Manual installation only (no crane)', impact: '+Manual handling time' }
+        ],
+        required: true,
+        formulaImpact: 'Crane rental adds significant cost to installation'
+    },
+    {
+        id: 'powerDistance',
+        category: 'installation',
+        question: "How far is the display location from the main electrical panel?",
+        type: 'select',
+        options: [
+            { value: 'Close', label: 'Under 50 feet - Close', impact: 'Standard electrical run' },
+            { value: 'Medium', label: '50-150 feet - Medium distance', impact: '+$2,000-5,000 for additional conduit' },
+            { value: 'Far', label: 'Over 150 feet - New electrical run required', impact: '+$8,000-15,000 for new feeder' }
+        ],
+        required: true,
+        formulaImpact: 'Longer electrical runs require more materials and labor'
+    },
+    {
+        id: 'workingHours',
+        category: 'installation',
+        question: "Are there any restrictions on working hours for installation?",
+        type: 'select',
+        options: [
+            { value: 'Standard', label: 'Standard business hours (7AM-6PM)', impact: 'Standard labor rates' },
+            { value: 'Restricted', label: 'Restricted hours (evenings/weekends only)', impact: '+Overtime rates required' },
+            { value: 'EventSchedule', label: 'Event schedule dependent', impact: '+Premium rates for event coordination' }
+        ],
+        required: true,
+        formulaImpact: 'Restricted hours increase labor costs due to overtime rates'
+    },
+    {
+        id: 'weatherProtection',
+        category: 'installation',
+        question: "Is weather protection required during installation?",
+        type: 'select',
+        options: [
+            { value: 'None', label: 'No - Indoor installation', impact: 'No weather protection needed' },
+            { value: 'Basic', label: 'Yes - Basic weather protection', impact: '+Weather contingency planning' },
+            { value: 'Full', label: 'Yes - Full weather protection system', impact: '+$10,000-25,000 for weather protection' }
+        ],
+        required: true,
+        formulaImpact: 'Weather protection adds significant cost for outdoor installations'
+    },
+    {
+        id: 'sitePreparation',
+        category: 'installation',
+        question: "What level of site preparation is required?",
+        type: 'select',
+        options: [
+            { value: 'Minimal', label: 'Minimal - Ready for installation', impact: 'No additional site work' },
+            { value: 'Moderate', label: 'Moderate - Some preparation needed', impact: '+Site cleanup and preparation' },
+            { value: 'Extensive', label: 'Extensive - Major site work required', impact: '+$5,000-20,000 for site preparation' }
+        ],
+        required: true,
+        formulaImpact: 'Extensive site preparation adds significant cost'
+    },
+
     // Environment
     {
         id: 'environment',
@@ -82,6 +204,7 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Outdoor adds weatherproofing surcharge'
     },
+
     // Structure
     {
         id: 'shape',
@@ -95,47 +218,8 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Curved requires custom framing'
     },
-    {
-        id: 'mountingType',
-        category: 'structure',
-        question: "How will this be mounted?",
-        type: 'select',
-        options: [
-            { value: 'Wall', label: 'Wall Mount', impact: 'Standard' },
-            { value: 'Ground', label: 'Ground Stack', impact: '+5%' },
-            { value: 'Rigging', label: 'Rigged/Flown', impact: '+25%' },
-            { value: 'Pole', label: 'Pole Mount', impact: '+15%' }
-        ],
-        required: true,
-        formulaImpact: 'Affects structural engineering requirements'
-    },
-    // Access
-    {
-        id: 'access',
-        category: 'access',
-        question: "Will technicians service from the front or rear?",
-        type: 'select',
-        options: [
-            { value: 'Front', label: 'Front Access', impact: '+10% labor' },
-            { value: 'Rear', label: 'Rear Access', impact: '+15% labor' }
-        ],
-        required: true,
-        formulaImpact: 'Rear access requires more complex installation'
-    },
-    // Structure Condition (NEW - was missing)
-    {
-        id: 'structureCondition',
-        category: 'structure',
-        question: "Will we be mounting to existing usable steel, or is new primary steel required?",
-        type: 'select',
-        options: [
-            { value: 'Existing', label: 'Existing Structure (Usable)', impact: 'Standard' },
-            { value: 'NewSteel', label: 'New Steel Required', impact: '+$15,000-50,000' }
-        ],
-        required: true,
-        formulaImpact: 'New steel significantly increases structural costs'
-    },
-    // Labor Type (NEW - was missing)
+
+    // Labor Type
     {
         id: 'laborType',
         category: 'labor',
@@ -149,21 +233,8 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Union/Prevailing wage significantly increases labor costs'
     },
-    // Power Distance (NEW - was missing)
-    {
-        id: 'powerDistance',
-        category: 'project',
-        question: "Approximate distance to the nearest power/data termination point?",
-        type: 'select',
-        options: [
-            { value: 'Close', label: 'Under 50 ft', impact: 'Standard' },
-            { value: 'Medium', label: '50 - 150 ft', impact: '+$2,000-5,000' },
-            { value: 'Far', label: 'Over 150 ft (New Run)', impact: '+$8,000-15,000' }
-        ],
-        required: true,
-        formulaImpact: 'Longer runs require more cable and labor'
-    },
-    // Permits (NEW - was missing)
+
+    // Project
     {
         id: 'permits',
         category: 'project',
@@ -177,7 +248,6 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Permit handling adds administrative costs'
     },
-    // Control System (NEW - was missing)
     {
         id: 'controlSystem',
         category: 'project',
@@ -190,7 +260,6 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Control systems add significant hardware costs'
     },
-    // Performance Bond (NEW - was missing)
     {
         id: 'bondRequired',
         category: 'project',
@@ -216,13 +285,6 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         formulaImpact: 'Affects project management overhead'
     },
     {
-        id: 'unitCost',
-        category: 'project',
-        question: "Do you have a target dollar per sq ft for the hardware?",
-        type: 'number',
-        required: false
-    },
-    {
         id: 'targetMargin',
         category: 'project',
         question: "What is the target gross margin percentage?",
@@ -242,7 +304,8 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
         required: true,
         formulaImpact: 'Higher service levels increase recurring service revenue'
     },
-    // Upsells - Revenue Impact
+
+    // Upsells
     {
         id: 'contentManagement',
         category: 'project',
