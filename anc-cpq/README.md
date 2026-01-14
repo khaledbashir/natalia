@@ -31,3 +31,4 @@ See `.env.production.example` for full environment variable reference.
 - **Document extraction** — Upload PDF/brief, auto-extracts specs
 - **Shareable client links** — Generate unique URLs for clients to view proposals
 - **PDF/Excel export** — Download formatted documents
+# Force rebuild
