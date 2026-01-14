@@ -353,18 +353,18 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
                 width_ft=s.width_ft,
                 height_ft=s.height_ft,
                 is_outdoor=not s.indoor,
-                shape="Flat",  # Default
-                access="Rear",  # Default
-                complexity="Standard",  # Default
+                shape="Flat",
+                access="Rear",
+                complexity="Standard",
                 target_margin=s.target_margin,
                 structure_condition=s.structure_condition,
                 labor_type=s.labor_type,
                 power_distance=s.power_distance,
                 venue_type=s.venue_type,
-                service_level=s.service_level,
-                timeline=s.timeline,
-                permits=s.permits,
-                control_system=s.control_system,
+                service_level=req.service_level,
+                timeline=req.timeline,
+                permits=req.permits,
+                control_system=req.control_system,
                 bond_required=req.bond_required,
             )
 
