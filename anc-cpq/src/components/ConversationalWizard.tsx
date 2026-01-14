@@ -16,6 +16,7 @@ import {
     ChevronDown,
     MapPin,
 } from "lucide-react";
+import ConfirmModal from "./ConfirmModal";
 import { WIZARD_QUESTIONS } from "../lib/wizard-questions";
 import { CPQInput } from "../lib/types";
 import { ModelSelector } from "./ModelSelector";
@@ -73,6 +74,8 @@ const PROGRESS_STEPS = [
     { id: "config", label: "DETAILS", fields: ["environment", "shape", "access", "mountingType", "structureCondition"] },
     { id: "project", label: "LOGISTICS", fields: ["laborType", "powerDistance", "permits", "controlSystem", "bondRequired", "complexity", "unitCost", "targetMargin", "serviceLevel"] },
 ];
+
+    
 
 // Normalization helper for AI parameters
 const normalizeParams = (params: any) => {
@@ -209,6 +212,9 @@ export function ConversationalWizard({
     const [searchStep, setSearchStep] = useState(1);
     const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
     const [lastFieldUpdated, setLastFieldUpdated] = useState<string | null>(null);
+    // Confirm modal state for deletes
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const lastNarrationRequestRef = useRef<
         | {
               text: string;
@@ -1280,27 +1286,31 @@ export function ConversationalWizard({
 
     const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation(); // Don't trigger load when clicking delete
-        
-        if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) {
-            return;
-        }
+        // Show modern confirm modal instead of native confirm
+        setConfirmDeleteId(id);
+        setShowConfirmDelete(true);
+    };
 
+    const performDelete = async (idToDelete?: string | null) => {
+        const id = idToDelete || confirmDeleteId;
+        setShowConfirmDelete(false);
+        setConfirmDeleteId(null);
+        if (!id) return;
         try {
             const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                // If it's the current project, reset to new
                 if (projectId?.toString() === id) {
                     handleNewProposal();
                 }
-                // Refresh history
                 fetchHistory();
             } else {
                 alert("Failed to delete project");
             }
         } catch (e) {
-            console.error("Delete error:", e);
-        }
-    };
+                console.error("Delete error:", e);
+                alert("Failed to delete project");
+            }
+        };
 
     // Compute current step for widget rendering (used in JSX)
     const currentNextStep = messages[messages.length - 1]?.nextStep;
@@ -1441,6 +1451,17 @@ export function ConversationalWizard({
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                open={showConfirmDelete}
+                title="Delete project"
+                message="Are you sure you want to delete this project? This cannot be undone."
+                onConfirm={() => performDelete()}
+                onCancel={() => {
+                    setShowConfirmDelete(false);
+                    setConfirmDeleteId(null);
+                }}
+            />
 
             {/* Messages Area */}
             <div
