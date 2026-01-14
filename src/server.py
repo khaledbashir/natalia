@@ -284,6 +284,18 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     }
 
 
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    """Delete a project and its associated data"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    db.delete(project)
+    db.commit()
+    return {"status": "success", "message": f"Project {project_id} deleted"}
+
+
 @app.post("/api/projects/{project_id}/save")
 @app.put("/api/projects/{project_id}/state")
 def save_project_state(project_id: int, state: Dict, db: Session = Depends(get_db)):
