@@ -8,9 +8,11 @@ interface PreviewProps {
   input: any;
   result: any;
   projectId?: number;
+  onUpdateField?: (field: any, value: any) => void;
+  initialShowPricing?: boolean;
 }
 
-export default function Preview({ input, result, projectId }: PreviewProps) {
+export default function Preview({ input, result, projectId, onUpdateField }: PreviewProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
