@@ -27,6 +27,15 @@ export interface ScreenConfig {
     permits?: PermitType;
     controlSystem?: ControlSystem;
     bondRequired?: boolean;
+    projectName?: string;
+    timeline?: string;
+    installationEnvironment?: string;
+    serviceAccess?: string;
+    mountingComplexity?: string;
+    craneAccess?: string;
+    workingHours?: string;
+    weatherProtection?: string;
+    sitePreparation?: string;
 }
 
 export interface CPQInput {
@@ -36,6 +45,7 @@ export interface CPQInput {
     projectName: string;
     addressConfirmed?: boolean;
     serviceLevel?: ServiceLevel;
+    timeline?: string;
 
     // 2. Class (Main screen or aggregate)
     productClass: ProductClass;
@@ -81,7 +91,16 @@ export interface CPQInput {
     spareParts?: UpsellOption;
     maintenance?: UpsellOption;
 
-    // 14. Multi-screen
+    // 14. Installation Details (Wizard Sync)
+    installationEnvironment?: string;
+    serviceAccess?: string;
+    mountingComplexity?: string;
+    craneAccess?: string;
+    workingHours?: string;
+    weatherProtection?: string;
+    sitePreparation?: string;
+
+    // 15. Multi-screen
     screens?: ScreenConfig[];
 }
 
