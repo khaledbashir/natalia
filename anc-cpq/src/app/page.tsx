@@ -11,7 +11,7 @@ import { MessageSquare, Settings, Database } from "lucide-react";
 export default function Home() {
     // 1. Input mode toggle
     const [mode, setMode] = useState<"ai" | "form" | "salesforce">("ai");
-    const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
+    const [activeProjectId, setActiveProjectId] = useState<number | undefined>(undefined);
 
     // 2. Valid default state for the 8 variables
     const [input, setInput] = useState<CPQInput>({
