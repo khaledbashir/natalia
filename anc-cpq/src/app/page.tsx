@@ -3,7 +3,7 @@ import { useState, useMemo, useCallback } from "react";
 import { CPQInput } from "../lib/types";
 import { calculateCPQ } from "../lib/calculator";
 import { Wizard } from "../components/Wizard";
-import { Preview } from "../components/Preview";
+import Preview from "../components/Preview";
 import { ConversationalWizard } from "../components/ConversationalWizard";
 import { SalesforceSimulator } from "../components/SalesforceSimulator";
 import { MessageSquare, Settings, Database } from "lucide-react";

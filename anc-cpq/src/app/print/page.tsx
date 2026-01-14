@@ -1,7 +1,7 @@
 'use client';
 import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Preview } from '../../components/Preview';
+import Preview from '../../components/Preview';
 import { CPQInput, CalculationResult } from '../../lib/types';
 import { calculateCPQ } from '../../lib/calculator';
 
