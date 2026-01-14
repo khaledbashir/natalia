@@ -235,6 +235,13 @@ async def search_address(req: SearchRequest):
     return {"results": results[:5]}
 
 
+@app.get("/api/projects")
+def list_projects(db: Session = Depends(get_db)):
+    """List all projects"""
+    projects = db.query(Project).all()
+    return projects
+
+
 @app.post("/api/projects")
 def create_project(client_name: str = "New Project", db: Session = Depends(get_db)):
     """Create a new empty project session"""
@@ -259,14 +266,15 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/projects/{project_id}/save")
+@app.put("/api/projects/{project_id}/state")
 def save_project_state(project_id: int, state: Dict, db: Session = Depends(get_db)):
     """Save project state"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Convert dict to JSON string for database storage
-    project.state = json.dumps(state) if isinstance(state, dict) else state
+    # Store state as JSON string
+    project.state = state
     if "clientName" in state:
         project.client_name = state["clientName"]
 
