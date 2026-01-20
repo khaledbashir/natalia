@@ -28,9 +28,8 @@ export default function RootLayout({
                 <span>ANC CPQ</span>
               </div>
               <nav className="flex items-center space-x-6 text-sm font-medium">
-                <Link href="/" className="transition-colors hover:text-foreground/80 text-foreground/60">New Project</Link>
-                <Link href="/demo" className="transition-colors hover:text-foreground/80 text-foreground/60">Demo Dashboard</Link>
-                <Link href="/orgs" className="transition-colors hover:text-foreground/80 text-foreground/60">Organizations</Link>
+                <Link href="/dashboard" className="transition-colors hover:text-foreground/80 text-foreground/60">Dashboard</Link>
+                <Link href="/new-project" className="transition-colors hover:text-foreground/80 text-foreground/60">New Project</Link>
               </nav>
               <div className="ml-auto flex items-center space-x-4">
                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">v1.0.0-beta</span>
