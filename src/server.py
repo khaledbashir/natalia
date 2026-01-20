@@ -20,7 +20,19 @@ import datetime
 from calculator import CPQCalculator, CPQInput
 from excel_generator import ExcelGenerator
 from pdf_generator import PDFGenerator
-from database import init_db, get_db, Project, Message, SharedProposal, SessionLocal
+from database import (
+    init_db,
+    get_db,
+    Project,
+    Message,
+    SharedProposal,
+    SessionLocal,
+    Organization,
+    User,
+    Membership,
+    create_invite,
+    consume_invite,
+)
 from sqlalchemy.orm import Session
 import secrets
 import string
@@ -261,6 +273,86 @@ def list_projects(db: Session = Depends(get_db)):
     return projects
 
 
+# --- Organization & Membership Endpoints ---
+@app.post("/api/orgs")
+def create_organization(name: str, db: Session = Depends(get_db)):
+    """Create a new organization"""
+    existing = db.query(Organization).filter(Organization.name == name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Organization already exists")
+    org = Organization(name=name)
+    db.add(org)
+    db.commit()
+    db.refresh(org)
+    return {"id": org.id, "name": org.name}
+
+
+@app.get("/api/orgs")
+def list_orgs(db: Session = Depends(get_db)):
+    orgs = db.query(Organization).all()
+    return [{"id": o.id, "name": o.name} for o in orgs]
+
+
+@app.get("/api/orgs/{org_id}/members")
+def list_org_members(org_id: int, db: Session = Depends(get_db)):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    members = []
+    for m in org.members:
+        members.append({"email": m.user.email, "full_name": m.user.full_name, "role": m.role})
+    return {"organization": org.name, "members": members}
+
+
+class InviteRequest(BaseModel):
+    email: str
+    role: str = "member"
+
+
+@app.post("/api/orgs/{org_id}/invites")
+def create_org_invite(org_id: int, req: InviteRequest, db: Session = Depends(get_db)):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    invite = create_invite(db, req.email, org_id, role=req.role, ttl_days=7)
+    return {"token": invite.token, "invite_url": f"{os.getenv('NEXT_PUBLIC_BASE_URL','http://localhost:3000')}/invite/{invite.token}", "expires_at": invite.expires_at.isoformat()}
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str
+    email: str
+    full_name: Optional[str] = None
+
+
+@app.post("/api/invite/accept")
+def accept_invite(req: AcceptInviteRequest, db: Session = Depends(get_db)):
+    invite = consume_invite(db, req.token)
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found or expired")
+
+    # Create or fetch user
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        # generate a simple API key for now
+        api_key = secrets.token_urlsafe(24)
+        user = User(email=req.email, full_name=req.full_name or req.email.split('@')[0], api_key=api_key)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Create membership
+    membership = db.query(Membership).filter(Membership.user_id == user.id, Membership.organization_id == invite.organization_id).first()
+    if not membership:
+        membership = Membership(user_id=user.id, organization_id=invite.organization_id, role=invite.role)
+        db.add(membership)
+        db.commit()
+    # Delete invite after consumption
+    db.delete(invite)
+    db.commit()
+
+    return {"status": "accepted", "user": {"email": user.email, "full_name": user.full_name, "api_key": user.api_key}}
+
+
 @app.post("/api/projects")
 def create_project(client_name: str = "New Project", db: Session = Depends(get_db)):
     """Create a new empty project session"""
@@ -438,12 +530,68 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
             project_data, req.client_name, filename="anc_client_proposal.pdf"
         )
 
-        return {
+        result = {
             "status": "success",
             "message": "Files Generated",
             "files": ["anc_internal_estimation.xlsx", "anc_client_proposal.pdf"],
             "data": project_data,
         }
+
+        return result
+
+
+@app.post('/api/send-proposal')
+def send_proposal(payload: Dict, db: Session = Depends(get_db)):
+    """Generate proposal files and simulate sending by writing to outbox."""
+    # Expect payload: { client_name, screens: [...], recipient_email }
+    recipient = payload.get('recipient_email')
+    if not recipient:
+        raise HTTPException(status_code=400, detail='recipient_email required')
+
+    # Reuse generation logic
+    try:
+        req = ProjectRequest(**{k: payload[k] for k in ['client_name', 'screens', 'service_level', 'timeline'] if k in payload})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f'Invalid payload: {e}')
+
+    # Call internal generator logic (duplicate of /api/generate behavior)
+    calc = CPQCalculator()
+    project_data = []
+    for s in req.screens:
+        inp = CPQInput(
+            client_name=req.client_name,
+            product_class=s.product_class,
+            pixel_pitch=float(s.pixel_pitch),
+            width_ft=s.width_ft,
+            height_ft=s.height_ft,
+            is_outdoor=s.is_outdoor,
+            shape=s.shape,
+            access=s.access,
+            complexity=s.complexity,
+            target_margin=s.target_margin,
+            structure_condition=s.structure_condition,
+            labor_type=s.labor_type,
+            power_distance=s.power_distance,
+            venue_type=s.venue_type,
+            service_level=req.service_level,
+            timeline=req.timeline,
+            permits=s.permits or req.permits,
+            control_system=s.control_system or req.control_system,
+            bond_required=s.bond_required or req.bond_required,
+            unit_cost=s.unit_cost,
+        )
+        result = calc.calculate_quote(inp)
+        project_data.append(result)
+
+    excel_gen = ExcelGenerator()
+    excel_gen.update_expert_estimator(project_data, output_path='anc_internal_estimation.xlsx')
+    pdf_gen = PDFGenerator()
+    pdf_gen.generate_proposal(project_data, req.client_name, filename='anc_client_proposal.pdf')
+
+    from src.server_email import send_proposal_to_outbox
+    out_path = send_proposal_to_outbox(recipient, ['anc_client_proposal.pdf', 'anc_internal_estimation.xlsx'], metadata={'client': req.client_name})
+
+    return {'status': 'sent', 'outbox': out_path}
 
     except Exception as e:
         print(f"Error in generate_proposal: {e}")
@@ -451,6 +599,45 @@ async def generate_proposal(req: ProjectRequest, db: Session = Depends(get_db)):
 
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/upload-master")
+async def upload_master_file(org_id: Optional[int] = None, file: Optional["UploadFile"] = None, db: Session = Depends(get_db)):
+    """Upload a Master Excel file, run basic validation, and attach it to an organization if provided."""
+    from fastapi import UploadFile
+    from pathlib import Path
+    import datetime
+
+    if file is None:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
+    uploads_dir = Path("uploads")
+    uploads_dir.mkdir(exist_ok=True)
+    ts = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    safe_name = uploads_dir / f"master_uploaded_{org_id or 'anon'}_{ts}.xlsx"
+
+    with safe_name.open("wb") as f:
+        contents = await file.read()
+        f.write(contents)
+
+    # Load and validate
+    from src.master_sheet import load_master_excel, validate_master_data
+
+    try:
+        data = load_master_excel(safe_name)
+        report = validate_master_data(data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {e}")
+
+    # Attach to organization if provided
+    if org_id:
+        org = db.query(Organization).filter(Organization.id == org_id).first()
+        if not org:
+            raise HTTPException(status_code=404, detail="Organization not found")
+        org.master_sheet_path = str(safe_name)
+        db.commit()
+
+    return {"status": "uploaded", "path": str(safe_name), "report": report}
 
 
 @app.get("/api/download/excel")

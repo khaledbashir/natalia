@@ -49,6 +49,7 @@ class CPQInput:
     unit_cost: Optional[float] = 0.0
     target_margin: Optional[float] = 0.0
     structure_condition: Optional[str] = "Existing"
+    mounting_type: Optional[str] = "Wall"  # Wall, Ground, Rigging
     # NEW: ANC-specific fields
     labor_type: Optional[str] = "NonUnion"
     power_distance: Optional[str] = "Close"
@@ -127,9 +128,18 @@ class CPQCalculator:
         # Structural Materials
         structural_material_multiplier = 1.0
         if project_input.structure_condition == "NewSteel":
-            structural_material_multiplier = 1.3
+            structural_material_multiplier = 1.3  # +30% for new steel
         elif project_input.installation_type == "retrofit":
             structural_material_multiplier = 1.15
+
+        # Shape modifiers (per ANC Intelligence Core)
+        if project_input.shape and project_input.shape.lower() == "curved":
+            structural_material_multiplier += 0.05  # +5% for curved screens
+
+        # Mounting type modifiers
+        if hasattr(project_input, 'mounting_type') and project_input.mounting_type:
+            if project_input.mounting_type.lower() == "rigging":
+                structural_material_multiplier += 0.10  # +10% for rigging installations
 
         raw_structural_materials = hardware_cost * 0.20 * structural_material_multiplier
 
@@ -652,7 +662,12 @@ class CPQCalculator:
         subtotal = total_marked_up + bond_cost
 
         # 16. Apply Contingency
-        contingency_cost = round(subtotal * contingency_pct)
+        # SPECIAL: +5% automatic contingency if project is BOTH Outdoor AND NewSteel (high-risk combo)
+        effective_contingency_pct = contingency_pct
+        if project_input.is_outdoor and project_input.structure_condition == "NewSteel":
+            effective_contingency_pct += 0.05  # Add 5% extra contingency for high-risk projects
+        
+        contingency_cost = round(subtotal * effective_contingency_pct)
         marked_up["contingency"] = contingency_cost
 
         # Final sell price

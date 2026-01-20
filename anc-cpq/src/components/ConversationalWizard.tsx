@@ -15,6 +15,8 @@ import {
     ChevronRight,
     ChevronDown,
     MapPin,
+    Download,
+    Share2,
 } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
 import { WIZARD_QUESTIONS } from "../lib/wizard-questions";
@@ -55,6 +57,7 @@ const INITIAL_CPQ_STATE: Partial<CPQInput> = {
     clientName: "",
     address: "",
     projectName: "",
+    screens: [],
 };
 
 const getInitialMessage = (): Message => ({
@@ -75,7 +78,7 @@ const PROGRESS_STEPS = [
     { id: "project", label: "LOGISTICS", fields: ["laborType", "powerDistance", "permits", "controlSystem", "bondRequired", "complexity", "unitCost", "targetMargin", "serviceLevel"] },
 ];
 
-    
+
 
 // Normalization helper for AI parameters
 const normalizeParams = (params: any) => {
@@ -101,7 +104,7 @@ const normalizeParams = (params: any) => {
     Object.entries(params).forEach(([key, val]) => {
         // 1. Convert snake_case to camelCase
         let camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-        
+
         // 2. Safety Truncation: Prevent AI hallucinations from breaking the UI headers
         let safeVal = val;
         if (typeof val === 'string' && (camelKey === 'clientName' || camelKey === 'address' || camelKey === 'projectName')) {
@@ -214,13 +217,14 @@ export function ConversationalWizard({
     const [lastFieldUpdated, setLastFieldUpdated] = useState<string | null>(null);
     // Confirm modal state for deletes
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [showScreens, setShowScreens] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const lastNarrationRequestRef = useRef<
         | {
-              text: string;
-              state: any;
-              narration: any;
-          }
+            text: string;
+            state: any;
+            narration: any;
+        }
         | null
     >(null);
 
@@ -427,7 +431,7 @@ export function ConversationalWizard({
                 if (data.nextStep) {
                     setAskedQuestions(prev => new Set([...prev, data.nextStep]));
                 }
-                
+
                 setMessages((prev) => [
                     ...prev,
                     {
@@ -520,15 +524,15 @@ export function ConversationalWizard({
                         .split(/[:,-]/)[0]
                         .trim();
 
-                        const productClass = cpqState.productClass || 'Display';
-                        const newState = {
-                            ...cpqState,
-                            clientName: venueName,
-                            address: addressPart,
-                            projectName: `${venueName} - ${productClass}`,
-                        };
-                        setCpqState(newState);
-                        onUpdate(newState);
+                    const productClass = cpqState.productClass || 'Display';
+                    const newState = {
+                        ...cpqState,
+                        clientName: venueName,
+                        address: addressPart,
+                        projectName: `${venueName} - ${productClass}`,
+                    };
+                    setCpqState(newState);
+                    onUpdate(newState);
                     updatedText = addressPart;
                     currentStateToSend = newState;
                 } else {
@@ -794,8 +798,8 @@ export function ConversationalWizard({
                         widgetDef.id === "clientName"
                             ? "venue name"
                             : widgetDef.id === "address"
-                              ? "venue address"
-                              : "specification",
+                                ? "venue address"
+                                : "specification",
                     fieldCapturedId: widgetDef.id,
                     valueCaptured: updatedParams[widgetDef.id],
                     nextStep,
@@ -873,7 +877,7 @@ export function ConversationalWizard({
                 await handleStreamingChat(updatedText, currentStateToSend);
                 return;
             }
-            
+
             const res = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -903,7 +907,7 @@ export function ConversationalWizard({
                 Object.keys(data.updatedParams).length > 0
             ) {
                 const normalized = normalizeParams(data.updatedParams);
-                
+
                 // Track the last field updated to control UI signals
                 const updatedKeys = Object.keys(normalized);
                 if (updatedKeys.length > 0) {
@@ -1035,7 +1039,7 @@ export function ConversationalWizard({
                 },
             ];
         });
-        
+
         try {
             const response = await fetch("/api/chat/stream", {
                 method: "POST",
@@ -1055,7 +1059,7 @@ export function ConversationalWizard({
                 const bodyText = await response.text();
                 throw new Error(bodyText || `Streaming failed (HTTP ${response.status})`);
             }
-            
+
             const reader = response.body?.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
@@ -1064,16 +1068,16 @@ export function ConversationalWizard({
             let finalNextStep = '';
             let finalSuggestedOptions: { value: string; label: string }[] = [];
             let finalUpdatedParams: Record<string, any> = {};
-            
+
             if (reader) {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    
+
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split('\n');
                     buffer = lines.pop() || '';
-                    
+
                     for (const line of lines) {
                         const trimmedLine = line.trim();
                         if (!trimmedLine) continue;
@@ -1081,10 +1085,10 @@ export function ConversationalWizard({
                         if (trimmedLine.startsWith('data: ')) {
                             const data = trimmedLine.slice(6);
                             if (data === '[DONE]') continue;
-                            
+
                             try {
                                 const parsed = JSON.parse(data);
-                                
+
                                 if (parsed.type === 'thinking') {
                                     setStreamingThinking(parsed.content);
                                 } else if (parsed.type === 'content') {
@@ -1109,7 +1113,7 @@ export function ConversationalWizard({
                                 } else if (parsed.type === 'complete') {
                                     // Extraction logic to ensure ZERO JSON leaks into the UI
                                     finalContent = sanitizeAssistantText(parsed.message || parsed.content || finalContent);
-                                    
+
                                     // If we somehow still have raw JSON in finalContent, force extract the 'message' field
                                     finalContent = sanitizeAssistantText(finalContent);
 
@@ -1149,14 +1153,14 @@ export function ConversationalWizard({
                     }
                 }
             }
-            
+
             if (Object.keys(finalUpdatedParams).length > 0) {
                 const normalized = normalizeParams(finalUpdatedParams);
                 const newState = { ...currentStateToSend, ...normalized };
                 setCpqState(newState);
                 onUpdate(newState);
             }
-            
+
             // The placeholder bubble in the messages array is already updated with finalContent, finalNextStep, etc.
             // No need to append a new message.
 
@@ -1185,7 +1189,7 @@ export function ConversationalWizard({
             setStreamingThinking('');
             setIsStreaming(false);
             setIsLoading(false);
-            
+
         } catch (error) {
             setIsLoading(false);
             const errMsg = error instanceof Error ? error.message : String(error);
@@ -1265,13 +1269,13 @@ export function ConversationalWizard({
                 setProjectId(data.id);
                 if (onProjectInit) onProjectInit(data.id);
                 localStorage.setItem("anc_project_id", data.id.toString());
-                
+
                 if (data.messages && data.messages.length > 0) {
                     setMessages(data.messages);
                 } else {
                     setMessages([getInitialMessage()]);
                 }
-                
+
                 if (data.state) {
                     setCpqState(data.state);
                     onUpdate(data.state);
@@ -1307,10 +1311,10 @@ export function ConversationalWizard({
                 alert("Failed to delete project");
             }
         } catch (e) {
-                console.error("Delete error:", e);
-                alert("Failed to delete project");
-            }
-        };
+            console.error("Delete error:", e);
+            alert("Failed to delete project");
+        }
+    };
 
     // Compute current step for widget rendering (used in JSX)
     const currentNextStep = messages[messages.length - 1]?.nextStep;
@@ -1325,6 +1329,47 @@ export function ConversationalWizard({
     }).length;
     const progress = Math.round((filledFields / totalFields) * 100);
 
+    const handleAddAnotherScreen = () => {
+        // 1. Capture current screen configuration
+        const { clientName, address, projectName, screens = [], ...currentScreen } = cpqState;
+
+        // 2. Add to screens array
+        const newScreens = [...screens, { ...currentScreen, id: Date.now().toString() } as any];
+
+        // 3. Reset screen-specific fields but keep metadata
+        const nextState: Partial<CPQInput> = {
+            clientName,
+            address,
+            projectName,
+            screens: newScreens,
+        };
+
+        setCpqState(nextState);
+        onUpdate(nextState);
+
+        // 4. Reset wizard flow for the next screen
+        // Find the first screen-specific question (after metadata)
+        const firstScreenQuestion = WIZARD_QUESTIONS.find(q => q.category !== 'metadata');
+        const nextStep = firstScreenQuestion?.id || 'productClass';
+
+        const assistantMsg: Message = {
+            role: "assistant",
+            content: `Screen ${newScreens.length} added! Let's configure Screen ${newScreens.length + 1}. ${firstScreenQuestion?.question}`,
+            nextStep,
+            suggestedOptions: firstScreenQuestion?.options || []
+        };
+
+        setMessages(prev => [...prev, assistantMsg]);
+        setAskedQuestions(new Set()); // Reset asked questions for the new screen
+    };
+
+    const handleDeleteScreen = (screenId: string) => {
+        const remainingScreens = (cpqState.screens || []).filter(s => s.id !== screenId);
+        const nextState = { ...cpqState, screens: remainingScreens };
+        setCpqState(nextState);
+        onUpdate(nextState);
+    };
+
     // Step status calculation
     const getStepStatus = (step: typeof PROGRESS_STEPS[0]) => {
         const stepFields = step.fields;
@@ -1332,7 +1377,7 @@ export function ConversationalWizard({
             const val = cpqState[field as keyof CPQInput];
             return val !== undefined && val !== null && val !== '' && val !== 0;
         }).length;
-        
+
         if (completedInStep === stepFields.length) return 'complete';
         if (completedInStep > 0) return 'active';
         return 'pending';
@@ -1348,7 +1393,7 @@ export function ConversationalWizard({
                             {progress}%
                         </div>
                         <span className="text-[9px] text-slate-500 font-black uppercase tracking-[0.2em]">
-                            Verification Progress
+                            Verification Progress {cpqState.screens && cpqState.screens.length > 0 && `(Total Screens: ${cpqState.screens.length + 1})`}
                         </span>
                     </div>
                     <div className="flex gap-1.5">
@@ -1356,6 +1401,18 @@ export function ConversationalWizard({
                             selectedModel={selectedModel}
                             onModelChange={setSelectedModel}
                         />
+                        <button
+                            onClick={() => setShowScreens(!showScreens)}
+                            className="p-1 text-slate-600 hover:text-blue-400 transition-colors relative"
+                            title="Manage Screens"
+                        >
+                            <FileText size={14} />
+                            {cpqState.screens && cpqState.screens.length > 0 && (
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full text-[7px] flex items-center justify-center text-white ring-1 ring-slate-900">
+                                    {cpqState.screens.length}
+                                </span>
+                            )}
+                        </button>
                         <button
                             onClick={() => setShowHistory(!showHistory)}
                             className="p-1 text-slate-600 hover:text-blue-400 transition-colors"
@@ -1405,6 +1462,70 @@ export function ConversationalWizard({
                     })}
                 </div>
             </div>
+
+            {/* Screen Management Overlay */}
+            {showScreens && (
+                <div className="absolute inset-0 bg-slate-900/95 z-30 p-6 backdrop-blur-sm overflow-y-auto">
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                            <FileText size={16} /> Configured Screens
+                        </h2>
+                        <button
+                            onClick={() => setShowScreens(false)}
+                            className="text-slate-400 hover:text-white"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {(!cpqState.screens || cpqState.screens.length === 0) && (
+                            <p className="text-slate-500 text-xs italic">
+                                No additional screens configured yet...
+                            </p>
+                        )}
+
+                        {(cpqState.screens || []).map((screen: any, idx) => (
+                            <div key={screen.id || idx} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex justify-between items-center group">
+                                <div>
+                                    <p className="text-blue-400 font-bold text-xs uppercase tracking-widest mb-1">
+                                        Screen {idx + 1}: {screen.productClass}
+                                    </p>
+                                    <p className="text-slate-400 text-[10px] font-medium">
+                                        {screen.widthFt}' x {screen.heightFt}' • {screen.pixelPitch}mm • {screen.environment}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => handleDeleteScreen(screen.id)}
+                                    className="p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        ))}
+
+                        {/* Current drafting screen */}
+                        <div className="bg-blue-900/10 p-4 rounded-xl border border-blue-500/30">
+                            <p className="text-blue-500 font-black text-[9px] uppercase tracking-[0.2em] mb-2">
+                                Current Active Configuration
+                            </p>
+                            <p className="text-white font-bold text-xs uppercase">
+                                {cpqState.productClass || "New Screen"}
+                            </p>
+                            <p className="text-slate-500 text-[10px] font-medium">
+                                {cpqState.widthFt || 0}' x {cpqState.heightFt || 0}' • {cpqState.pixelPitch || 0}mm • {cpqState.environment || "Indoor"}
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => setShowScreens(false)}
+                        className="w-full mt-8 bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-blue-900/20"
+                    >
+                        Return to Wizard
+                    </button>
+                </div>
+            )}
 
             {/* History Overlay */}
             {showHistory && (
@@ -1512,7 +1633,7 @@ export function ConversationalWizard({
                                     </details>
                                 </div>
                             )}
-                            
+
                             {/* Streaming Thinking Display - TOP POSITION */}
                             {isStreaming && streamingThinking && !msg.thinking && msg.role === "assistant" && i === messages.length - 1 && (
                                 <div className="px-1 w-full max-w-[96%] animate-in fade-in slide-in-from-top-1">
@@ -1542,95 +1663,111 @@ export function ConversationalWizard({
                                     {msg.role === "assistant" ? sanitizeAssistantText(msg.content) : msg.content}
                                 </div>
 
-                            {/* VENUE VERIFIED CARD - Show only for the message that actually CAPTURED the address */}
-                            {msg.role === "assistant" &&
-                                i === messages.length - 1 && 
-                                lastFieldUpdated === 'address' &&
-                                cpqState.address && (
-                                    <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-start gap-3 animate-in zoom-in-95 duration-500">
-                                        <div className="bg-green-500/20 p-2 rounded-lg">
-                                            <CheckCircle2
-                                                size={16}
-                                                className="text-green-400"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">
-                                                    Location Verified
-                                                </span>
-                                                <div className="h-px flex-1 bg-green-500/20" />
+                                {/* VENUE VERIFIED CARD - Show only for the message that actually CAPTURED the address */}
+                                {msg.role === "assistant" &&
+                                    i === messages.length - 1 &&
+                                    lastFieldUpdated === 'address' &&
+                                    cpqState.address && (
+                                        <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-start gap-3 animate-in zoom-in-95 duration-500">
+                                            <div className="bg-green-500/20 p-2 rounded-lg">
+                                                <CheckCircle2
+                                                    size={16}
+                                                    className="text-green-400"
+                                                />
                                             </div>
-                                            <p className="text-xs text-slate-300 font-bold leading-tight">
-                                                {cpqState.clientName || "Venue"}
-                                            </p>
-                                            <p className="text-[10px] text-slate-500 font-medium">
-                                                {cpqState.address}
-                                            </p>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">
+                                                        Location Verified
+                                                    </span>
+                                                    <div className="h-px flex-1 bg-green-500/20" />
+                                                </div>
+                                                <p className="text-xs text-slate-300 font-bold leading-tight">
+                                                    {cpqState.clientName || "Venue"}
+                                                </p>
+                                                <p className="text-[10px] text-slate-500 font-medium">
+                                                    {cpqState.address}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                {/* VISUAL CONFIRMATION CARD (Value-Add) */}
+                                {msg.nextStep === "confirm" && (
+                                    <div className="mt-4 bg-slate-900/50 rounded-xl p-4 border border-blue-500/30 font-mono text-xs text-blue-200">
+                                        <div className="flex justify-between items-center mb-2 border-b border-blue-500/20 pb-2">
+                                            <span className="font-bold text-blue-400">
+                                                CONFIRM CONFIGURATION {cpqState.screens && cpqState.screens.length > 0 ? `(SCREEN ${cpqState.screens.length + 1})` : ''}
+                                            </span>
+                                            <span className="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold">
+                                                DRAFT
+                                            </span>
+                                        </div>
+                                        <div className="space-y-1 mb-3">
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">
+                                                    Dimensions:
+                                                </span>
+                                                <span className="font-bold text-white">
+                                                    {cpqState.widthFt}' W x{" "}
+                                                    {cpqState.heightFt}' H
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">
+                                                    Pixel Pitch:
+                                                </span>
+                                                <span className="font-bold text-white">
+                                                    {cpqState.pixelPitch}mm
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">
+                                                    Product:
+                                                </span>
+                                                <span className="font-bold text-white">
+                                                    {cpqState.productClass} (
+                                                    {cpqState.environment})
+                                                </span>
+                                            </div>
+                                            {/* Power Calculation (Value-Add) */}
+                                            <div className="flex justify-between pt-2 border-t border-blue-500/20 mt-2">
+                                                <span className="text-amber-400 font-bold">
+                                                    Est. Power:
+                                                </span>
+                                                <span className="font-bold text-amber-300">
+                                                    {Math.round(
+                                                        ((cpqState.widthFt || 0) *
+                                                            (cpqState.heightFt ||
+                                                                0) *
+                                                            (cpqState.environment ===
+                                                                "Outdoor"
+                                                                ? 60
+                                                                : 30)) /
+                                                        120,
+                                                    )}{" "}
+                                                    Amps (120V)
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {/* Multi-Screen Actions */}
+                                        <div className="flex gap-2 mt-4 pt-4 border-t border-blue-500/20">
+                                            <button
+                                                onClick={handleAddAnotherScreen}
+                                                className="flex-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-bold py-2 rounded-lg text-[10px] uppercase tracking-widest transition-all border border-blue-500/30"
+                                            >
+                                                Add Another Screen
+                                            </button>
+                                            <button
+                                                onClick={() => handleSend("Generate Proposal")}
+                                                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20"
+                                            >
+                                                Finalize Proposal
+                                            </button>
                                         </div>
                                     </div>
                                 )}
-
-                            {/* VISUAL CONFIRMATION CARD (Value-Add) */}
-                            {msg.nextStep === "confirm" && (
-                                <div className="mt-4 bg-slate-900/50 rounded-xl p-4 border border-blue-500/30 font-mono text-xs text-blue-200">
-                                    <div className="flex justify-between items-center mb-2 border-b border-blue-500/20 pb-2">
-                                        <span className="font-bold text-blue-400">
-                                            CONFIRM CONFIGURATION
-                                        </span>
-                                        <span className="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold">
-                                            DRAFT
-                                        </span>
-                                    </div>
-                                    <div className="space-y-1 mb-3">
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">
-                                                Dimensions:
-                                            </span>
-                                            <span className="font-bold text-white">
-                                                {cpqState.widthFt}' W x{" "}
-                                                {cpqState.heightFt}' H
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">
-                                                Pixel Pitch:
-                                            </span>
-                                            <span className="font-bold text-white">
-                                                {cpqState.pixelPitch}mm
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">
-                                                Product:
-                                            </span>
-                                            <span className="font-bold text-white">
-                                                {cpqState.productClass} (
-                                                {cpqState.environment})
-                                            </span>
-                                        </div>
-                                        {/* Power Calculation (Value-Add) */}
-                                        <div className="flex justify-between pt-2 border-t border-blue-500/20 mt-2">
-                                            <span className="text-amber-400 font-bold">
-                                                Est. Power:
-                                            </span>
-                                            <span className="font-bold text-amber-300">
-                                                {Math.round(
-                                                    ((cpqState.widthFt || 0) *
-                                                        (cpqState.heightFt ||
-                                                            0) *
-                                                        (cpqState.environment ===
-                                                            "Outdoor"
-                                                            ? 60
-                                                            : 30)) /
-                                                    120,
-                                                )}{" "}
-                                                Amps (120V)
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            </div>
 
                             {/* EXPERT WIDGETS */}
                             {msg.role === "assistant" &&
@@ -1824,9 +1961,9 @@ export function ConversationalWizard({
                                                                         "clientName"
                                                                         ? "e.g. Madison Square Garden"
                                                                         : widgetDef.id ===
-                                                                              "address"
-                                                                              ? "Paste full address or search again..."
-                                                                        : "Type here..."
+                                                                            "address"
+                                                                            ? "Paste full address or search again..."
+                                                                            : "Type here..."
                                                                 }
                                                                 autoFocus
                                                                 onKeyDown={(e) => {
@@ -1863,7 +2000,7 @@ export function ConversationalWizard({
                                                             )}
                                                             <button
                                                                 onClick={(e) => {
-                                                                    const input = widgetDef.id === "address" 
+                                                                    const input = widgetDef.id === "address"
                                                                         ? e.currentTarget.previousElementSibling?.previousElementSibling as HTMLInputElement
                                                                         : e.currentTarget.previousElementSibling as HTMLInputElement;
                                                                     if (!input?.value) return;
@@ -1881,13 +2018,15 @@ export function ConversationalWizard({
                                     </div>
                                 )}
                         </div>
-                        </div>
                     ))}
-                    
-                    {/* Loading State (Non-streaming) */}
-                    {(isLoading || isUploading) && (
-                        <div className="flex flex-col gap-3 mt-4">
-                            <div className="flex items-start gap-3">
+                </div>
+            </div>
+
+            {/* Loading State (Non-streaming) */}
+            {
+                (isLoading || isUploading) && (
+                    <div className="flex flex-col gap-3 mt-4 px-8">
+                        <div className="flex items-start gap-3">
                             <div className="w-8 h-8 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
                                 <Bot size={16} className="text-blue-400" />
                             </div>
@@ -1899,20 +2038,63 @@ export function ConversationalWizard({
                                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
                                     </div>
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">
-                                        {isUploading
-                                            ? "Reading document..."
-                                            : "Processing..."}
+                                        {isUploading ? "Reading document..." : "Processing..."}
                                     </span>
                                 </div>
                             )}
-                            </div>
+                        </div>
                     </div>
-                )}
-                </div>
-            </div>
+                )
+            }
 
             {/* Compact Input Area */}
-            <div className="p-3 bg-[#03060a] border-t border-white/5 shadow-2xl">
+            <div className="p-3 bg-[#03060a] border-t border-white/5 shadow-2xl mt-auto">
+                {/* Export Actions Row */}
+                <div className="flex gap-2 mb-2 justify-end">
+                    <button
+                        onClick={() => window.open('/api/download-pdf', '_blank')}
+                        disabled={!cpqState.clientName}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-blue-900/50 text-slate-400 hover:text-blue-400 rounded-lg border border-slate-800 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium flex items-center gap-1.5"
+                        title="Download Client PDF"
+                    >
+                        <FileText size={14} />
+                        PDF
+                    </button>
+                    <button
+                        onClick={() => window.open('/api/download-excel', '_blank')}
+                        disabled={!cpqState.clientName}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-green-900/50 text-slate-400 hover:text-green-400 rounded-lg border border-slate-800 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium flex items-center gap-1.5"
+                        title="Download Internal Excel"
+                    >
+                        <Download size={14} />
+                        Excel
+                    </button>
+                    <button
+                        onClick={async () => {
+                            try {
+                                const res = await fetch('/api/share', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ project_id: projectId, input: cpqState, result: {} })
+                                });
+                                const data = await res.json();
+                                if (data.share_id) {
+                                    const shareUrl = `${window.location.origin}/share/${data.share_id}`;
+                                    await navigator.clipboard.writeText(shareUrl);
+                                    alert(`Share link copied to clipboard!\n${shareUrl}`);
+                                }
+                            } catch (e) {
+                                console.error('Failed to create share link', e);
+                            }
+                        }}
+                        disabled={!cpqState.clientName}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-purple-900/50 text-slate-400 hover:text-purple-400 rounded-lg border border-slate-800 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium flex items-center gap-1.5"
+                        title="Copy Share Link"
+                    >
+                        <Share2 size={14} />
+                        Share
+                    </button>
+                </div>
                 <div className="flex gap-2 items-center">
                     <button
                         onClick={() => fileInputRef.current?.click()}
@@ -1958,12 +2140,12 @@ export function ConversationalWizard({
                     </div>
                 </div>
                 <div className="mt-2 flex justify-center">
-                   <p className="text-[8px] font-bold text-slate-700 uppercase tracking-[0.2em] flex items-center gap-1">
-                      <span className="w-1 h-1 bg-green-500/40 rounded-full"></span>
-                      {projectId ? "Session Active" : "Initializing..."}
-                   </p>
+                    <p className="text-[8px] font-bold text-slate-700 uppercase tracking-[0.2em] flex items-center gap-1">
+                        <span className="w-1 h-1 bg-green-500/40 rounded-full"></span>
+                        {projectId ? "Session Active" : "Initializing..."}
+                    </p>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

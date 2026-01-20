@@ -40,7 +40,7 @@ const RULES = {
 
 export function calculateScreen(config: Partial<ScreenConfig> | CPQInput): CalculationResult {
     const input = config as any;
-    
+
     // 1. Dimensions & Base Cost
     const sqFt = (input.widthFt || 0) * (input.heightFt || 0);
     const baseRate = RULES.hardware.baseRate(input);
@@ -60,14 +60,14 @@ export function calculateScreen(config: Partial<ScreenConfig> | CPQInput): Calcu
     // 5. Margin Calculation
     // Total Cost = HW + Struct + Labor + Exp
     const subTotalCost = rawHardwareCost + rawStructuralCost + rawLaborCost + rawExpenseCost;
-    
+
     // Sell Price = Cost / (1 - Margin)
     const targetMargin = (input.targetMargin !== undefined && input.targetMargin > 0)
-        ? input.targetMargin / 100 
+        ? input.targetMargin / 100
         : RULES.margin;
-    
+
     const markupFactor = 1 / (1 - targetMargin);
-    
+
     // Distribute markup to line items for "Client Facing" break down
     const hardwareSell = rawHardwareCost * markupFactor;
     const structuralSell = rawStructuralCost * markupFactor;
@@ -90,7 +90,7 @@ export function calculateScreen(config: Partial<ScreenConfig> | CPQInput): Calcu
     }
 
     const totalSellPrice = hardwareSell + structuralSell + laborSell + expenseSell + contingencyCost + bondCost;
-    
+
     // Power Calculation
     const wattsPerSqFt = input.environment === 'Outdoor' ? 65 : 35;
     const totalWatts = sqFt * wattsPerSqFt;
@@ -136,37 +136,41 @@ export function calculateScreen(config: Partial<ScreenConfig> | CPQInput): Calcu
 }
 
 export function calculateCPQ(input: CPQInput): CalculationResult {
-    // If screens array exists, sum them up
-    if (input.screens && input.screens.length > 0) {
-        // Merge global input with screen config to ensure defaults propagate
-        const results = input.screens.map(s => calculateScreen({...input, ...s})); 
-        
-        return results.reduce((acc, curr) => {
-             // Sum breakdowns
-             const mergedBreakdown: { [key: string]: number } = {};
-             if (acc.costBreakdown && curr.costBreakdown) {
-                 for (const key in acc.costBreakdown) {
-                     mergedBreakdown[key] = (acc.costBreakdown[key] || 0) + (curr.costBreakdown[key] || 0);
-                 }
-             }
+    // 1. Calculate the active screen (current state)
+    const activeResult = calculateScreen(input);
 
-             return {
-                sqFt: acc.sqFt + curr.sqFt,
-                hardwareCost: acc.hardwareCost + curr.hardwareCost,
-                structuralCost: acc.structuralCost + curr.structuralCost,
-                laborCost: acc.laborCost + curr.laborCost,
-                pmCost: acc.pmCost + curr.pmCost,
-                expenseCost: acc.expenseCost + curr.expenseCost,
-                bondCost: acc.bondCost + curr.bondCost,
-                contingencyCost: acc.contingencyCost + curr.contingencyCost,
-                totalCost: acc.totalCost + curr.totalCost,
-                sellPrice: acc.sellPrice + curr.sellPrice,
-                margin: input.targetMargin ? input.targetMargin / 100 : RULES.margin,
-                powerAmps: acc.powerAmps + curr.powerAmps,
-                costBreakdown: mergedBreakdown
-            };
-        });
+    // 2. If no additional screens, just return active
+    if (!input.screens || input.screens.length === 0) {
+        return activeResult;
     }
-    
-    return calculateScreen(input);
+
+    // 3. Otherwise, map and sum all screens including active
+    const otherResults = input.screens.map(s => calculateScreen({ ...input, ...s }));
+    const allResults = [...otherResults, activeResult];
+
+    return allResults.reduce((acc, curr) => {
+        // Sum breakdowns
+        const mergedBreakdown: { [key: string]: number } = {};
+        if (acc.costBreakdown && curr.costBreakdown) {
+            for (const key in acc.costBreakdown) {
+                mergedBreakdown[key] = (acc.costBreakdown[key] || 0) + (curr.costBreakdown[key] || 0);
+            }
+        }
+
+        return {
+            sqFt: acc.sqFt + curr.sqFt,
+            hardwareCost: acc.hardwareCost + curr.hardwareCost,
+            structuralCost: acc.structuralCost + curr.structuralCost,
+            laborCost: acc.laborCost + curr.laborCost,
+            pmCost: acc.pmCost + curr.pmCost,
+            expenseCost: acc.expenseCost + curr.expenseCost,
+            bondCost: acc.bondCost + curr.bondCost,
+            contingencyCost: acc.contingencyCost + curr.contingencyCost,
+            totalCost: acc.totalCost + curr.totalCost,
+            sellPrice: acc.sellPrice + curr.sellPrice,
+            margin: input.targetMargin ? input.targetMargin / 100 : RULES.margin,
+            powerAmps: acc.powerAmps + curr.powerAmps,
+            costBreakdown: mergedBreakdown
+        };
+    });
 }
