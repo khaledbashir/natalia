@@ -9,3 +9,7 @@ anc_internal_estimation.xlsx
 anc_client_proposal.pdf
 test_*.xlsx
 final_test.xlsx
+
+# Local DB and uploaded files (do not commit)
+local_dev.db
+uploads/

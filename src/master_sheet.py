@@ -63,7 +63,8 @@ def validate_master_data(sheets: Dict[str, List[Dict[str, Any]]]) -> Dict[str, A
         summary["hardware_rows"] += 1
         sid = row.get("screen_id")
         sqft = row.get("sqft") or (row.get("width_ft", 0) * row.get("height_ft", 0))
-        base = row.get("base_rate") or 0
+        # Support alternative header name used in some master sheets
+        base = row.get("base_rate") or row.get("base_rate_per_sqft") or 0
         hw_cost = row.get("hardware_cost") or 0
         expected_hw = float(sqft) * float(base)
         if abs(expected_hw - float(hw_cost)) > 0.01:
