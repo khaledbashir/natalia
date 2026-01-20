@@ -4,19 +4,17 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Plus,
-  TrendingUp,
-  DollarSign,
-  FolderKanban,
-  Calendar,
+  Search,
+  Filter,
   Download,
   Eye,
   MoreVertical,
-  Search,
+  FolderKanban,
 } from "lucide-react";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +30,7 @@ type Project = {
   total_value?: number;
 };
 
-export default function DashboardPage() {
+export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -46,22 +44,6 @@ export default function DashboardPage() {
       })
       .catch(() => setIsLoading(false));
   }, []);
-
-  // Calculate stats
-  const totalProjects = projects.length;
-  const thisMonth = projects.filter((p) => {
-    const created = new Date(p.created_at);
-    const now = new Date();
-    return (
-      created.getMonth() === now.getMonth() &&
-      created.getFullYear() === now.getFullYear()
-    );
-  }).length;
-
-  const pipelineValue = projects.reduce(
-    (sum, p) => sum + (p.total_value || 0),
-    0
-  );
 
   const filteredProjects = projects.filter((p) =>
     p.client_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -81,9 +63,9 @@ export default function DashboardPage() {
       <div className="border-b bg-background px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
             <p className="text-muted-foreground mt-1">
-              Welcome back, here's your project overview
+              Manage all your LED display proposals
             </p>
           </div>
           <Link href="/new-project">
@@ -97,111 +79,52 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Projects
-              </CardTitle>
-              <FolderKanban className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalProjects}</div>
-              <p className="text-xs text-muted-foreground">
-                Across all time
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{thisMonth}</div>
-              <p className="text-xs text-muted-foreground">
-                +{thisMonth > 0 ? ((thisMonth / totalProjects) * 100).toFixed(0) : 0}% of total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Pipeline Value
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(pipelineValue)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Total estimated value
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">--</div>
-              <p className="text-xs text-muted-foreground">
-                Coming soon
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Projects Table */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Recent Projects</CardTitle>
+              <CardTitle>All Projects ({filteredProjects.length})</CardTitle>
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search projects..."
-                    className="pl-8 w-[250px]"
+                    className="pl-8 w-[300px]"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <Link href="/projects">
-                  <Button variant="outline" size="sm">
-                    View All
-                  </Button>
-                </Link>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  Filter
+                </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
                 Loading projects...
               </div>
             ) : filteredProjects.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <FolderKanban className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No projects yet</h3>
+                <h3 className="text-lg font-semibold mb-2">No projects found</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Get started by creating your first project
+                  {searchQuery
+                    ? "Try adjusting your search query"
+                    : "Get started by creating your first project"}
                 </p>
-                <Link href="/new-project">
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Project
-                  </Button>
-                </Link>
+                {!searchQuery && (
+                  <Link href="/new-project">
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Project
+                    </Button>
+                  </Link>
+                )}
               </div>
             ) : (
-              <div className="border rounded-lg">
+              <div className="border rounded-lg overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
@@ -223,7 +146,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {filteredProjects.slice(0, 10).map((project) => (
+                    {filteredProjects.map((project) => (
                       <tr
                         key={project.id}
                         className="hover:bg-muted/50 transition-colors"
