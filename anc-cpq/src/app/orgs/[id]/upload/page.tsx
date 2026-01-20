@@ -15,7 +15,8 @@ export default function UploadMaster(){
     setLoading(true);
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('org_id', orgId);
+    // orgId can be string | string[] | undefined from useParams — ensure string for FormData
+    fd.append('org_id', String(orgId ?? ''));
     const r = await fetch('/api/upload-master', {method:'POST', body: fd});
     if(r.ok){
       const j = await r.json();

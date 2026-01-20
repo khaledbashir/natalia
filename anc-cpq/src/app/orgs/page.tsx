@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 
 export default function OrgsPage() {
-  const [orgs, setOrgs] = useState([]);
+  const [orgs, setOrgs] = useState<any[]>([]);
   const [name, setName] = useState("");
 
   useEffect(() => {
