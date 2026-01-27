@@ -597,13 +597,6 @@ def send_proposal(payload: Dict, db: Session = Depends(get_db)):
 
     return {'status': 'sent', 'outbox': out_path}
 
-    except Exception as e:
-        print(f"Error in generate_proposal: {e}")
-        import traceback
-
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/api/upload-master")
 async def upload_master_file(org_id: Optional[int] = None, file: Optional["UploadFile"] = None, db: Session = Depends(get_db)):
